@@ -14,7 +14,7 @@ export function isolateVisuraCells(input) {
   if(!shape(input,["kind","regions","spans"])||input.kind!=="reviewer_selected_current_building_cells"||
      !Array.isArray(input.regions)||input.regions.length===0||input.regions.length>128||
      !Array.isArray(input.spans)||input.spans.length>2048)return fail("invalid_envelope");
-  const regionIds=new Set(),locations=new Set(),spanIds=new Set(),spanBoxes=new Set();
+  const regionIds=new Set(),locations=new Set(),fields=new Set(),spanIds=new Set(),spanBoxes=new Set();
   const id=x=>typeof x==="string"&&/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(x);
   const regions=[];
   for(const r of input.regions){
@@ -23,6 +23,8 @@ export function isolateVisuraCells(input) {
       if(!shape(r,["id","role","page","box","field","section","line"])||typeof r.field!=="string"||!Object.hasOwn(fieldSections,r.field)||
          r.section!==fieldSections[r.field]||!integer(r.line,1,100000))return fail("invalid_value_region");
       const key=JSON.stringify([r.field,r.page,r.line]);if(locations.has(key))return fail("duplicate_field_locator");locations.add(key);
+      // Repeated fields may belong to a second identifier/unit. Do not collapse them here.
+      if(fields.has(r.field))return fail("repeated_field_requires_group_review");fields.add(r.field);
     }else if(!shape(r,["id","role","page","box"])||!exclusions.has(r.role))return fail("invalid_exclusion_region");
     if(regions.some(q=>q.page===r.page&&overlap(q.box,r.box)))return fail("overlapping_regions");
     regionIds.add(r.id);regions.push(r);
