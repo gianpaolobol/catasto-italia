@@ -54,3 +54,8 @@
 - PR #9 verificata merged (65e0918f9f24f5ff975ce90e6a810f719049045b), CI 45386609548 success sul head esatto e job core verificato.
 - ID04/05: adattatore PDF testuale locale con Poppler, coordinate normalizzate e digest SHA-256, blocchi per documenti o geometrie non supportati. Revisione sequenziale: corretto errore nativo sulle pagine ruotate con pdfinfo. 33/33 test puri da sorgenti rilette e 5/5 prove native su copia locale dopo correzione; 39 nuovi test predisposti, CI Node/Poppler richiesta. Branch feat/pdf-text-coordinate-adapter. Evidenze docs/qa/ITERATION_010.md.
 - Prossimo: CI/merge se verificati; binding digest e regioni, raggruppamento e parole multiple con revisione, worker isolato, OCR e corpus territoriale. Nessun caso catastale integrale o test ufficiale DOCFA/SISTER.
+
+## Iterazione 11 — 2026-11-24
+- PR #10 verificata merged (3e05e8b010ebd2c81507034c2d7e97a12e92d982), workflow 45396353407 success sul head esatto; log core 323/323 test.
+- ID04/05: percorso locale PDF → regioni selezionate → intake, vincolo a digest PDF e snapshot estratto; unione esplicita delle sole coppie importo/unità supportate, locatori originari preservati. Revisione sequenziale e correzione del fingerprint. 22 nuovi test nativi predisposti; CI richiesta. Branch feat/pdf-review-binding; evidenze docs/qa/ITERATION_011.md.
+- Non operativo, nessuna autenticità o raggruppamento verificato. Prossimo: CI e merge se positiva, gruppi di identificativi con evidenze, worker isolato, corpus territoriale. Nessun test ufficiale DOCFA/SISTER o caso catastale integrale.
