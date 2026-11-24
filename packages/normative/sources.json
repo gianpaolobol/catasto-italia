@@ -1,0 +1,65 @@
+{
+  "version": "0.1.0",
+  "sources": [
+    {
+      "id": "dm701-1994",
+      "revision": 1,
+      "title": "D.M. 19 aprile 1994 n. 701",
+      "kind": "regulation",
+      "scope": "national",
+      "publishedOn": "1994-12-24",
+      "effectiveFrom": "1995-01-08",
+      "effectiveUntil": null,
+      "reviewedOn": "2026-11-24",
+      "status": "historical",
+      "url": "https://www.gazzettaufficiale.it/eli/id/1994/12/24/094G0293/sg",
+      "locator": "Art. 1; testo originario",
+      "note": "Distingue dichiarazioni di nuova costruzione e variazione; prevede proposta di classamento e sottoscrizione. Verifica del testo consolidato ancora necessaria."
+    },
+    {
+      "id": "circ1-2004",
+      "revision": 1,
+      "title": "Circolare 1/2004, prot. 12213",
+      "kind": "guidance",
+      "scope": "national",
+      "publishedOn": "2004-02-13",
+      "effectiveFrom": "2004-03-01",
+      "effectiveUntil": null,
+      "reviewedOn": "2026-11-24",
+      "status": "historical",
+      "url": "https://www1.agenziaentrate.gov.it/mt/circolari/Circolari_2004/circolare_controlli_docfa.pdf",
+      "locator": "p. 3, controlli formali",
+      "note": "Controlli di identificativi, scala, orientamento, altezze, locali, piani, corti, poligoni ed elaborati. Non assumere immutata la procedura del 2004."
+    },
+    {
+      "id": "circ4-2009",
+      "revision": 1,
+      "title": "Circolare 4/2009, prot. 57354",
+      "kind": "guidance",
+      "scope": "national",
+      "publishedOn": "2009-10-29",
+      "effectiveFrom": "2009-10-29",
+      "effectiveUntil": null,
+      "reviewedOn": "2026-11-24",
+      "status": "historical",
+      "url": "https://www1.agenziaentrate.gov.it/mt/circolari/Circolari_2009/Circolare_4_2009_AdozioneDOCFA4.pdf",
+      "locator": "pp. 1–2, §§ 1–2",
+      "note": "Distinzione nuova costruzione/variazione, export PDF telematico e sottoscrizione. Non certifica compatibilità delle versioni attuali."
+    },
+    {
+      "id": "rdl652-1939",
+      "revision": 1,
+      "title": "R.D.L. 13 aprile 1939 n. 652",
+      "kind": "law",
+      "scope": "national",
+      "publishedOn": "1939-05-06",
+      "effectiveFrom": "1939-05-06",
+      "effectiveUntil": null,
+      "reviewedOn": "2026-11-24",
+      "status": "pending",
+      "url": "https://www.normattiva.it/eli/id/1939/05/06/039U0652/CONSOLIDATED/20261101",
+      "locator": "Indice consolidato al 01/11/2026; artt. 20 e 28 da acquisire integralmente",
+      "note": "Indice reperito; accesso diretto agli articoli non riuscito. Non utilizzabile per regole operative."
+    }
+  ]
+}

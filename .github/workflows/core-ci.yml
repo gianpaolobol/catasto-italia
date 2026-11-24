@@ -15,4 +15,4 @@ jobs:
       - name: Runtime and contract tests
         run: |
           node --version
-          node --test tests/building-core.test.mjs
+          node --test tests/*.test.mjs
