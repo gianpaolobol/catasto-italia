@@ -79,3 +79,8 @@
 - PR #14 integrata a 0531d0eee5dab5bb58abf2b95bab169d1641ad4b; CI 45440243404 sul head/base esatti, job core 138609027505, 426/426 pass.
 - ID05/29: ambiente minimo dei subprocessi PDF, blocco PATH non valido, revisione sequenziale e correzioni; 5/5 controlli ECMAScript su sorgente riletta, 22 nuovi test Node predisposti, CI richiesta. Branch fix/pdf-subprocess-environment; evidenze docs/qa/ITERATION_015.md.
 - Non sandbox, Windows reale non verificato, nessuna nuova regola catastale. Prossimo: CI/merge, isolamento OS, OCR, corpus territoriale, adattatori e QA 100+100. Nessun caso integrale o test DOCFA/SISTER.
+
+## Iterazione 16 — 2026-11-24
+- PR #15 integrata a db5fd656a564f455f83a0fa8d9bc423fbc6e83af; CI 45452501064 sul head/base esatti, job 138653076719, 448/448 pass.
+- ID05/29: risoluzione esplicita percorsi assoluti Poppler, preflight entrambi i binari con ambiente unico, revisione sequenziale e correzioni; 24 nuovi test sintetici predisposti, CI richiesta. Branch fix/pdf-explicit-binary-resolution; evidenze docs/qa/ITERATION_016.md.
+- Non sandbox né autenticazione dei binari, Windows reale non verificato. Prossimo: CI/merge, isolamento OS, OCR, corpus territoriale, adattatori e QA 100+100. Nessun caso integrale o test DOCFA/SISTER.

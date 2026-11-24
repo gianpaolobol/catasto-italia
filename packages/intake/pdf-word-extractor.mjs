@@ -2,6 +2,7 @@
 import {spawnSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {pdfProcessEnvironment} from './pdf-process-environment.mjs';
+import {resolvePopplerExecutable} from './pdf-executable-resolution.mjs';
 
 const MAX_BYTES=10*1024*1024, MAX_OUTPUT=4*1024*1024, MAX_PAGES=128, MAX_WORDS=2048;
 const HEADER='level\tpage_num\tpar_num\tblock_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext';
@@ -89,10 +90,8 @@ export function parsePdfInfo(info){
   }
   return out;
 }
-function runPoppler(command,args,input){
-  const env=pdfProcessEnvironment();
-  if(!env)return {code:'extractor_environment_invalid'};
-  const r=spawnSync(command,args,{input,timeout:10000,maxBuffer:MAX_OUTPUT,windowsHide:true,shell:false,killSignal:'SIGKILL',env});
+function runPoppler(executable,args,input,env){
+  const r=spawnSync(executable,args,{input,timeout:10000,maxBuffer:MAX_OUTPUT,windowsHide:true,shell:false,killSignal:'SIGKILL',env});
   if(r.error)return {code:r.error.code==='ENOENT'?'extractor_unavailable':'extractor_failed'};
   if(r.status!==0||r.signal||!Buffer.isBuffer(r.stdout)||!Buffer.isBuffer(r.stderr)||r.stderr.length)return {code:'extractor_failed'};
   return {text:r.stdout.toString('utf8')};
@@ -103,11 +102,17 @@ function runPoppler(command,args,input){
 export function extractPdfWords(bytes){
   if(!Buffer.isBuffer(bytes)||bytes.length<8||bytes.length>MAX_BYTES||!bytes.subarray(0,5).equals(Buffer.from('%PDF-')))return blocked('invalid_pdf_input');
   const input=Buffer.from(bytes);
-  const metadata=runPoppler('pdfinfo',['-box','-f','1','-l',String(MAX_PAGES),'-'],input);
+  const env=pdfProcessEnvironment();
+  if(!env)return blocked('extractor_environment_invalid');
+  const metadataBinary=resolvePopplerExecutable('pdfinfo',env);
+  if(metadataBinary.code)return blocked(metadataBinary.code);
+  const textBinary=resolvePopplerExecutable('pdftotext',env);
+  if(textBinary.code)return blocked(textBinary.code);
+  const metadata=runPoppler(metadataBinary.executable,['-box','-f','1','-l',String(MAX_PAGES),'-'],input,env);
   if(metadata.code)return blocked(metadata.code);
   const geometry=parsePdfInfo(metadata.text);
   if(!geometry)return blocked('unsupported_page_geometry');
-  const result=runPoppler('pdftotext',['-tsv','-cropbox','-enc','UTF-8','-','-'],input);
+  const result=runPoppler(textBinary.executable,['-tsv','-cropbox','-enc','UTF-8','-','-'],input,env);
   if(result.code)return blocked(result.code);
   const out=parsePopplerTsv(result.text,geometry);
   if(out.state==='candidate_words')out.documentSha256=createHash('sha256').update(input).digest('hex');
