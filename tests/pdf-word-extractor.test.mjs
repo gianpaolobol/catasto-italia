@@ -2,7 +2,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {parsePopplerTsv,extractPdfWords} from '../packages/intake/pdf-word-extractor.mjs';
+import {parsePopplerTsv,extractPdfWords,parsePdfInfo} from '../packages/intake/pdf-word-extractor.mjs';
 import {isolateVisuraCells} from '../packages/intake/visura-coordinate-cells.mjs';
 
 const H='level\tpage_num\tpar_num\tblock_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext';
@@ -61,3 +61,14 @@ test('native blank PDF not OCR',()=>{const r=extractPdfWords(pdf([0],true));asse
 test('invalid PDF input',()=>{for(const x of [null,'fake',Buffer.from('not PDF'),Buffer.alloc(10*1024*1024+1)])assert.equal(extractPdfWords(x).issues[0].code,'invalid_pdf_input');});
 test('malformed PDF',()=>{assert.equal(extractPdfWords(Buffer.from('%PDF-1.4\nbad')).state,'blocked');});
 test('native bridge to reviewed region isolation',()=>{const r=extractPdfWords(pdf());assert.equal(r.state,'candidate_words');const result=isolateVisuraCells({kind:'reviewer_selected_current_building_cells',regions:[{id:'synthetic-sheet',role:'value',page:1,box:[80000,100000,230000,220000],field:'sheet',section:'identifier',line:1}],spans:r.spans});assert.equal(result.state,'candidate_cells');assert.equal(result.rows[0].text,'009');assert.equal(result.identifierGroupingVerified,false);});
+
+const info=(rot=90,crop='0.00 0.00 200.00 300.00')=>['Pages: 1','Encrypted: no','Page 1 size: 200 x 300 pts','Page 1 rot: '+rot,'Page 1 MediaBox: 0.00 0.00 200.00 300.00','Page 1 CropBox: '+crop].join('\n');
+test('metadata rotation independent of TSV dimensions',()=>{const g=parsePdfInfo(info());assert.deepEqual(g,[{rawWidth:200,rawHeight:300,width:300,height:200}]);const r=parsePopplerTsv(tsv(page(),word(1,247,20,11,20)),g);assert.equal(r.state,'candidate_words');assert.equal(r.pages[0].widthPt,300);assert.ok(r.spans[0].box[0]>800000);});
+test('metadata also accepts already rotated TSV dimensions',()=>{const r=parsePopplerTsv(tsv(page(1,300,200),word(1,247,20,11,20)),parsePdfInfo(info()));assert.equal(r.state,'candidate_words');});
+test('metadata unsupported crop',()=>{assert.equal(parsePdfInfo(info(0,'10.00 0.00 200.00 300.00')),null);});
+test('metadata duplicate rotation',()=>{assert.equal(parsePdfInfo(info()+'\nPage 1 rot: 0'),null);});
+test('metadata invalid rotation',()=>{assert.equal(parsePdfInfo(info(45)),null);});
+test('metadata encrypted',()=>{assert.equal(parsePdfInfo(info().replace('Encrypted: no','Encrypted: yes')),null);});
+test('metadata inconsistent page count',()=>{assert.equal(parsePdfInfo(info().replace('Pages: 1','Pages: 2')),null);});
+test('TSV dimensions mismatch metadata',()=>{const r=parsePopplerTsv(tsv(page(1,400,300),word()),parsePdfInfo(info()));assert.equal(r.issues[0].code,'page_geometry_mismatch');});
+test('TSV missing page versus metadata',()=>{const g=parsePdfInfo(info());const r=parsePopplerTsv(tsv(page(),word()),[...g,...g]);assert.equal(r.issues[0].code,'page_count_mismatch');});
