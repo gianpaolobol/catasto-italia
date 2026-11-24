@@ -1,0 +1,13 @@
+# Iterazione 020 — 2026-11-24
+## Piano e revisione sequenziale
+- Letti MASTER_PLAN, DEVELOPMENT_PROGRESS (main bed2fe86abe32b22e3b4eb81d28ebe500ba726cb), branch e PR #19. Compare: 6 commit avanti, 0 indietro prima della correzione.
+- CI 45494236780, job core 138800340415: 526 test, 525 pass, 1 fail, 0 skip. Rilievo: fixture TSV 65x50 contro raster 64x50 attendeva ocr_raster_mismatch, ma il controllo geometrico precedente restituisce invalid_ocr_geometry_or_index. Il rifiuto è corretto; non indebolire il validatore per soddisfare la fixture.
+- Piano rivisto: conservare codice di produzione e coprire mismatch entro geometria e fuori limite, su entrambe le dimensioni. Nessuna nuova regola catastale.
+## Implementazione e collaudo
+- Commit bd753dddfe5ca35ba46c165723bf8fddbb0fb4f0: sostituito un test con quattro, per 3 nuovi test netti; file riletto identico al contenuto inviato. Revisione sequenziale del diff: ogni caso verifica stato bloccato, codice diagnostico, evidenza nulla, parole vuote e operative false.
+- Linux locale Node 22.16.0: ricostruite le due sorgenti e verificati gli hash Git blob con quelli di GitHub (raster 01ee5ac333fdc34970013f1a00503b0d68d00d12, TSV e9762e2d07faed4c9d78fbee9aeb3651a1a9af5d). Eseguito node --test regression.test.mjs sui quattro casi corretti: 4/4 pass, 0 fail, 0 skip. Non intera suite.
+- Prova di integrazione nativa locale (non automatizzata in CI): Pillow, immagine PGM 640x160 bianca con testo TEST 0007 nero, DejaVu Sans 48px, posizione (30,40); tesseract synthetic.pgm stdout -l eng --psm 7 tsv (Tesseract 5.5.0). Poi bindOcrRasterEvidence sui byte effettivi con Node: stato ocr_evidence_candidates, parole TEST e 0007, operative false, authenticated false, requiresHumanReview true. SHA256 raster 457e3371bf3f037324e323e76273c8e5f340a0fcba7f215ae658ed6d9ffc2425; TSV 6a594e8b169cbeb44f71743dfd7b15daeff4e250292099d7699ea21d10d52613; evidenza 708f6a12033c283984893e6e4eb5761ddb8cdbb86ba5044f9cdaa08a63abe6cf.
+## Gate e limiti
+- Nessun agente indipendente; nessun caso catastale integrale o verifica incrociata indipendente conteggiata. Nessun dato cliente, firma, invio o variazione licenza. Prova locale su immagine semplice, non PDF/scansione reale, non pipeline automatica né sandbox.
+- PR #19 rimane aperta: CI corretta ancora da verificare sul head/base esatti, inclusi i commit documentali. Attesi 529 test, non dichiarati superati. Nessuna PR #20 separata finché non risolto il gate.
+- Prossimo: CI e merge se verificati; integrazione PDF-raster-OCR con provenienza, isolamento OS, corpus ufficiale territoriale, adattatori Building Core e QA 100+100. Nessun test ufficiale DOCFA/SISTER.
