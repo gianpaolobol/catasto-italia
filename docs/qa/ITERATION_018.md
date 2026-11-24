@@ -1,0 +1,13 @@
+# Iterazione 018 — 2026-11-24
+## Piano e revisione sequenziale
+- Letti MASTER_PLAN, DEVELOPMENT_PROGRESS e PR #17. Head d5ccc8fb664b6934961661db116d8c633802406e, base 2728638987488da4d1ad16975e97fe27d9914669; diff 4 file attesi; CI 45474009226, job core 138729243553, log checkout merge esatto, 481 pass / 0 fail / 0 skip. Squash merge confermato a 7974cb261522a2c13a48f9749ba17862363e4bd9.
+- ID05/29: introdurre parser diagnostico TSV Tesseract per un singolo raster già elaborato; verificata documentazione ufficiale del progetto https://tesseract-ocr.github.io/tessdoc/Command-Line-Usage.html (TSV, livelli, colonne, score decimale). Nessuna nuova regola catastale.
+- Revisione del piano: dimensioni raster esplicite e corrispondenti alla riga pagina; coordinate soltanto in pixel, non confonderle con coordinate PDF; nessun punteggio, anche 100, promuove a dato verificato. Non avviare ancora processi nativi per scansioni finché mancano isolamento e mapping documentale.
+## Implementazione, revisione e test
+- d1b08bf4137755a314cdda9df5b63c429f30f8cc: parser limitato a input/righe/parole/dimensioni finite, gerarchia esplicita e ordine, geometria raster, score grezzo, zeri iniziali, blocco output parziali.
+- Rilievo diff: due word ID distinti con stessa geometria potevano essere conteggiati due volte; 3facc63e520506cc1bfe2125b59b7e1a769efd59 blocca il duplicato esatto. Non risolve sovrapposizioni parziali o errori di layout.
+- fce7d68734d1f039cec46b419ad8c23f704daa85: 24 test sintetici. Riletti modulo e test da GitHub: eseguiti tutti i callback in ECMAScript mediante Function, rimuovendo solo import/export e sostituendo node:test e assert con harness sincrono di uguaglianza stretta e JSON strutturato; 24/24 pass, 0 fail. Non è una esecuzione Node nativa; CI node --test tests/*.test.mjs richiesta.
+- Revisione sequenziale, nessun agente indipendente. Nessuna scansione reale, processo OCR, regola catastale o mapping automatico. Nessun dato cliente, credenziale, firma o invio; licenza invariata.
+## Limiti e prossimo gate
+- Input TSV non autenticato; manca digest di raster/TSV/documento e binding geometrico; score motore non è probabilità calibrata né confidenza per campo. Parser volutamente restrittivo, compatibilità con output Tesseract reale non collaudata. Non collegare direttamente a intake PDF. Sandbox OS e Windows reale non validati.
+- Prossimo: verificare CI sul head/base esatti; merge solo se positiva; sviluppare binding raster e provenienza, OCR nativo solo in ambiente ristretto, corpus territoriale e adattatori Building Core. Avviso checkout Node20 resta aperto. Nessun caso integrale, verifica indipendente o test DOCFA/SISTER conteggiato.
