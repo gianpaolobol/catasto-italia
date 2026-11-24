@@ -3,9 +3,8 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync,mkdirSync,writeFileSync,chmodSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {join,delimiter,resolve} from 'node:path';
+import {join,delimiter} from 'node:path';
 import {spawnSync} from 'node:child_process';
-import {fileURLToPath} from 'node:url';
 import {popplerCandidates,resolvePopplerExecutable} from '../packages/intake/pdf-executable-resolution.mjs';
 import {extractPdfWords} from '../packages/intake/pdf-word-extractor.mjs';
 
@@ -40,7 +39,7 @@ test('missing executable does not use an implicit fallback',()=>fixture(a=>asser
 test('first present file is resolved absolutely',()=>fixture((a,b)=>{const p=file(a,'pdfinfo');file(b,'pdfinfo');assert.deepEqual(resolvePopplerExecutable('pdfinfo',{PATH:a+delimiter+b}),{executable:p});}));
 test('missing first candidate can fall through',()=>fixture((a,b)=>{const p=file(b,'pdfinfo');assert.deepEqual(resolvePopplerExecutable('pdfinfo',{PATH:a+delimiter+b}),{executable:p});}));
 test('directory candidate blocks rather than falling through',()=>fixture((a,b)=>{mkdirSync(join(a,name('pdfinfo')));file(b,'pdfinfo');assert.deepEqual(resolvePopplerExecutable('pdfinfo',{PATH:a+delimiter+b}),{code:'extractor_failed'});}));
-test('nonexecutable POSIX candidate blocks',()=>fixture((a,b)=>{if(process.platform==='win32')return;const p=file(a,'pdfinfo');chmodSync(p,0o600);file(b,'pdfinfo');assert.deepEqual(resolvePopplerExecutable('pdfinfo',{PATH:a+delimiter+b}),{code:'extractor_failed'});}));
+test('nonexecutable POSIX candidate blocks',{skip:process.platform==='win32'},()=>fixture((a,b)=>{const p=file(a,'pdfinfo');chmodSync(p,0o600);file(b,'pdfinfo');assert.deepEqual(resolvePopplerExecutable('pdfinfo',{PATH:a+delimiter+b}),{code:'extractor_failed'});}));
 test('actual child resolver ignores matching file in working directory',()=>fixture((a,b)=>{
   file(a,'pdfinfo');
   const moduleUrl=new URL('../packages/intake/pdf-executable-resolution.mjs',import.meta.url).href;
