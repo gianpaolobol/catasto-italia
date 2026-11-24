@@ -59,3 +59,8 @@
 - PR #10 verificata merged (3e05e8b010ebd2c81507034c2d7e97a12e92d982), workflow 45396353407 success sul head esatto; log core 323/323 test.
 - ID04/05: percorso locale PDF → regioni selezionate → intake, vincolo a digest PDF e snapshot estratto; unione esplicita delle sole coppie importo/unità supportate, locatori originari preservati. Revisione sequenziale e correzione del fingerprint. 22 nuovi test nativi predisposti; CI richiesta. Branch feat/pdf-review-binding; evidenze docs/qa/ITERATION_011.md.
 - Non operativo, nessuna autenticità o raggruppamento verificato. Prossimo: CI e merge se positiva, gruppi di identificativi con evidenze, worker isolato, corpus territoriale. Nessun test ufficiale DOCFA/SISTER o caso catastale integrale.
+
+## Iterazione 12 — 2026-11-24
+- PR #11 confermata merged (81677f4b0f7a4905134103d0ed7aa2a5332331ac), CI 45406688456 success sul head esatto, log 345/345 test.
+- ID04/05/11: partizione diagnostica di parole PDF in blocchi selezionati, anche multipagina, con esclusioni, copertura e locatori; revisione sequenziale con ricalcolo fingerprint. 25 nuovi test predisposti, CI richiesta. Branch feat/reviewed-visura-blocks; evidenze docs/qa/ITERATION_012.md.
+- Nessuna inferenza su unità o graffature, nessuna integrazione semantica ancora. Prossimo: CI/merge, trascrizione per blocco e collegamento alle evidenze Building Core, worker isolato, corpus territoriale. Nessun caso catastale integrale o test ufficiale DOCFA/SISTER.
