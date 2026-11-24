@@ -34,6 +34,11 @@ function runContractTests(validate) {
     ["bad source date",s=>{s.sources[0].capturedOn="2026-13-01";},"invalid_calendar_date"],
     ["invalid null root",s=>null,"expected_object"],
     ["prototype-shaped JSON rejected",s=>{Object.defineProperty(s,"__proto__",{value:{},enumerable:true});},"unknown_field"],
+    ["source count guard",s=>{s.sources=Array(10001).fill(s.sources[0]);},"too_many_items"],
+    ["unit count guard",s=>{s.units=Array(10001).fill(s.units[0]);},"too_many_items"],
+    ["reference count guard",s=>{s.units[0].identifiers=Array(1025).fill(c(s));},"too_many_items"],
+    ["source link count guard",s=>{c(s).sourceIds=Array(257).fill("synthetic-doc");},"too_many_items"],
+    ["total validation budget",s=>{s.units=Array(1000).fill(null).map((_,i)=>({id:"unit-"+i,identifiers:Array(20).fill(null).map((_,j)=>({...c(s),id:"c-"+i+"-"+j,status:"proposed"}))}));},"validation_budget_exceeded"],
     ["separate proposed exact reference allowed",s=>{s.units[0].identifiers[1].status="proposed";s.units[0].identifiers[1].value={...c(s).value};},null]
   ];
   return cases.map(([name,edit,expected])=>{
