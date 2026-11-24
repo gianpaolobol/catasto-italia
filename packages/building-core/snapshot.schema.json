@@ -26,13 +26,15 @@
       "type": "array",
       "items": {
         "$ref": "#/$defs/source"
-      }
+      },
+      "maxItems": 10000
     },
     "units": {
       "type": "array",
       "items": {
         "$ref": "#/$defs/unit"
-      }
+      },
+      "maxItems": 10000
     }
   },
   "$defs": {
@@ -154,7 +156,8 @@
             "type": "string",
             "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
           },
-          "uniqueItems": true
+          "uniqueItems": true,
+          "maxItems": 256
         },
         "value": {
           "anyOf": [
@@ -185,7 +188,8 @@
           "items": {
             "$ref": "#/$defs/claim"
           },
-          "minItems": 1
+          "minItems": 1,
+          "maxItems": 1024
         }
       }
     }
