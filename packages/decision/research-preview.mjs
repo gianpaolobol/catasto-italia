@@ -8,6 +8,11 @@ const fields={
   event:["annexation","internal","omission","unknown"],
   originalMembership:["yes","no","unknown"],
   titleEvidence:["yes","no","unknown"],
+  priorSeparateUnit:["yes","no","unknown"],
+  autonomyAfter:["yes","no","unknown"],
+  originEvidence:["yes","no","unknown"],
+  alreadyListedBuilding:["yes","no","unknown"],
+  unitBoundaryChange:["yes","no","unknown"],
   mapChange:["yes","no","unknown"],
   territorialSystem:["ordinary","tavolare","unknown"],
   additionalChanges:["yes","no","unknown"]
@@ -32,19 +37,21 @@ export function previewProcedure(input){
   out.blockers.push("source_applicability_not_verified","professional_review_required");
   if(input.territorialSystem!=="ordinary"){out.blockers.push("territorial_system_unresolved_or_special");return out;}
   if(input.province===null){out.blockers.push("province_missing");return out;}
+  if(input.originEvidence!=="yes"){out.blockers.push("origin_evidence_missing");return out;}
+  if(input.priorSeparateUnit!=="no"){out.blockers.push("prior_separate_unit_unresolved_or_present");return out;}
   if(input.additionalChanges!=="no")out.blockers.push("combined_causes_not_assessed");
   if(input.mapChange==="unknown")out.blockers.push("map_change_unknown");
-  if(input.origin==="existing"&&input.event==="annexation"&&input.originalMembership==="no"){
+  if(input.origin==="existing"&&input.event==="annexation"&&input.originalMembership==="no"&&input.autonomyAfter==="no"&&input.unitBoundaryChange==="yes"){
     out.candidates.push(candidate("variation","ampliamento",["S","C"],"p. 57; note 72–73"));
     if(input.mapChange==="yes")out.blockers.push("tipo_mappale_to_verify");
     if(input.titleEvidence!=="yes")out.blockers.push("title_evidence_missing");
-  }else if(input.origin==="existing"&&input.event==="internal"&&input.mapChange==="no"&&input.originalMembership==="yes"){
+  }else if(input.origin==="existing"&&input.event==="internal"&&input.mapChange==="no"&&input.originalMembership==="yes"&&input.unitBoundaryChange==="no"&&input.autonomyAfter==="no"){
     out.candidates.push(candidate("variation","diversa distribuzione degli spazi interni",["V"],"p. 58"));
   }else if(input.event==="omission"&&input.titleEvidence==="yes"&&input.mapChange==="no"){
-    if(input.origin==="existing"&&input.originalMembership==="yes")
+    if(input.origin==="existing"&&input.originalMembership==="yes"&&input.autonomyAfter==="no"&&input.unitBoundaryChange==="no")
       out.candidates.push(candidate("variation","recupero di situazione pregressa",["V"],"p. 63"));
-    else if(input.origin==="unlisted"&&input.originalMembership==="no")
-      out.candidates.push(candidate("new_registration","recupero di situazione pregressa",["C"],"pp. 45–47"));
+    else if(input.origin==="unlisted"&&input.originalMembership==="no"&&input.autonomyAfter==="yes"&&input.alreadyListedBuilding==="yes"&&input.unitBoundaryChange==="no")
+      out.candidates.push(candidate("new_registration","recupero di situazione pregressa",["C"],"p. 45; unità afferenti, Altro"));
   }
   if(out.candidates.length===0)out.blockers.push("facts_incomplete_or_outside_supported_scenarios");
   return out;
