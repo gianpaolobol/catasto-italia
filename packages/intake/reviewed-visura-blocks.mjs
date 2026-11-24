@@ -1,4 +1,5 @@
 // Copyright (c) 2026 Gian Paolo Franceschini. All rights reserved.
+import {createHash} from 'node:crypto';
 import {preparePdfVisuraReview} from './reviewed-pdf-visura.mjs';
 const shape=(x,k)=>x!==null&&typeof x==='object'&&[Object.prototype,null].includes(Object.getPrototypeOf(x))&&Object.keys(x).length===k.length&&k.every(v=>Object.hasOwn(x,v));
 const id=x=>typeof x==='string'&&/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(x);
@@ -16,13 +17,13 @@ export function partitionReviewedWords(pdf,manifest){
      manifest.version!=='0.1.0'||manifest.kind!=='reviewer_selected_visura_blocks'||
      !digest(manifest.documentSha256)||!digest(manifest.extractionSha256)||
      !Array.isArray(manifest.regions)||manifest.regions.length<1||manifest.regions.length>128)return blocked('invalid_manifest');
-  if(!pdf||pdf.state!=='candidate_words'||!Array.isArray(pdf.pages)||pdf.pages.length<1||pdf.pages.length>128||
+  if(!pdf||pdf.version!=='0.1.0'||pdf.state!=='candidate_words'||!Array.isArray(pdf.pages)||pdf.pages.length<1||pdf.pages.length>128||
      !Array.isArray(pdf.spans)||pdf.spans.length<1||pdf.spans.length>2048)return blocked('invalid_extraction');
   if(pdf.documentSha256!==manifest.documentSha256)return blocked('document_digest_mismatch');
   if(pdf.extractionSha256!==manifest.extractionSha256)return blocked('extraction_digest_mismatch');
   const pages=new Map();
   for(const p of pdf.pages){
-    if(!p||!Number.isSafeInteger(p.page)||p.page!==pages.size+1||!Number.isSafeInteger(p.wordCount)||p.wordCount<1||p.wordCount>2048)return blocked('invalid_page');
+    if(!shape(p,['page','widthPt','heightPt','wordCount'])||!Number.isFinite(p.widthPt)||p.widthPt<=0||p.widthPt>100000||!Number.isFinite(p.heightPt)||p.heightPt<=0||p.heightPt>100000||!Number.isSafeInteger(p.page)||p.page!==pages.size+1||!Number.isSafeInteger(p.wordCount)||p.wordCount<1||p.wordCount>2048)return blocked('invalid_page');
     pages.set(p.page,{expected:p.wordCount,actual:0});
   }
   const regions=[],ids=new Set(),groups=new Map();
@@ -55,6 +56,9 @@ export function partitionReviewedWords(pdf,manifest){
     groups.get(r.blockId).spans.push({id:s.id,page:s.page,box:[...s.box],text:s.text,regionId:r.id});
   }
   if([...pages.values()].some(p=>p.actual!==p.expected))return blocked('page_word_count_mismatch');
+  // Independently recompute the previous module's extraction fingerprint after structural validation.
+  const fingerprint=createHash('sha256').update(JSON.stringify([pdf.version,pdf.pages,pdf.spans])).digest('hex');
+  if(fingerprint!==manifest.extractionSha256)return blocked('extraction_content_mismatch');
   // Every selected block region must contain evidence; empty exclusions are harmless.
   if(regions.some(r=>r.role==='block'&&!counts.has(r.id)))return blocked('empty_block_region');
   return {...flags(),state:'candidate_blocks',documentSha256:pdf.documentSha256,extractionSha256:pdf.extractionSha256,blocks:[...groups.values()],excludedCount,issues:[]};
