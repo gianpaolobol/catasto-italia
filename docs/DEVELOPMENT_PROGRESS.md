@@ -99,3 +99,8 @@
 - PR #18 integrata a bed2fe86abe32b22e3b4eb81d28ebe500ba726cb; CI 45483271170 job 138761786303, head/base esatti, 505/505 pass.
 - ID05/29: binding PGM canonico e TSV raw con SHA-256 e sistema coordinate esplicito; 21 nuovi test Node predisposti, revisione sequenziale e correzione. Prova esplorativa Tesseract 5.5.0 nativo su raster sintetico TEST 0007 riuscita, non test del nuovo modulo. Branch feat/ocr-raster-evidence; evidenze docs/qa/ITERATION_019.md.
 - Nessuna autenticazione della coppia, mapping PDF o OCR integrato; CI richiesta. Prossimo: integrazione nativa isolata, corpus territoriale, adattatori Building Core e QA 100+100. Nessun caso integrale o test DOCFA/SISTER.
+
+## Iterazione 20 — 2026-11-24
+- PR #19 ancora aperta: CI 45494236780/job 138800340415 fallita (525/526 pass), aspettativa diagnostica errata nella fixture TSV. Correzione bd753dddfe5ca35ba46c165723bf8fddbb0fb4f0: quattro casi al posto di uno, validatore invariato. Revisione sequenziale, 4/4 regressioni locali Node con sorgenti verificate per hash Git; CI completa da verificare sul head/base finali.
+- ID05/29: prima prova locale Tesseract 5.5.0 -> binding evidenze con byte effettivi di PGM e TSV sintetici; parole TEST e 0007 riconosciute, stato non operativo e non autenticato. Evidenze docs/qa/ITERATION_020.md. Non pipeline automatica o sandbox, nessun caso integrale o test DOCFA/SISTER.
+- Prossimo: gate PR #19, integrazione PDF-raster-OCR, isolamento OS, corpus territoriale, adattatori Building Core e QA 100+100. Nessun nuovo merge con CI non verificata.
