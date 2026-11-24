@@ -31,6 +31,8 @@ export function auditIdentifierInventory(snapshot){
       if(c.status==="unknown"||c.status==="calculated")report("unresolved_identifier");
       if(c.status==="observed"&&!c.sourceIds.some(id=>["document","official_receipt"].includes(sources.get(id).kind)))
         report("observed_without_documentary_reference");
+      if(c.status==="proposed"&&!c.sourceIds.some(id=>["document","survey","professional_input"].includes(sources.get(id).kind)))
+        report("proposed_without_input_reference");
       if(c.value===null)continue;
       const p=parcelParts(c.value), all=[...p,c.value.subaltern], canonical=all.map(token);
       add(exact,key(all),row);
