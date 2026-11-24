@@ -3,11 +3,14 @@ import {readFileSync} from "node:fs";
 const schema=JSON.parse(readFileSync(new URL("./snapshot.schema.json",import.meta.url),"utf8"));
 export function validateSnapshot(snapshot) {
   const errors=[];
+  let remaining=200000;
+  let budgetExceeded=false;
   function add(path,code){errors.push({path,code});}
   // This is intentionally a validator for the keywords used by our bundled schema,
   // not a general-purpose JSON Schema implementation.
   function check(s,v,p,out){
     const fail=code=>out.push({path:p,code});
+    if(--remaining<0){if(!budgetExceeded){errors.push({path:"",code:"validation_budget_exceeded"});budgetExceeded=true;}return;}
     if(s.$ref){check(schema.$defs[s.$ref.slice("#/$defs/".length)],v,p,out);return;}
     if(s.anyOf){if(!s.anyOf.some(a=>{const e=[];check(a,v,p,e);return e.length===0;}))fail("invalid_union");return;}
     if(Object.hasOwn(s,"const")&&v!==s.const){fail("unsupported_version");return;}
@@ -23,15 +26,17 @@ export function validateSnapshot(snapshot) {
       if(!v||typeof v!=="object"||Array.isArray(v)||![Object.prototype,null].includes(Object.getPrototypeOf(v))){fail("expected_object");return;}
       for(const k of s.required)if(!Object.hasOwn(v,k))out.push({path:p+"/"+k,code:"missing_field"});
       for(const k of Object.keys(v)){
-        if(!Object.hasOwn(s.properties,k)){out.push({path:p,code:"unknown_field"});continue;}
+        if(budgetExceeded)return;
+        if(!Object.hasOwn(s.properties,k)){if(!out.some(e=>e.path===p&&e.code==="unknown_field"))out.push({path:p,code:"unknown_field"});continue;}
         check(s.properties[k],v[k],p+"/"+k,out);
       }
     }
     if(s.type==="array"){
       if(!Array.isArray(v)){fail("expected_array");return;}
       if(s.minItems!==undefined&&v.length<s.minItems)fail("too_few_items");
+      if(s.maxItems!==undefined&&v.length>s.maxItems){fail("too_many_items");return;}
       if(s.uniqueItems&&new Set(v).size!==v.length)fail("duplicate_item");
-      for(let i=0;i<v.length;i++)check(s.items,v[i],p+"/"+i,out);
+      for(let i=0;i<v.length&&!budgetExceeded;i++)check(s.items,v[i],p+"/"+i,out);
     }
   }
   check(schema,snapshot,"",errors);
