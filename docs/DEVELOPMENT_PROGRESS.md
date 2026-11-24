@@ -69,3 +69,8 @@
 - PR #12 integrata a 8f84b765696dcfb7511d59c2580f05c16f039a1d; CI 45417618685, job core 138528046939, 370/370 pass, checkout merge su head c59491f8cd06a0b9c53b4cf8ffccebe015845dda verificato.
 - ID04/05/11/26: trascrizione prudenziale dei cinque campi identificativi per blocco revisionato, locatori originali, copertura esplicita, ripetizioni segnalate, valori compatibili con Building Core 0.1.0. Revisione sequenziale con correzione locatori ignorati e digest manifest. 27 test sintetici predisposti, inclusi PDF nativo e schema; CI richiesta. Branch feat/reviewed-block-identifiers. Evidenze docs/qa/ITERATION_013.md.
 - Nessuna deduzione di graffatura/unità/titolarità o autenticità, nessun claim osservato; nessuna nuova regola normativa o compatibilità ufficiale. Prossimo: verifica CI/merge, relazioni esplicite e audit di sicurezza PDF, OCR e corpus territoriale. Nessun caso integrale o verifica indipendente conteggiati.
+
+## Iterazione 14 — 2026-11-24
+- PR #13 integrata (3bb8877c92f6c154228e913833f16ca388666005), CI 45429740730 sul head esatto, log 397/397.
+- ID04/05/11/26: gruppi proposti dal revisore, copertura disgiunta dei blocchi e locatori espliciti, vincolo digest, nessuna relazione verificata. Revisione sequenziale con correzione della visibilità dei membri privi di evidenza; 29 test sintetici predisposti, CI richiesta. Branch feat/reviewed-identifier-group-proposals; evidenze docs/qa/ITERATION_014.md.
+- Prossimo: CI/merge, fonti ufficiali sulle relazioni, worker isolato, OCR, corpus territoriale e adattatori reali. Nessuna pratica integrale o test DOCFA/SISTER.

@@ -1,0 +1,12 @@
+# Iterazione 014 — 2026-11-24
+## Baseline e piano
+- Letti MASTER_PLAN e DEVELOPMENT_PROGRESS su main; verificati branch, PR #13, compare main/head (behind 0, quattro file attesi) e workflow 45429740730, job core 138571418385. Log checkout del merge di abd2a4c7cb5ec5e859a5553d556a70c797ee0f65 in 8f84b765696dcfb7511d59c2580f05c16f039a1d: 397 test pass, zero fail/cancel/skip. Squash merge PR #13 confermato 3bb8877c92f6c154228e913833f16ca388666005.
+- ID04/05/11/26: acquisire proposte esplicite del revisore sui gruppi di identificativi, con locatori di evidenza, senza dedurre graffature o altre relazioni catastali. Revisione sequenziale del piano: bloccare duplicati esatti e selezioni obsolete, copertura disgiunta di tutti i blocchi, locatori limitati alle parole non usate per identificativi; mantenere blocchi irrisolti. Nessuna nuova regola normativa codificata; riferimenti di contesto già verificati in 008/012 (guida AdE marzo 2021 pp.12–14), non usati per decidere raggruppamenti.
+## Implementazione e revisione
+- 78ac8e1aadfd66b915c59005b4fa86f78d3e321b: modulo reviewed-identifier-groups, riesecuzione della trascrizione, vincolo SHA-256 al documento/estrazione/selezione precedente e nuova proposta, controlli di copertura e locatori, uscita sempre non operativa.
+- Rilievo sequenziale: un locatore scelto in un solo blocco poteva essere interpretato come copertura di tutti i membri. Corretto in 0dc44c3a5795d930a6ee81bfa8dd806e6b8c259f esponendo blocksWithoutSelectedEvidence. Nessuna garanzia semantica neppure con tutti i blocchi coperti.
+- 33024fc03219eddd180c89289f06bdea9e56d576: 29 test sintetici predisposti, inclusi regressione, copertura, digest e PDF nativo. Riletti sorgenti su branch e compare main/branch: due file aggiunti prima della documentazione; nessuna rimozione. Revisione sequenziale, non indipendente.
+## Test e limiti
+- Comando CI: node --test tests/*.test.mjs. Esito da verificare sul head finale; 29 nuovi test non ancora conteggiati come superati. Nessuna pratica integrale, revisione indipendente, firma o trasmissione.
+- Gruppi solo proposti, nessun claim osservato o unità Building Core creati; evidenze selezionate potrebbero essere semanticamente irrilevanti. Solo singolo PDF, niente deduzione per geometria o titolarità, niente conferma di graffatura. Licenza invariata, fixture sintetiche.
+- Prossimo: CI e merge solo se validati, risoluzione delle relazioni con fonti ufficiali, sicurezza worker PDF/OCR, corpus territoriale, adattatori reali, QA 100+100, test DOCFA/SISTER. Warning checkout Node20 ancora presente.
