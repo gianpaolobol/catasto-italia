@@ -36,11 +36,17 @@ const cases=[
 ];
 for(const [name,env,platform] of cases)test(name,()=>assert.equal(pdfProcessEnvironment(env,platform),null));
 test('actual child sees no synthetic unlisted secret',()=>{
-  const parent={...process.env,CATASTO_SYNTHETIC_SECRET:'not-a-real-secret'};
-  const env=pdfProcessEnvironment(parent,process.platform);
-  assert.ok(env);
-  const r=spawnSync(process.execPath,['-e','process.stdout.write(JSON.stringify([process.env.CATASTO_SYNTHETIC_SECRET??null,process.env.LC_ALL]))'],{env,encoding:'utf8',timeout:5000});
-  assert.equal(r.status,0);assert.deepEqual(JSON.parse(r.stdout),[null,'C']);
+  const key='CATASTO_SYNTHETIC_SECRET',old=process.env[key];
+  try{
+    process.env[key]='not-a-real-secret';
+    const env=pdfProcessEnvironment();
+    assert.ok(env);
+    const probe=['-e','process.stdout.write(JSON.stringify([process.env.CATASTO_SYNTHETIC_SECRET??null,process.env.LC_ALL??null]))'];
+    const control=spawnSync(process.execPath,probe,{encoding:'utf8',timeout:5000});
+    assert.equal(control.status,0);assert.equal(JSON.parse(control.stdout)[0],'not-a-real-secret');
+    const r=spawnSync(process.execPath,probe,{env,encoding:'utf8',timeout:5000});
+    assert.equal(r.status,0);assert.deepEqual(JSON.parse(r.stdout),[null,'C']);
+  }finally{if(old===undefined)delete process.env[key];else process.env[key]=old;}
 });
 test('native extractor fails closed when actual search path is invalid',()=>{
   const key=Object.keys(process.env).find(k=>k.toLowerCase()==='path')||'PATH',old=process.env[key];
