@@ -3,6 +3,7 @@ import {spawnSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {pdfProcessEnvironment} from './pdf-process-environment.mjs';
 import {resolvePopplerExecutable} from './pdf-executable-resolution.mjs';
+import {withPdfWorkspace} from './pdf-workspace.mjs';
 
 const MAX_BYTES=10*1024*1024, MAX_OUTPUT=4*1024*1024, MAX_PAGES=128, MAX_WORDS=2048;
 const HEADER='level\tpage_num\tpar_num\tblock_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext';
@@ -91,10 +92,12 @@ export function parsePdfInfo(info){
   return out;
 }
 function runPoppler(executable,args,input,env){
-  const r=spawnSync(executable,args,{input,timeout:10000,maxBuffer:MAX_OUTPUT,windowsHide:true,shell:false,killSignal:'SIGKILL',env});
-  if(r.error)return {code:r.error.code==='ENOENT'?'extractor_unavailable':'extractor_failed'};
-  if(r.status!==0||r.signal||!Buffer.isBuffer(r.stdout)||!Buffer.isBuffer(r.stderr)||r.stderr.length)return {code:'extractor_failed'};
-  return {text:r.stdout.toString('utf8')};
+  return withPdfWorkspace(env,options=>{
+    const r=spawnSync(executable,args,{input,timeout:10000,maxBuffer:MAX_OUTPUT,windowsHide:true,shell:false,killSignal:'SIGKILL',...options});
+    if(r.error)return {code:r.error.code==='ENOENT'?'extractor_unavailable':'extractor_failed'};
+    if(r.status!==0||r.signal||!Buffer.isBuffer(r.stdout)||!Buffer.isBuffer(r.stderr)||r.stderr.length)return {code:'extractor_failed'};
+    return {text:r.stdout.toString('utf8')};
+  });
 }
 
 // Local diagnostic only. Requires a trusted Poppler installation; production
