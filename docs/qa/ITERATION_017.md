@@ -1,0 +1,12 @@
+# Iterazione 017 — 2026-11-24
+## Piano e revisione sequenziale
+- Letti MASTER_PLAN, DEVELOPMENT_PROGRESS, branch e PR. PR #16 head a98ccef8fdcbbbed531b832c1475c77e23674532, base db5fd656a564f455f83a0fa8d9bc423fbc6e83af, compare behind 0, cinque file attesi; CI 45462522465 job core 138688682677, checkout merge esatto e 472 pass / 0 fail / 0 skip. Squash merge confermato 2728638987488da4d1ad16975e97fe27d9914669.
+- ID05/29: eliminare l'ereditarietà della directory corrente e ridurre i residui temporanei. Criteri: directory nuova per ogni comando, variabili temporanee esplicite, cleanup anche in errore, esito bloccato se cleanup non verificabile. Fonte tecnica https://nodejs.org/api/child_process.html (cwd, env, spawnSync); nessuna nuova regola catastale.
+- Revisione del piano: workspace distinto anche tra pdfinfo e pdftotext; non chiamarlo sandbox; root temporanea e installazione native fidate.
+## Implementazione, diff e feedback
+- 471c0942e3869041e9bfd966f516555cd2032dcc helper temporaneo, a27d0772aa946e63f1bca8c9165f6c44a62e7af5 collegamento ai due subprocessi. Cleanup verifica identità directory e blocca risultato se sostituita.
+- Rilievo: un root configurato relativo o un percorso UNC non deve essere accettato; 2a877a411854992985fc24951b1d7b031da9c233 aggiunge controllo del percorso iniziale e risolto. Non garantisce che un drive Windows sia locale o che un mount POSIX non sia remoto.
+- 563565dcf561485a685d621317b9f98897d889fc: 9 nuovi test sintetici, inclusi subprocesso reale, permessi POSIX, cleanup in successo/errore, directory sostituita, root relativo. Diff riletto: invariati parser e flusso dati, escluso import/helper; tre file previsti. Nessun agente indipendente: revisione sequenziale. Test nuovi predisposti, non ancora eseguiti in questa fase; comando CI node --test tests/*.test.mjs.
+## Limiti e prossimo gate
+- Non sandbox: nessun isolamento OS di filesystem, rete, CPU/memoria, discendenti o DLL; ACL Windows non validate, root/antenati fidati, controllo identità non elimina TOCTOU, cleanup non è cancellazione sicura. Nessuna abilitazione di PDF non fidati. Avviso checkout Node20 deprecato ancora presente.
+- Licenza invariata, nessun dato cliente, credenziale, firma o invio. Nessun caso integrale, verifica indipendente o test ufficiale DOCFA/SISTER conteggiato. Prossimo: CI head/base esatti e merge se positiva, isolamento OS e OCR, corpus territoriale, Building Core/adattatori, QA 100+100.
