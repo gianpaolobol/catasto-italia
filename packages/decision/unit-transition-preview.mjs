@@ -18,8 +18,8 @@ export function previewUnitTransition(input){
   const out={version:"0.1.0",state:"needs_review",operative:false,canExport:false,candidate:null,blockers:[],source:null};
   const reject=code=>{out.blockers.push(code);return out;};
   if(!shape(input,["snapshot","province","scenario","originIds","derivedIds","facts"])||
-    !Object.hasOwn(extra,input.scenario)||!ids(input.originIds)||!ids(input.derivedIds)||
-    typeof input.province!=="string"||! /^[A-Z]{2}$/.test(input.province))return reject("invalid_input");
+    typeof input.scenario!=="string"||!Object.hasOwn(extra,input.scenario)||!ids(input.originIds)||!ids(input.derivedIds)||
+    typeof input.province!=="string"||!/^[A-Z]{2}$/.test(input.province))return reject("invalid_input");
   const {snapshot,scenario,originIds,derivedIds,facts}=input;
   if(!validateSnapshot(snapshot).valid)return reject("invalid_snapshot");
   const ref=inspectSource({id:"vademecum-docfa-2022",revision:1,asOf:snapshot.asOf,province:input.province});
