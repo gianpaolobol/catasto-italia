@@ -28,7 +28,7 @@ export function bindOcrRasterEvidence(rasterBytes,tsvBytes){
   const parsed=parseOcrTsv(decoded,{widthPx,heightPx});
   if(parsed.state!=='ocr_candidates')return blocked(parsed.issues[0].code);
   const evidence={version:'0.1.0',relationship:'supplied_pair_unverified',format:'pgm-p5-canonical-8bit',
-    widthPx,heightPx,rasterByteLength:raster.length,tsvByteLength:tsv.length,
+    coordinateSpace:'raster-pixel-top-left',widthPx,heightPx,rasterByteLength:raster.length,tsvByteLength:tsv.length,
     rasterSha256:sha256(raster),tsvSha256:sha256(tsv),parserVersion:parsed.version};
   const evidenceSha256=sha256(JSON.stringify({evidence,words:parsed.words}));
   return {version:'0.1.0',state:'ocr_evidence_candidates',operative:false,authenticated:false,requiresHumanReview:true,
