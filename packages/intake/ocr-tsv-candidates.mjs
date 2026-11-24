@@ -13,7 +13,7 @@ export function parseOcrTsv(tsv,raster){
   const rows=tsv.split(/\r?\n/);
   if(rows.at(-1)==='')rows.pop();
   if(rows.shift()!==HEADER||!rows.length||rows.length>MAX_ROWS)return blocked('invalid_ocr_header_or_rows');
-  const words=[],seen=new Set();
+  const words=[],seen=new Set(),seenBoxes=new Set();
   let current=null;
   for(const row of rows){
     const c=row.split('\t');
@@ -42,6 +42,9 @@ export function parseOcrTsv(tsv,raster){
     if(!/^(0|[1-9]\d{0,2})(?:\.\d{1,9})?$/.test(raw)||Number(raw)>100)return blocked('invalid_ocr_score');
     if(!value||value.length>512||value.trim()!==value||/[\p{Cc}\p{Cf}\p{Cs}\u2028\u2029]/u.test(value))return blocked('invalid_ocr_text');
     if(words.length>=MAX_WORDS)return blocked('ocr_word_limit');
+    const boxKey=[x,y,w,h].join('/');
+    if(seenBoxes.has(boxKey))return blocked('duplicate_ocr_word_geometry');
+    seenBoxes.add(boxKey);
     words.push({id:'ocr-'+path.join('-'),boxPx:[x,y,x+w,y+h],text:value,engineScore:raw,requiresHumanReview:true});
   }
   if(!words.length)return blocked('ocr_no_words');
