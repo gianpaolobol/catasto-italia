@@ -5,6 +5,7 @@ import {auditTransition} from "./transition-audit.mjs";
 const plain=x=>x!==null&&typeof x==="object"&&!Array.isArray(x)&&[Object.prototype,null].includes(Object.getPrototypeOf(x));
 const shape=(x,keys)=>plain(x)&&Object.keys(x).length===keys.length&&keys.every(k=>Object.hasOwn(x,k));
 const id=x=>typeof x==="string"&&/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(x);
+const documentary=new Set(["ordinaryTerritory","inventoryComplete","titleReviewed","sameDitta","parcelPreviouslyEmpty","mapPrerequisiteReviewed"]);
 const locator=x=>shape(x,["kind","index"])&&["page","record"].includes(x.kind)&&Number.isSafeInteger(x.index)&&x.index>=1&&x.index<=1000000;
 
 // Local binding to the exact JSON serialization of a previously validated case.
@@ -37,6 +38,8 @@ export function auditFieldEvidence(input,coverage,evidence){
     seen.set(key,a.value);
     const f=input.facts[a.fact];
     if(!f.sourceIds.includes(a.sourceId))out.fieldIssues.push({fact:a.fact,code:"unlinked_source"});
+    const allowed=documentary.has(a.fact)?["document","official_receipt"]:["document","survey"];
+    if(!allowed.includes(sources.get(a.sourceId).kind))out.fieldIssues.push({fact:a.fact,code:"unsupported_source_kind"});
     if(a.value!==f.value)out.fieldIssues.push({fact:a.fact,code:a.value==="unknown"?"unresolved_transcription":"contradictory_transcription"});
   }
   for(const [fact,f] of Object.entries(input.facts)){
