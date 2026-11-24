@@ -39,7 +39,10 @@ export function proposeReviewedIdentifierGroups(pdf,identifierManifest,review){
       const l=allowed.get(s);
       evidence.push({...l,box:[...l.box]});
     }
-    groups.push({groupId:g.groupId,blockIds:[...g.blockIds],status:'proposed_unverified',evidence});
+    // A selected locator is not evidence for every member merely because it is in the group.
+    const evidenceBlocks=new Set(evidence.map(l=>l.blockId));
+    groups.push({groupId:g.groupId,blockIds:[...g.blockIds],status:'proposed_unverified',evidence,
+      blocksWithoutSelectedEvidence:g.blockIds.filter(b=>!evidenceBlocks.has(b))});
   }
   for(const b of review.unresolvedBlockIds){
     if(!id(b)||!candidates.has(b)||assigned.has(b))return blocked('invalid_or_reused_block');
