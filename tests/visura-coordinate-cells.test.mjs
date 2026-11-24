@@ -44,3 +44,6 @@ const cases=[
 ["same line distinct fields",x=>x,r=>r.rows[0].line===r.rows[1].line&&r.rows[0].field!==r.rows[1].field]
 ];
 for(const [name,mut,check] of cases)test(name,()=>{const x=mut(fixture()),before=JSON.stringify(x),r=isolateVisuraCells(x);assert.ok(check(r),JSON.stringify(r));assert.equal(JSON.stringify(x),before);});
+
+test("repeated field on another page requires group review",()=>{const x=fixture();x.regions.push({...x.regions[0],id:"sheet2",page:3});x.spans.push({...x.spans[0],id:"s6",page:3});const r=isolateVisuraCells(x);assert.equal(r.state,"blocked");assert.ok(r.issues.some(i=>i.code==="repeated_field_requires_group_review"));assert.equal(r.rows.length,0);});
+test("repeated field on another line requires group review",()=>{const x=fixture();x.regions[1].field="sheet";x.regions[1].line=2;const r=isolateVisuraCells(x);assert.equal(r.state,"blocked");assert.ok(r.issues.some(i=>i.code==="repeated_field_requires_group_review"));});
