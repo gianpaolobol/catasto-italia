@@ -24,6 +24,7 @@ test('valid supplied pair is unverified, with actual byte digests',()=>{
   const r=pgm(),t=tsv(),x=bind(r,t);
   assert.equal(x.state,'ocr_evidence_candidates');assert.equal(x.evidence.relationship,'supplied_pair_unverified');
   assert.equal(x.evidence.rasterSha256,digest(r));assert.equal(x.evidence.tsvSha256,digest(t));
+  assert.equal(x.evidence.coordinateSpace,'raster-pixel-top-left');
   assert.equal(x.evidence.widthPx,64);assert.equal(x.evidence.heightPx,50);
   assert.equal(x.evidence.rasterByteLength,r.length);assert.equal(x.evidence.tsvByteLength,t.length);
   assert.equal(x.words[0].text,'0007');assert.equal(x.authenticated,false);
