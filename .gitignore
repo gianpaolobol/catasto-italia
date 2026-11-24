@@ -1,0 +1,12 @@
+/workspace/
+/local-data/
+/private/
+.env
+.env.*
+*.p7m
+*.p12
+*.pfx
+*.pem
+*.key
+__pycache__/
+node_modules/
