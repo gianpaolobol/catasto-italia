@@ -1,0 +1,13 @@
+# Iterazione 019 — 2026-11-24
+## Piano e revisione sequenziale
+- Letti MASTER_PLAN e DEVELOPMENT_PROGRESS, branch e PR #18. Verificato diff, CI 45483271170/job 138761786303: checkout cf8564a90b04879a18ea0fc9c051cb3836795dfa, merge head 0468c8fa60dd73c84b2183ff22bd33533b7bec0a/base 7974cb261522a2c13a48f9749ba17862363e4bd9, 505 pass, 0 fail, 0 skip. Squash merge confermato a bed2fe86abe32b22e3b4eb81d28ebe500ba726cb.
+- ID05/29: vincolare byte del raster e del TSV a evidenza diagnostica con SHA-256. Consultata documentazione tecnica Tesseract https://github.com/tesseract-ocr/tessdoc/blob/main/Command-Line-Usage.md e pgm(5) https://manpages.debian.org/buster/netpbm/pgm.5.en.html. Nessuna nuova regola catastale.
+- Revisione piano: limitare a P5 canonico 8 bit, raster unico e dimensioni limitate; non attribuire origine OCR o pagina PDF a una coppia fornita dal chiamante. Nessuna inferenza di autenticità. Rifiutare UTF-8 non valido e output parziali.
+## Implementazione e revisione
+- 3323b0c42c06f3d32db04c959dc28ba326f78b59: binding dei byte, dimensioni, score grezzi, digest separati e digest della selezione. 05bea200158cb30617f1ba045d01595db179df27: 21 test sintetici predisposti.
+- Rilievo: mancava identificazione esplicita del sistema di coordinate nel manifest; 8eae35e6091f56aa6beb7f0614c0bedf91f77719 e cfe5c2935e1a454cbd7eed6a59fd7970cfaa0e39 includono e verificano raster-pixel-top-left nel digest.
+- Test nativo esplorativo separato: su ambiente Linux locale Tesseract 5.5.0, immagine PGM 640x160 sintetica creata con Pillow, testo TEST 0007, font DejaVu Sans 48 px, posizione (30,40). Comando tesseract synthetic.pgm stdout -l eng --psm 7 tsv. Output effettivo: due parole TEST e 0007, entrambe score 95.039703, riga pagina 640x160. Non è test del nuovo modulo né prova di accuratezza generale; nessuna scansione cliente. I 21 test Node del nuovo modulo richiedono CI nativa. 
+- Revisione sequenziale, nessun agente indipendente. Nessuna modifica licenza, credenziale, firma o invio.
+## Limiti e prossimo gate
+- La coppia raster/TSV può essere arbitraria: il digest non prova che l'OCR sia stato eseguito sul raster, né autentica il documento. Nessun mapping PDF, motore integrato, isolamento OS o validazione Windows. Formati PGM legali non canonici esclusi deliberatamente. Nessun caso catastale integrale o verifica incrociata indipendente conteggiata.
+- CI sul head/base esatti prima del merge; prossimo: test di integrazione rasterizzazione/OCR nativo con fixture sintetica in ambiente limitato, isolamento OS, corpus territoriale, adattatori Building Core, QA 100+100. Avviso checkout Node20 ancora aperto; nessun test DOCFA/SISTER.
