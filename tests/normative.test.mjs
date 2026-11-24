@@ -22,3 +22,7 @@ test("review prior to publication",()=>{const c=getCatalog();c.sources[0].review
 test("returned data cannot mutate catalog",()=>{const s=inspectSource(baseline());s.source.title="changed";assert.notEqual(inspectSource(baseline()).source.title,"changed");});
 test("invalid query",()=>assert.equal(inspectSource().state,"invalid_query"));
 test("invalid catalog",()=>assert.equal(inspectSource(baseline(),null).state,"invalid_catalog"));
+test("null query",()=>assert.equal(inspectSource(null).state,"invalid_query"));
+test("non-string scope rejected",()=>{const c=getCatalog();c.sources[0].scope=["province:BO"];assert.ok(validateCatalog(c).includes("invalid_scope"));});
+test("non-string URL rejected",()=>{const c=getCatalog();c.sources[0].url=[c.sources[0].url];assert.ok(validateCatalog(c).includes("untrusted_url"));});
+test("invalid identifier type handled",()=>{const c=getCatalog();c.sources[0].id=1n;assert.ok(validateCatalog(c).includes("invalid_id_revision"));});
