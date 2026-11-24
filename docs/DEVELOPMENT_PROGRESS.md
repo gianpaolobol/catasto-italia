@@ -89,3 +89,8 @@
 - PR #16 integrata a 2728638987488da4d1ad16975e97fe27d9914669; CI 45462522465 job 138688682677 sul head/base esatti, 472/472 pass.
 - ID05/29: workspace temporaneo distinto per ogni subprocesso Poppler, temp env esplicite, cleanup fail-closed e controllo sostituzione; revisione sequenziale e correzione root relativo/UNC. 9 nuovi test predisposti, CI richiesta. Branch fix/pdf-private-workspace, evidenze docs/qa/ITERATION_017.md.
 - Non sandbox, Windows e isolamento OS non verificati. Prossimo: CI/merge, isolamento OS, OCR, corpus territoriale, adattatori Building Core e QA 100+100. Nessun caso integrale o test ufficiale DOCFA/SISTER.
+
+## Iterazione 18 — 2026-11-24
+- PR #17 integrata a 7974cb261522a2c13a48f9749ba17862363e4bd9; CI 45474009226 job core 138729243553 sul head/base esatti, 481/481 pass.
+- ID05/29: parser diagnostico TSV Tesseract per raster singolo, score grezzo e coordinate pixel, blocchi di gerarchia/geometria; revisione sequenziale e correzione duplicati geometrici. 24/24 callback sintetici eseguiti in ECMAScript su sorgenti rilette; CI Node richiesta. Branch feat/ocr-tsv-candidates, evidenze docs/qa/ITERATION_018.md.
+- Non OCR nativo, non confidenza per campo, non mapping PDF o autenticazione. Prossimo: CI/merge, binding raster e provenienza, isolamento OS, OCR effettivo, corpus territoriale, adattatori Building Core e QA 100+100. Nessun caso integrale o test ufficiale DOCFA/SISTER.
