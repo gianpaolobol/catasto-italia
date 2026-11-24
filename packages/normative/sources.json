@@ -60,6 +60,66 @@
       "url": "https://www.normattiva.it/eli/id/1939/05/06/039U0652/CONSOLIDATED/20261101",
       "locator": "Indice consolidato al 01/11/2026; artt. 20 e 28 da acquisire integralmente",
       "note": "Indice reperito; accesso diretto agli articoli non riuscito. Non utilizzabile per regole operative."
+    },
+    {
+      "revision": 1,
+      "scope": "national",
+      "effectiveUntil": null,
+      "reviewedOn": "2026-11-24",
+      "status": "pending",
+      "id": "rdl652-art20-1948",
+      "title": "R.D.L. 652/1939 art. 20, testo modificato nel 1948",
+      "kind": "law",
+      "publishedOn": "1939-05-06",
+      "effectiveFrom": "1948-06-09",
+      "url": "https://def.finanze.it/DocTribFrontend/getAttoNormativoDetail.do?ACTION=getArticolo&codiceOrdinamento=200002000000000&id=%7B575020C8-A07C-4506-93EF-FF1287A5BF94%7D",
+      "locator": "Art. 20, versione 09/06/1948",
+      "note": "Consultato testo modificato; controllo sopravvenienze ancora necessario."
+    },
+    {
+      "revision": 1,
+      "scope": "national",
+      "effectiveUntil": null,
+      "reviewedOn": "2026-11-24",
+      "status": "pending",
+      "id": "rdl652-art28-2006",
+      "title": "R.D.L. 652/1939 art. 28, testo modificato nel 2006",
+      "kind": "law",
+      "publishedOn": "1939-05-06",
+      "effectiveFrom": "2006-03-12",
+      "url": "https://def.finanze.it/DocTribFrontend/getArticoloDetailFromResultList.do?codiceOrdinamento=200002800000000&id=%7B976069A4-2CE3-4139-9734-DF0A0F28A0D6%7D&idAttoNormativo=%7B575020C8-A07C-4506-93EF-FF1287A5BF94%7D",
+      "locator": "Art. 28, versione 12/03/2006",
+      "note": "Consultato testo modificato; non applicare termini storici alla cieca."
+    },
+    {
+      "revision": 1,
+      "scope": "national",
+      "effectiveUntil": null,
+      "reviewedOn": "2026-11-24",
+      "status": "pending",
+      "id": "vademecum-docfa-2022",
+      "title": "Vademecum DOCFA nazionale 1.0, luglio 2022",
+      "kind": "guidance",
+      "publishedOn": "2022-07-25",
+      "effectiveFrom": "2022-07-25",
+      "url": "https://www.agenziaentrate.gov.it/portale/documents/20143/257980/Vademecum_Docfa_ver1.0.pdf",
+      "locator": "Nota 298369 del 25/07/2022; pp. 45–47, 56–59, 63, 74–75",
+      "note": "Data di trasmissione usata solo come soglia di ricerca, non decorrenza normativa. URL ufficiale 403; testo finale reperito tramite Collegio Geometri Bologna. Verifiche territoriali e aggiornamenti aperti."
+    },
+    {
+      "revision": 1,
+      "scope": "national",
+      "effectiveUntil": null,
+      "reviewedOn": "2026-11-24",
+      "status": "pending",
+      "id": "dpr138-allegato-c",
+      "title": "D.P.R. 138/1998 allegato C",
+      "kind": "regulation",
+      "publishedOn": "1998-05-12",
+      "effectiveFrom": "1998-05-27",
+      "url": "https://def.finanze.it/DocTribFrontend/executePrintArticolo.do?articolo=Allegato+C&codiceOrdinamento=60C+++++0000000&id=%7BCE130656-7850-4531-9B95-F17CC19790C4%7D",
+      "locator": "Allegato C, criteri generali e gruppi R/P/T, pp. 1–2",
+      "note": "Testo e pagine verificati sul portale MEF; raccordo con categorie e poligoni DOCFA da verificare."
     }
   ]
 }
