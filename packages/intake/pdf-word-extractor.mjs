@@ -12,7 +12,7 @@ const control=/[\x00-\x1f\x7f]/;
 // Poppler TSV uses rendered page coordinates, top-left origin. Page row left/top
 // may contain stale values on later pages; only its width and height are used.
 // Word positions are rounded to 0.01 pt: expand bounds conservatively.
-export function parsePopplerTsv(tsv){
+export function parsePopplerTsv(tsv,geometry=null){
   if(typeof tsv!=='string'||Buffer.byteLength(tsv)>MAX_OUTPUT||tsv.includes('\ufffd'))return blocked('invalid_tsv');
   const rows=tsv.split(/\r?\n/);
   if(rows.pop()!==''||rows.shift()!==HEADER)return blocked('invalid_tsv_header');
@@ -24,7 +24,9 @@ export function parsePopplerTsv(tsv){
     const level=natural(c[0]),n=natural(c[1]),w=decimal(c[8]),h=decimal(c[9]);
     if(level===1){
       if(n!==pages.length+1||n>MAX_PAGES||!Number.isFinite(w)||!Number.isFinite(h)||w<=0||h<=0||w>100000||h>100000||c[11]!=='###PAGE###')return blocked('invalid_page');
-      page={page:n,widthPt:w,heightPt:h,wordCount:0};pages.push(page);continue;
+      const g=geometry?.[n-1];
+      if(geometry&&(!g||!((near(w,g.rawWidth)&&near(h,g.rawHeight))||(near(w,g.width)&&near(h,g.height)))))return blocked('page_geometry_mismatch');
+      page={page:n,widthPt:g?.width??w,heightPt:g?.height??h,wordCount:0};pages.push(page);continue;
     }
     if(!page||n!==page.page)return blocked('invalid_page_order');
     if(level===3||level===4){
@@ -44,8 +46,53 @@ export function parsePopplerTsv(tsv){
     page.wordCount++;spans.push({id:'p'+n+'-w'+page.wordCount,page:n,box,text:s});
   }
   if(!pages.length)return blocked('no_pages');
+  if(geometry&&pages.length!==geometry.length)return blocked('page_count_mismatch');
   if(pages.some(p=>p.wordCount===0))return blocked('page_without_text');
   return {version:'0.1.0',state:'candidate_words',operative:false,authenticated:false,identifierGroupingVerified:false,documentSha256:null,pages,spans,issues:[]};
+}
+
+const near=(a,b)=>Math.abs(a-b)<=0.01;
+
+// Cross-check dimensions against pdfinfo: pdftotext may emit unrotated dimensions
+// even when its word coordinates are rotated. For now reject nonzero origins and
+// unequal MediaBox/CropBox rather than guessing clipping or offsets.
+export function parsePdfInfo(info){
+  if(typeof info!=='string'||Buffer.byteLength(info)>MAX_OUTPUT||info.includes('\ufffd'))return null;
+  const counts=[],encrypted=[],entries=new Map();
+  for(const line of info.split(/\r?\n/)){
+    let m;
+    if((m=/^Pages:\s+(\d+)\s*$/.exec(line))){counts.push(natural(m[1]));continue;}
+    if((m=/^Encrypted:\s+(.+)$/.exec(line))){encrypted.push(m[1].trim());continue;}
+    if(!(m=/^Page\s+(\d+)\s+(size|rot|MediaBox|CropBox):\s*(.*?)\s*$/.exec(line)))continue;
+    const n=natural(m[1]),key=m[2];
+    if(!Number.isInteger(n)||n<1||n>MAX_PAGES)return null;
+    const e=entries.get(n)||{};
+    if(Object.hasOwn(e,key))return null;
+    e[key]=m[3];entries.set(n,e);
+  }
+  if(counts.length!==1||encrypted.length!==1||encrypted[0]!=='no'||counts[0]<1||counts[0]>MAX_PAGES||entries.size!==counts[0])return null;
+  const out=[];
+  for(let n=1;n<=counts[0];n++){
+    const e=entries.get(n);
+    if(!e||Object.keys(e).length!==4)return null;
+    const size=/^(\S+) x (\S+) pts(?: \([^\r\n]*\))?$/.exec(e.size);
+    if(!size||!['0','90','180','270'].includes(e.rot))return null;
+    const w=decimal(size[1]),h=decimal(size[2]);
+    const media=e.MediaBox.split(/\s+/).map(decimal),crop=e.CropBox.split(/\s+/).map(decimal);
+    if(!Number.isFinite(w)||!Number.isFinite(h)||w<=0||h<=0||w>100000||h>100000||
+       media.length!==4||crop.length!==4||!media.every(Number.isFinite)||!crop.every(Number.isFinite)||
+       media[0]!==0||media[1]!==0||!media.every((v,i)=>v===crop[i])||
+       !near(media[2],w)||!near(media[3],h))return null;
+    const swap=e.rot==='90'||e.rot==='270';
+    out.push({rawWidth:w,rawHeight:h,width:swap?h:w,height:swap?w:h});
+  }
+  return out;
+}
+function runPoppler(command,args,input){
+  const r=spawnSync(command,args,{input,timeout:10000,maxBuffer:MAX_OUTPUT,windowsHide:true,shell:false,killSignal:'SIGKILL',env:{...process.env,LC_ALL:'C',LANG:'C'}});
+  if(r.error)return {code:r.error.code==='ENOENT'?'extractor_unavailable':'extractor_failed'};
+  if(r.status!==0||r.signal||!Buffer.isBuffer(r.stdout)||!Buffer.isBuffer(r.stderr)||r.stderr.length)return {code:'extractor_failed'};
+  return {text:r.stdout.toString('utf8')};
 }
 
 // Local diagnostic only. Requires a trusted Poppler installation; production
@@ -53,10 +100,13 @@ export function parsePopplerTsv(tsv){
 export function extractPdfWords(bytes){
   if(!Buffer.isBuffer(bytes)||bytes.length<8||bytes.length>MAX_BYTES||!bytes.subarray(0,5).equals(Buffer.from('%PDF-')))return blocked('invalid_pdf_input');
   const input=Buffer.from(bytes);
-  const result=spawnSync('pdftotext',['-tsv','-cropbox','-enc','UTF-8','-','-'],{input,timeout:10000,maxBuffer:MAX_OUTPUT,windowsHide:true,shell:false});
-  if(result.error)return blocked(result.error.code==='ENOENT'?'extractor_unavailable':'extractor_failed');
-  if(result.status!==0||result.signal||!Buffer.isBuffer(result.stdout)||!Buffer.isBuffer(result.stderr)||result.stderr.length)return blocked('extractor_failed');
-  const out=parsePopplerTsv(result.stdout.toString('utf8'));
+  const metadata=runPoppler('pdfinfo',['-box','-f','1','-l',String(MAX_PAGES),'-'],input);
+  if(metadata.code)return blocked(metadata.code);
+  const geometry=parsePdfInfo(metadata.text);
+  if(!geometry)return blocked('unsupported_page_geometry');
+  const result=runPoppler('pdftotext',['-tsv','-cropbox','-enc','UTF-8','-','-'],input);
+  if(result.code)return blocked(result.code);
+  const out=parsePopplerTsv(result.text,geometry);
   if(out.state==='candidate_words')out.documentSha256=createHash('sha256').update(input).digest('hex');
   return out;
 }
