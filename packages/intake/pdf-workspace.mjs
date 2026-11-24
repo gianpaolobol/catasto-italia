@@ -9,8 +9,12 @@ export function withPdfWorkspace(env,run){
   let cwd,identity,result;
   try{
     const root=tmpdir();
-    if(!isAbsolute(root))return {code:'extractor_workspace_failed'};
-    cwd=mkdtempSync(join(realpathSync(root),'catasto-pdf-'));
+    const local=p=>isAbsolute(p)&&!/[\x00-\x1f\x7f]/.test(p)&&
+      (process.platform==='win32'?/^[A-Za-z]:[\\/]/.test(p):!p.startsWith('//'));
+    if(!local(root))return {code:'extractor_workspace_failed'};
+    const canonicalRoot=realpathSync(root);
+    if(!local(canonicalRoot))return {code:'extractor_workspace_failed'};
+    cwd=mkdtempSync(join(canonicalRoot,'catasto-pdf-'));
     identity=lstatSync(cwd);
     if(!identity.isDirectory()||identity.isSymbolicLink()||
        (process.platform!=='win32'&&(identity.mode&0o077)!==0))result={code:'extractor_workspace_failed'};
