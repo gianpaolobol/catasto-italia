@@ -5,7 +5,7 @@ export function intakeVisura(input) {
   const shape=(x,ks)=>plain(x)&&Object.keys(x).length===ks.length&&ks.every(k=>Object.hasOwn(x,k));
   const id=x=>typeof x==="string"&&/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(x);
   const date=x=>typeof x==="string"&&/^[1-9]\d{3}-\d{2}-\d{2}$/.test(x)&&!Number.isNaN(Date.parse(x+"T00:00:00Z"))&&new Date(x+"T00:00:00Z").toISOString().slice(0,10)===x;
-  const out={version:"0.1.0",state:"blocked",operative:false,canExport:false,source:null,asOf:null,fields:{},issues:[]};
+  const out={version:"0.1.0",state:"blocked",operative:false,canExport:false,source:null,asOf:null,fields:{},issues:[],authenticated:false,identifierGroupingVerified:false};
   const fail=code=>{out.issues.push({code});return out;};
   if(!shape(input,["kind","sourceId","capturedOn","asOf","rows"])||input.kind!=="current_building_single_identifier"||
     !id(input.sourceId)||!date(input.capturedOn)||!date(input.asOf)||input.asOf>input.capturedOn||
@@ -25,21 +25,25 @@ export function intakeVisura(input) {
     const value=decimal(m[1]);if(value===null|| (f!=="consistency"&&m[2]!=="m²"))return null;
     return {value,unit:m[2]};
   };
-  const seen=new Map();
+  const seen=new Map(), invalid=new Map(), locations=new Set();
   for(const row of input.rows){
     if(!shape(row,["field","section","page","line","text"])||typeof row.field!=="string"||!Object.hasOwn(sections,row.field)||
        row.section!==sections[row.field]||!Number.isSafeInteger(row.page)||row.page<1||row.page>10000||
        !Number.isSafeInteger(row.line)||row.line<1||row.line>100000||typeof row.text!=="string"||row.text.length>64||
        /[\x00-\x1f\x7f]/.test(row.text))return fail("invalid_row");
     const locator={page:row.page,line:row.line,section:row.section,sourceId:input.sourceId};
+    const locationKey=JSON.stringify([row.field,row.page,row.line]);
+    if(locations.has(locationKey))return fail("duplicate_field_locator");
+    locations.add(locationKey);
     const absent=row.text==="—"&&nullable.has(row.field);
     const value=absent?null:parse(row.field,row.text);
-    if(value===null&&!absent){out.issues.push({code:"unsupported_field_value",field:row.field,locator});continue;}
+    if(value===null&&!absent){out.issues.push({code:"unsupported_field_value",field:row.field,locator});const bad=invalid.get(row.field)||[];bad.push(locator);invalid.set(row.field,bad);continue;}
     const previous=seen.get(row.field)||[];
     previous.push({value,locator});seen.set(row.field,previous);
   }
   for(const f of Object.keys(sections)){
     const observations=seen.get(f)||[];
+    if(observations.length&&invalid.has(f)){out.fields[f]={status:"ambiguous",value:null,locators:[...observations.map(o=>o.locator),...invalid.get(f)]};continue;}
     if(!observations.length){out.fields[f]={status:"missing",value:null,locators:[]};out.issues.push({code:"missing_field",field:f});continue;}
     if(new Set(observations.map(o=>JSON.stringify(o.value))).size!==1){
       out.fields[f]={status:"conflict",value:null,locators:observations.map(o=>o.locator)};out.issues.push({code:"conflicting_field",field:f});continue;
