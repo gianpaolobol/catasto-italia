@@ -4,7 +4,7 @@ const catalog=JSON.parse(readFileSync(new URL("./sources.json",import.meta.url),
 const date=v=>typeof v==="string"&&/^[1-9][0-9]{3}-[0-9]{2}-[0-9]{2}$/.test(v)&&!Number.isNaN(Date.parse(v+"T00:00:00Z"))&&new Date(v+"T00:00:00Z").toISOString().slice(0,10)===v;
 const id=v=>typeof v==="string"&&/^[a-z0-9][a-z0-9-]{0,63}$/.test(v);
 const str=v=>typeof v==="string"&&v.trim().length>0&&v.length<=2048;
-const hostAllowed=new Set(["www.gazzettaufficiale.it","www.normattiva.it","www.agenziaentrate.gov.it","www1.agenziaentrate.gov.it","def.giustiziatributaria.gov.it"]);
+const hostAllowed=new Set(["www.gazzettaufficiale.it","www.normattiva.it","www.agenziaentrate.gov.it","www1.agenziaentrate.gov.it","def.giustiziatributaria.gov.it","def.finanze.it"]);
 function officialUrl(v){if(typeof v!=="string"||v.length>2048)return false;try{const u=new URL(v);return u.protocol==="https:"&&!u.username&&!u.password&&!u.port&&hostAllowed.has(u.hostname);}catch{return false;}}
 export function validateCatalog(c){
   const errors=[];
