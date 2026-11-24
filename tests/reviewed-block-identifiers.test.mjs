@@ -3,6 +3,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {identifyReviewedBlocks,reviewPdfBlockIdentifiers} from '../packages/intake/reviewed-block-identifiers.mjs';
+import {validateSnapshot} from '../packages/building-core/index.mjs';
 import {preparePdfVisuraReview} from '../packages/intake/reviewed-pdf-visura.mjs';
 const fields=['municipalityCode','section','sheet','parcel','subaltern'];
 const fingerprint=p=>createHash('sha256').update(JSON.stringify([p.version,p.pages,p.spans])).digest('hex');
@@ -73,4 +74,11 @@ test('native PDF byte-bound identifier path',()=>{
  const r=reviewPdfBlockIdentifiers(bytes,m);assert.equal(r.state,'candidate_identifiers',JSON.stringify(r.issues));assert.equal(r.candidates[0].identifier.subaltern,'007');
  assert.equal(reviewPdfBlockIdentifiers(pdfBytes('BT /F1 12 Tf 30 220 Td (009) Tj ET\n'),m).state,'blocked');
  assert.equal(reviewPdfBlockIdentifiers(Buffer.from('%PDF-1.4\nbad'),m).issues[0].code,'pdf_extraction_blocked');
+});
+
+test('candidate values fit Building Core 0.1.0 in a synthetic schema-only harness',()=>{
+ const f=fixture(),r=identifyReviewedBlocks(f.pdf,f.manifest);
+ const snapshot={schemaVersion:r.buildingCoreVersion,snapshotId:'schema-test-only',asOf:r.asOf,sources:[r.source],units:r.candidates.map((c,i)=>({id:'test-unit-'+i,identifiers:[{id:'test-claim-'+i,status:'proposed',asOf:r.asOf,sourceIds:[r.source.id],value:c.identifier}]}))};
+ assert.deepEqual(validateSnapshot(snapshot),{valid:true,errors:[]});
+ assert.ok(r.candidates.every(c=>!Object.hasOwn(c,'unitId')&&!Object.hasOwn(c,'status')));
 });
