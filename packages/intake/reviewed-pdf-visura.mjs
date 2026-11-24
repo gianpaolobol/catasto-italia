@@ -1,4 +1,5 @@
 // Copyright (c) 2026 Gian Paolo Franceschini. All rights reserved.
+import {createHash} from 'node:crypto';
 import {extractPdfWords} from './pdf-word-extractor.mjs';
 import {isolateVisuraCells} from './visura-coordinate-cells.mjs';
 import {intakeVisura} from './visura-fields.mjs';
@@ -13,18 +14,27 @@ const permittedPair=(field,a,b)=>field==='rent'?a==='Euro'&&number.test(b):
   (field==='consistency'?['vani','m²','m³'].includes(b):b==='m²');
 const blocked=code=>({version:'0.1.0',state:'blocked',operative:false,canExport:false,authenticated:false,identifierGroupingVerified:false,documentSha256:null,intake:null,locators:[],issues:[{code}]});
 
+// Bind the review to extraction geometry, text and ordering as well as original bytes.
+const extractionDigest=pdf=>createHash('sha256').update(JSON.stringify([pdf.version,pdf.pages,pdf.spans])).digest('hex');
+export function preparePdfVisuraReview(bytes){
+  const pdf=extractPdfWords(bytes);
+  return {...pdf,extractionSha256:pdf.state==='candidate_words'?extractionDigest(pdf):null};
+}
+
 // Only the original bytes enter this boundary. A manifest is a local review
 // proposal, not an authenticated signature, official source or verified grouping.
 // No automatic template, identifier grouping or numeric fragment concatenation.
 export function reviewPdfVisura(bytes,manifest){
-  if(!shape(manifest,['version','kind','documentSha256','sourceId','capturedOn','asOf','regions','joins'])||
+  if(!shape(manifest,['version','kind','documentSha256','extractionSha256','sourceId','capturedOn','asOf','regions','joins'])||
     manifest.version!=='0.1.0'||manifest.kind!=='reviewer_selected_current_building_single_identifier'||
     typeof manifest.documentSha256!=='string'||!/^[0-9a-f]{64}$/.test(manifest.documentSha256)||
+    typeof manifest.extractionSha256!=='string'||!/^[0-9a-f]{64}$/.test(manifest.extractionSha256)||
     !Array.isArray(manifest.regions)||manifest.regions.length<1||manifest.regions.length>128||
     !Array.isArray(manifest.joins)||manifest.joins.length>12)return blocked('invalid_manifest');
   const pdf=extractPdfWords(bytes);
   if(pdf.state!=='candidate_words')return blocked('pdf_extraction_blocked');
   if(pdf.documentSha256!==manifest.documentSha256)return blocked('document_digest_mismatch');
+  if(extractionDigest(pdf)!==manifest.extractionSha256)return blocked('extraction_digest_mismatch');
   const pages=new Map(pdf.pages.map(p=>[p.page,p]));
   const regions=new Map();
   for(const r of manifest.regions){
@@ -53,5 +63,5 @@ export function reviewPdfVisura(bytes,manifest){
   const intake=intakeVisura({kind:'current_building_single_identifier',sourceId:manifest.sourceId,capturedOn:manifest.capturedOn,asOf:manifest.asOf,rows:isolated.rows});
   if(intake.state==='blocked')return blocked('field_intake_blocked');
   const locators=isolated.locators.map(l=>({...l,documentSha256:pdf.documentSha256,words:(originals.get(l.spanId)||[byId.get(l.spanId)]).map(s=>({id:s.id,page:s.page,box:[...s.box]}))}));
-  return {version:'0.1.0',state:intake.state==='transcription_consistent'?'candidate_transcription':'needs_review',operative:false,canExport:false,authenticated:false,identifierGroupingVerified:false,documentSha256:pdf.documentSha256,intake,locators,issues:intake.issues};
+  return {version:'0.1.0',state:intake.state==='transcription_consistent'?'candidate_transcription':'needs_review',operative:false,canExport:false,authenticated:false,identifierGroupingVerified:false,documentSha256:pdf.documentSha256,extractionSha256:manifest.extractionSha256,intake,locators,issues:intake.issues};
 }
