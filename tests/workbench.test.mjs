@@ -46,12 +46,12 @@ test('actual loopback HTTP workflow and security boundaries',async t=>{
   const server=createWorkbenchServer();server.listen(0,'127.0.0.1');await once(server,'listening');
   t.after(()=>new Promise(resolve=>{server.close(resolve);server.closeAllConnections();}));
   const base='http://127.0.0.1:'+server.address().port;
-  const page=await fetch(base);assert.equal(page.status,200);const markup=await page.text();assert.match(markup,/Solo dati sintetici/);assert.match(markup,/type="module" src="\/client\.js"/);assert.match(markup,/id="import-draft"/);assert.match(markup,/id="reviewed-import"/);assert.match(markup,/id="operations"/);
+  const page=await fetch(base);assert.equal(page.status,200);const markup=await page.text();assert.match(markup,/Solo dati sintetici/);assert.match(markup,/type="module" src="\/client\.js"/);assert.match(markup,/id="import-draft"/);assert.match(markup,/id="reviewed-import"/);assert.match(markup,/id="operations"/);assert.match(markup,/id="download-dossier"/);
   assert.match(page.headers.get('content-security-policy'),/frame-ancestors 'none'/);
   assert.equal(page.headers.get('cache-control'),'no-store');
   const js=await fetch(base+'/client.js');assert.equal(js.status,200);assert.match(await js.text(),/textContent/);
   const guide=await fetch(base+'/guided-draft.mjs');assert.equal(guide.status,200);assert.match(guide.headers.get('content-type'),/javascript/);assert.match(await guide.text(),/export function editGuidedDraft/);
-  for(const asset of ['/reviewed-visura.mjs','/fixtures.mjs']){const response=await fetch(base+asset);assert.equal(response.status,200);assert.match(response.headers.get('content-type'),/javascript/);}
+  for(const asset of ['/reviewed-visura.mjs','/fixtures.mjs','/diagnostic-dossier.mjs']){const response=await fetch(base+asset);assert.equal(response.status,200);assert.match(response.headers.get('content-type'),/javascript/);}
   const fixture=await (await fetch(base+'/api/fixture/division')).json();
   const options={method:'POST',headers:{Origin:base,'Content-Type':'application/json'},body:JSON.stringify(fixture)};
   const response=await fetch(base+'/api/report',options);assert.equal(response.status,200);
