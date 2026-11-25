@@ -3,6 +3,7 @@ import {createHash} from 'node:crypto';
 import {rasterizeDiagnosticPdf} from './pdf-raster-diagnostic.mjs';
 import {recognizeRasterBlock} from './native-ocr-diagnostic.mjs';
 import {buildRasterReviewOverlay} from './ocr-raster-review-overlay.mjs';
+import {prepareExactRasterReview} from './ocr-exact-raster-review.mjs';
 
 const sha256=bytes=>createHash('sha256').update(bytes).digest('hex');
 const digest=value=>sha256(JSON.stringify(value));
@@ -12,7 +13,7 @@ const blocked=(stage,code)=>({version:'0.1.0',state:'blocked',operative:false,
 // Diagnostic only: caller must select a single page containing one uniform text
 // block. No proof of layout, OCR completeness, authenticity or PDF coordinates.
 // No arbitrary paths, flags, engine injection or partial results on failure.
-export function recognizeDiagnosticPdfBlock(pdf){
+function recognize(pdf,includeReviewRaster){
   const rendered=rasterizeDiagnosticPdf(pdf);
   if(rendered.state!=='raster_candidate')return blocked('raster',rendered.issues[0].code);
   const raster=rendered.evidence;
@@ -34,8 +35,20 @@ export function recognizeDiagnosticPdfBlock(pdf){
   const evidence={version:'0.1.0',relationship:'local_pipeline_unverified',
     coordinateSpace:'raster-pixel-top-left',pdfMappingVerified:false,
     raster,ocr,nativeRun:run,reviewOverlay:projection.overlay};
-  return {version:'0.1.0',state:'pdf_ocr_candidates',operative:false,authenticated:false,
+  const result={version:'0.1.0',state:'pdf_ocr_candidates',operative:false,authenticated:false,
     requiresHumanReview:true,evidence:{...evidence,chainSha256:digest(evidence)},
     words:recognized.words,issues:[{stage:'binding',code:'pdf_ocr_chain_unverified'},
       {stage:'binding',code:'raster_mapping_unverified'},{stage:'ocr',code:'ocr_layout_unverified'}]};
+  if(!includeReviewRaster)return result;
+  const review=prepareExactRasterReview(result,rendered.raster);
+  if(review.state!=='raster_review_candidate')return blocked('review',review.issues[0].code);
+  return {...result,reviewRaster:review.raster};
 }
+
+// Preserve existing metadata-only API; raster bytes are opt-in and local-only.
+export function recognizeDiagnosticPdfBlock(pdf){return recognize(pdf,false);}
+export function recognizeDiagnosticPdfReview(pdf){
+  const result=recognize(pdf,true);
+  return result.state==='pdf_ocr_candidates'?result:{...result,reviewRaster:null};
+}
+
