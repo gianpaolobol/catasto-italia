@@ -6,6 +6,7 @@ import {syntheticCase,scenarios} from '../../packages/workbench/fixtures.mjs';
 import {buildPracticeReport} from '../../packages/workbench/index.mjs';
 const page=readFileSync(new URL('./index.html',import.meta.url));
 const script=readFileSync(new URL('./client.js',import.meta.url));
+const guideScript=readFileSync(new URL('../../packages/workbench/guided-draft.mjs',import.meta.url));
 const maxBytes=256*1024;
 const headers={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff',
   'Referrer-Policy':'no-referrer','Cross-Origin-Resource-Policy':'same-origin',
@@ -27,6 +28,7 @@ export function createWorkbenchServer(){
       if(req.method==='GET'){
         if(req.url==='/')return send(res,200,page,'text/html; charset=utf-8');
         if(req.url==='/client.js')return send(res,200,script,'text/javascript; charset=utf-8');
+        if(req.url==='/guided-draft.mjs')return send(res,200,guideScript,'text/javascript; charset=utf-8');
         const scenario=scenarios.find(s=>req.url==='/api/fixture/'+s);
         if(scenario)return json(res,200,syntheticCase(scenario));
         return reject(res,404,'not_found');
