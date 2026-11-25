@@ -135,6 +135,21 @@
       "url": "https://www1.agenziaentrate.gov.it/mt/circolari/circolari_2001/circolare_9_2001.pdf",
       "locator": "PDF pp. 3 e 6; §4 e Causali delle denunce di variazione",
       "note": "Fonte storica ufficiale consultata; DOCFA 3.0. Ricerca diagnostica sulla redistribuzione interna senza cambio identificativo; condizioni attuali, territoriali e classamento da accertare. Non abilitata a regole operative."
+    },
+    {
+      "id": "circ1-2006",
+      "revision": 1,
+      "title": "Circolare 1/2006, prot. 326",
+      "kind": "guidance",
+      "scope": "national",
+      "publishedOn": "2006-01-03",
+      "effectiveFrom": "2006-01-03",
+      "effectiveUntil": null,
+      "reviewedOn": "2026-11-25",
+      "status": "pending",
+      "url": "https://www1.agenziaentrate.gov.it/mt/circolari/Circolari_2006/circolare1_2006_docfa_comma336.pdf",
+      "locator": "§4, p. 5; circolare 9/2001, Causali delle denunce di variazione, PDF p. 6",
+      "note": "Testo e pagina ufficiale consultati: distinzione tra trasformazione dell'intera unità con nuovo subalterno e mutazione combinata. Fonte storica, applicabilità vigente e territoriale ancora da verificare. Nessuna regola operativa abilitata."
     }
   ]
 }
