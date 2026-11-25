@@ -2,7 +2,8 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {recognizeDiagnosticPdfBlock} from '../packages/intake/pdf-ocr-diagnostic.mjs';
+import {recognizeDiagnosticPdfBlock,recognizeDiagnosticPdfReview} from '../packages/intake/pdf-ocr-diagnostic.mjs';
+import {prepareExactRasterReview} from '../packages/intake/ocr-exact-raster-review.mjs';
 const hash=b=>createHash('sha256').update(b).digest('hex');
 function syntheticPdf(rotation=0,blank=false){
   const stream=blank?'q Q\n':'BT /F1 24 Tf 15 35 Td (TEST 0007) Tj ET\n';
@@ -44,6 +45,7 @@ test('native synthetic PDF to OCR preserves words and chain integrity',()=>{
   assert.deepEqual(result.words.map(w=>w.text),['TEST','0007']);
   assert.ok(result.words.every(w=>w.requiresHumanReview));
   assert.equal(result.operative,false);assert.equal(result.authenticated,false);assert.equal(result.requiresHumanReview,true);
+  assert.equal(Object.hasOwn(result,'reviewRaster'),false);
   const {chainSha256,...chain}=result.evidence;
   assert.equal(chainSha256,hash(JSON.stringify(chain)));
   assert.equal(chain.pdfMappingVerified,false);assert.equal(chain.coordinateSpace,'raster-pixel-top-left');
@@ -76,4 +78,28 @@ test('blank synthetic PDF returns no partial evidence',()=>{
   const result=recognizeDiagnosticPdfBlock(syntheticPdf(0,true));
   assert.equal(result.state,'blocked');assert.equal(result.evidence,null);assert.deepEqual(result.words,[]);
   assert.equal(result.issues[0].stage,process.platform==='linux'?'ocr':'raster');
+});
+
+test('native opt-in review returns exact raster for same OCR chain',()=>{
+  const result=recognizeDiagnosticPdfReview(syntheticPdf());
+  if(process.platform!=='linux'){
+    assert.equal(result.state,'blocked');assert.equal(result.reviewRaster,null);return;
+  }
+  assert.equal(result.state,'pdf_ocr_candidates',JSON.stringify(result.issues));
+  assert.deepEqual(result.words.map(w=>w.text),['TEST','0007']);
+  assert.ok(Buffer.isBuffer(result.reviewRaster));
+  assert.equal(hash(result.reviewRaster),result.evidence.raster.rasterSha256);
+  const review=prepareExactRasterReview(result,result.reviewRaster);
+  assert.equal(review.state,'raster_review_candidate');
+  assert.deepEqual(review.overlay,result.evidence.reviewOverlay);
+  assert.equal(review.chainSha256,result.evidence.chainSha256);
+  result.reviewRaster[result.reviewRaster.length-1]^=1;
+  assert.equal(prepareExactRasterReview(result,result.reviewRaster).state,'blocked');
+});
+test('opt-in review fails without raster or words on invalid and blank PDF',()=>{
+  for(const pdf of [Buffer.from('not a pdf'),syntheticPdf(0,true)]){
+    const result=recognizeDiagnosticPdfReview(pdf);
+    assert.equal(result.state,'blocked');assert.equal(result.reviewRaster,null);
+    assert.equal(result.evidence,null);assert.deepEqual(result.words,[]);
+  }
 });

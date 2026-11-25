@@ -129,3 +129,8 @@
 - PR #23 integrata a 72236629b88cd647b0002380cdd4c735a7d69bf6; CI 45534682762 job 138938261199, head/base esatti, 565/565 pass.
 - ID05/28: overlay diagnostico OCR in coordinate normalizzate raster, vincolo chainSha256, blocco senza risultati parziali, revisione sequenziale e oracolo BigInt. 11/11 nuovi test locali Node su blob verificati, inclusi 100 sottocasi geometrici sintetici; nuova CI completa richiesta, attesi 576. Branch feat/ocr-raster-review-overlay; evidenze docs/qa/ITERATION_025.md.
 - Non UI operativa, non mapping PDF, non sandbox OS, nessun caso catastale integrale o verifica incrociata professionale conteggiati. Prossimo: CI/merge, UI con raster esatto, isolamento OS, corpus territoriale, Building Core e QA 100+100. Nessun test DOCFA/SISTER reale, nessuna firma o trasmissione.
+
+## Iterazione 26 — 2026-11-25
+- PR #24 integrata a cb937d0f11ae9c5a3f11fe6b71f8a30057da4ad1; CI 45542302228 job 138963485147, head/base esatti, 576/576 pass.
+- ID05/28/29: raster PGM opt-in dalla stessa invocazione OCR; verifica copia, digest annidati, overlay ricalcolato e blocco senza dati parziali. API metadata-only invariata. Revisione sequenziale e correzione versione; 12 test nuovi predisposti, CI richiesta (attesi 588), clone locale bloccato DNS. Branch feat/ocr-exact-raster-review, evidenze docs/qa/ITERATION_026.md.
+- Non UI, non autenticazione, non sandbox OS, non mapping PDF o Windows/multipagina OCR. Prossimo: CI/merge, UI locale, isolamento OS, corpus territoriale, Building Core e QA 100+100. Nessun caso integrale, verifica professionale o test DOCFA/SISTER reale, firma o invio.
