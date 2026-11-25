@@ -51,3 +51,34 @@ test('loopback dossier API validates same origin and recomputes',async t=>{
  assert.equal((await fetch(base+'/api/dossier',{...opts,headers:{...opts.headers,Origin:'https://example.invalid'}})).status,403);
  q.income.declared.tariff='0';assert.equal((await fetch(base+'/api/dossier',{...opts,body:JSON.stringify(q)})).status,400);
 });
+
+const multi=()=>{
+ const q=make('division');
+ const second=buildPracticeReport(q.draft).operations.filter(o=>o.operation==='C')[1].unitId;
+ q.geometry=[q.geometry,{unitId:second,vertices:[[0,0],[2000,0],[2000,1000],[0,1000]]}];
+ q.income=[q.income,{unitId:second,declared:{...q.income.declared,consistency:'2',tariff:'100'}}];
+ return q;
+};
+test('division dossier includes both units and exact separate measurements',()=>{
+ const q=multi(),before=JSON.stringify(q),r=buildIntegratedDossier(q);
+ assert.equal(r.ok,true);
+ for(const value of ['8.000000','2.000000','555.5551500','200.0000000','Copertura degli annessi'])assert.ok(r.html.includes(value),value);
+ assert.equal(JSON.stringify(q),before);
+});
+test('partial annex coverage is explicit by unit',()=>{
+ const q=multi();q.geometry.pop();q.income.shift();
+ const r=buildIntegratedDossier(q);assert.equal(r.ok,true);
+ assert.match(r.html,/<td>d1<\/td><td>Sì<\/td><td>Assente<\/td>/);
+ assert.match(r.html,/<td>d2<\/td><td>Assente<\/td><td>Sì<\/td>/);
+});
+for(const [label,edit] of [
+ ['duplicate geometry',q=>q.geometry.push(q.geometry[0])],
+ ['duplicate income',q=>q.income.push(q.income[0])],
+ ['foreign geometry unit',q=>q.geometry[1].unitId='other'],
+ ['second invalid tariff',q=>q.income[1].declared.tariff='0'],
+ ['second invalid contour',q=>q.geometry[1].vertices=[]],
+ ['too many annexes',q=>q.geometry=Array(65).fill(q.geometry[0])],
+ ['null array element',q=>q.income.push(null)]
+])test('multi annex rejects '+label,()=>{
+ const q=multi();edit(q);const r=buildIntegratedDossier(q);assert.equal(r.ok,false);assert.equal(r.html,null);
+});
