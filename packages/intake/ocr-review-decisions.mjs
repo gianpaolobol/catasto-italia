@@ -41,7 +41,7 @@ export function buildOcrReviewDecisions(result,bytes,request){
       const d=byId.get(w.id);
       if(!d)return blocked('decision_missing_word');
       if(d.action==='correct'&&d.text===w.text)return blocked('decision_no_change');
-      decisions.push({id:w.id,boxPx:[...w.boxPx],originalText:w.text,engineScore:w.engineScore,
+      decisions.push({id:w.id,boxPx:w.boxPx.map(v=>v===0?0:v),originalText:w.text,engineScore:w.engineScore,
         action:d.action,proposedText:d.action==='retain'?w.text:d.action==='correct'?d.text:null,
         reason:d.reason??null});
     }
