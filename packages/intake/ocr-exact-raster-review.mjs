@@ -11,15 +11,15 @@ const blocked=code=>({state:'blocked',raster:null,overlay:null,issues:[{code}]})
 // copy of the exact PGM, not a re-render or a PDF-coordinate transform.
 // Digests are unkeyed; an actor able to rewrite all evidence can forge them.
 export function prepareExactRasterReview(result,bytes){
-  if(result?.state!=='pdf_ocr_candidates'||result.operative!==false||
+  if(result?.version!=='0.1.0'||result.state!=='pdf_ocr_candidates'||result.operative!==false||
     result.authenticated!==false||result.requiresHumanReview!==true)
     return blocked('review_result_not_candidate');
   const snapshot=snapshotCanonicalPgm(bytes);
   if(snapshot.code)return blocked(snapshot.code);
   const {raster,widthPx,heightPx}=snapshot;
-  const projection=buildRasterReviewOverlay(result.words,widthPx,heightPx);
-  if(projection.state!=='raster_overlay_candidate')return blocked(projection.issues[0].code);
   try{
+    const projection=buildRasterReviewOverlay(result.words,widthPx,heightPx);
+    if(projection.state!=='raster_overlay_candidate')return blocked(projection.issues[0].code);
     const e=result.evidence;
     if(e?.version!=='0.1.0'||e.relationship!=='local_pipeline_unverified'||
       e.pdfMappingVerified!==false||e.coordinateSpace!=='raster-pixel-top-left')
