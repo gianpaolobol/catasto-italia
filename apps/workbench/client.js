@@ -1,4 +1,5 @@
 // Copyright (c) 2026 Gian Paolo Franceschini. All rights reserved.
+import {renderDiagnosticDossier} from '/diagnostic-dossier.mjs';
 import {guideFields,editGuidedDraft} from '/guided-draft.mjs';
 import {draftFromReviewedVisura,reviewedVisuraExample} from '/reviewed-visura.mjs';
 const byId=id=>document.getElementById(id);
@@ -8,10 +9,10 @@ const invalid=new Set();
 const el=(tag,text)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;return e;};
 function clear(){
   byId('visura-result').textContent='Nessun confronto corrente.';
-  report=null;download.disabled=true;byId('summary').textContent='Nessun rapporto corrente.';
+  report=null;download.disabled=true;byId('download-dossier').disabled=true;byId('summary').textContent='Nessun rapporto corrente.';
   byId('relation').textContent='—';byId('details').textContent='—';byId('operations').replaceChildren();
 }
-function refresh(){for(const id of ['visura-check','visura-example','visura-claim','visura-file','visura-text'])byId(id).disabled=busy||invalid.size>0;analyze.disabled=busy||invalid.size>0;byId('save-draft').disabled=busy||invalid.size>0;for(const e of guide.querySelectorAll('input,select'))e.disabled=busy;}
+function refresh(){byId('download-dossier').disabled=busy||!report||report.diagnosticReportExportable!==true;for(const id of ['visura-check','visura-example','visura-claim','visura-file','visura-text'])byId(id).disabled=busy||invalid.size>0;analyze.disabled=busy||invalid.size>0;byId('save-draft').disabled=busy||invalid.size>0;for(const e of guide.querySelectorAll('input,select'))e.disabled=busy;}
 function lock(value){busy=value;byId('import-draft').disabled=value;byId('reviewed-import').disabled=value;byId('reviewed-example').disabled=value;byId('reviewed-template').disabled=value;load.disabled=value;field.readOnly=value;byId('scenario').disabled=value;byId('open-guide').disabled=value;refresh();}
 function resetGuide(){draft=null;invalid.clear();guide.replaceChildren();const option=el('option','Carica un caso nell’editor guidato');option.value='';byId('visura-claim').replaceChildren(option);byId('visura-text').value='';clearVisura();refresh();}
 function showGuide(input){
@@ -140,10 +141,11 @@ analyze.addEventListener('click',async()=>{
     download.disabled=report.diagnosticReportExportable!==true;
   }catch{clear();status.textContent='Analisi non riuscita. Controlla i dati e riprova.';}finally{lock(false);}
 });
-function saveJson(value,filename){
+function saveJson(value,filename){saveFile(JSON.stringify(value,null,2),'application/json',filename);}
+function saveFile(content,type,filename){
   let url,link;
   try{
-    url=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)],{type:'application/json'}));
+    url=URL.createObjectURL(new Blob([content],{type}));
     link=document.createElement('a');link.href=url;link.download=filename;
     document.body.append(link);link.click();
   }finally{if(link)link.remove();if(url)setTimeout(()=>URL.revokeObjectURL(url),1000);}
@@ -156,6 +158,11 @@ download.addEventListener('click',()=>{
   }catch{status.textContent='Download non riuscito.';}
 });
 
+byId('download-dossier').addEventListener('click',()=>{
+  if(!report||busy||report.diagnosticReportExportable!==true)return;
+  try{saveFile(renderDiagnosticDossier(report),'text/html;charset=utf-8','catasto-dossier-sintetico-non-ufficiale.html');status.textContent='Download dossier richiesto; aprire localmente per stampare.';}
+  catch{status.textContent='Dossier non disponibile: ripetere l’analisi.';}
+});
 const visuraText=byId('visura-text'),visuraClaim=byId('visura-claim'),visuraResult=byId('visura-result');
 function refreshVisuraClaims(){
   const previous=visuraClaim.value,option=el('option','Seleziona identificativo osservato');option.value='';
