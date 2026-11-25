@@ -1,0 +1,17 @@
+name: Windows local workbench
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  windows-launcher:
+    runs-on: windows-2025
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: node --test tests/local-launcher.test.mjs tests/workbench.test.mjs tests/integrated-dossier.test.mjs tests/professional-workflow-matrix.test.mjs
