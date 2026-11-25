@@ -52,6 +52,7 @@ export function buildPracticeReport(envelope){
     const relation='Ipotesi diagnostica sintetica: '+c.cause+'. Unità da sopprimere: '+c.counts.S+
       '; da costituire: '+c.counts.C+'; da variare: '+c.counts.V+
       (c.counts.V?'. Identificativi dichiarati invariati; classamento e planimetria da riesaminare':'')+
+      (input.scenario==='enlargement'?'. Sagoma in mappa dichiarata invariata; verificare il presupposto cartografico e la nota per il quadro D':'')+
       '. Unità estranee conservate: '+c.unchangedUnitIds.length+
       '. Riferimento di ricerca: '+c.locator+'. Applicabilità, titolarità, completezza e disponibilità da verificare.';
     return {...out,state:'research_candidate',candidate:c,operations,caseDigest,

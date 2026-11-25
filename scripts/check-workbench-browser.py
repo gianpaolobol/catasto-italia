@@ -55,7 +55,7 @@ def run():
                         expect(page.locator("#operations tbody tr")).to_have_count(0)
                         expect(page.locator("#handoff-download")).to_be_disabled()
                         expect(page.locator('#income-unit')).to_be_disabled()
-                        for scenario, count in (("fusion", 4), ("division", 4), ("new_construction", 2), ("internal_distribution", 2), ("destination_change", 3)):
+                        for scenario, count in (("fusion", 4), ("division", 4), ("new_construction", 2), ("internal_distribution", 2), ("destination_change", 3), ("enlargement", 3)):
                             page.locator("#scenario").select_option(scenario)
                             page.locator("#load").click()
                             expect(page.locator("#status")).to_contain_text("Esempio sintetico caricato")
@@ -69,6 +69,9 @@ def run():
                             report = json.loads(path.read_text(encoding="utf-8"))
                             check(report["state"] == "research_candidate" and report["operative"] is False and report["canExport"] is False, "bad report state")
                             check(len(report["operations"]) == count, "operation mismatch")
+                            if scenario == "enlargement":
+                                check(report["candidate"]["counts"] == {"S": 1, "C": 1, "V": 0}, "enlargement counts")
+                                check("Sagoma in mappa dichiarata invariata" in report["relation"], "missing map prerequisite")
                             exchange = page.locator('details').filter(has=page.get_by_text('Interscambio Building Core sintetico', exact=True))
                             if not exchange.evaluate('(e) => e.open'):
                                 exchange.locator('summary').click()
@@ -156,7 +159,7 @@ def run():
                         check(page.evaluate("document.documentElement.scrollWidth <= innerWidth"), "horizontal page overflow")
                         check(not errors and not external, f"browser errors or external requests: {errors}, {external}")
                         context.close()
-                        print(f"PASS workbench {width}px: blocked reviewed case, 5 diagnostic scenarios, JSON/HTML downloads, independent geometry/income annexes, draft reimport")
+                        print(f"PASS workbench {width}px: blocked reviewed case, 6 diagnostic scenarios, JSON/HTML downloads, independent geometry/income annexes, draft reimport")
                 finally:
                     browser.close()
         finally:
