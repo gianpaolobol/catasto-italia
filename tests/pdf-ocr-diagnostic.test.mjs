@@ -50,6 +50,20 @@ test('native synthetic PDF to OCR preserves words and chain integrity',()=>{
   assert.equal(chain.raster.documentSha256,hash(pdf));assert.equal(chain.raster.rasterSha256,chain.ocr.rasterSha256);
   assert.equal(chain.raster.widthPx,640);assert.equal(chain.raster.heightPx,160);
   assert.equal(chain.nativeRun.evidenceSha256,chain.ocr.evidenceSha256);
+  const overlay=chain.reviewOverlay;
+  assert.equal(overlay.coordinateSpace,'raster-normalized-top-left');
+  assert.equal(overlay.pdfMappingVerified,false);assert.equal(overlay.requiresHumanReview,true);
+  assert.deepEqual([overlay.widthPx,overlay.heightPx,overlay.scale],[640,160,1000000]);
+  assert.deepEqual(overlay.spans.map(s=>s.id),result.words.map(w=>w.id));
+  // Independent rational inequalities: every pixel box is enclosed and the
+  // outward expansion is strictly smaller than one normalized unit per edge.
+  for(const [i,span] of overlay.spans.entries()){
+    for(let j=0;j<4;j++){
+      const d=j%2===0?640:160,exact=result.words[i].boxPx[j]*1000000;
+      const delta=j<2?exact-span.box[j]*d:span.box[j]*d-exact;
+      assert.ok(delta>=0&&delta<d);
+    }
+  }
   const {evidenceSha256:rasterHash,...rasterFields}=chain.raster;
   assert.equal(rasterHash,hash(JSON.stringify(rasterFields)));
   const {runSha256,...runFields}=chain.nativeRun;

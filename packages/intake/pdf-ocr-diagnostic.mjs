@@ -2,6 +2,7 @@
 import {createHash} from 'node:crypto';
 import {rasterizeDiagnosticPdf} from './pdf-raster-diagnostic.mjs';
 import {recognizeRasterBlock} from './native-ocr-diagnostic.mjs';
+import {buildRasterReviewOverlay} from './ocr-raster-review-overlay.mjs';
 
 const sha256=bytes=>createHash('sha256').update(bytes).digest('hex');
 const digest=value=>sha256(JSON.stringify(value));
@@ -28,9 +29,11 @@ export function recognizeDiagnosticPdfBlock(pdf){
     ocr.heightPx!==raster.heightPx||ocr.coordinateSpace!==raster.coordinateSpace||
     run.evidenceSha256!==ocr.evidenceSha256)
     return blocked('binding','pdf_ocr_evidence_mismatch');
+  const projection=buildRasterReviewOverlay(recognized.words,raster.widthPx,raster.heightPx);
+  if(projection.state!=='raster_overlay_candidate')return blocked('overlay',projection.issues[0].code);
   const evidence={version:'0.1.0',relationship:'local_pipeline_unverified',
     coordinateSpace:'raster-pixel-top-left',pdfMappingVerified:false,
-    raster,ocr,nativeRun:run};
+    raster,ocr,nativeRun:run,reviewOverlay:projection.overlay};
   return {version:'0.1.0',state:'pdf_ocr_candidates',operative:false,authenticated:false,
     requiresHumanReview:true,evidence:{...evidence,chainSha256:digest(evidence)},
     words:recognized.words,issues:[{stage:'binding',code:'pdf_ocr_chain_unverified'},
