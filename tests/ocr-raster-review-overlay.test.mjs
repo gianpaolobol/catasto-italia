@@ -47,3 +47,16 @@ test('projection preserves order and does not copy text or score',()=>{
   a.boxPx[0]=0;
   assert.equal(result.overlay.spans[0].box[0],333333);
 });
+
+test('integer oracle checks 100 distinct raster dimensions and edge boxes',()=>{
+  for(let i=1;i<=100;i++){
+    const w=19900+i,h=101+i*7;
+    const b=[i,i,w-i,h-i];
+    const actual=build([word(b)],w,h).overlay.spans[0].box;
+    const expected=b.map((v,j)=>{
+      const d=BigInt(j%2===0?w:h),n=BigInt(v)*1000000n;
+      return Number(j<2?n/d:(n+d-1n)/d);
+    });
+    assert.deepEqual(actual,expected,'dimension case '+i);
+  }
+});
