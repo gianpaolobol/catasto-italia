@@ -6,7 +6,7 @@ export function measureSyntheticPolygon(report, unitId, vertices) {
   if(!report||report.kind!=='synthetic-diagnostic-report'||report.state!=='research_candidate'||report.operative!==false||report.canExport!==false||typeof report.caseDigest!=='string'||!/^[a-f0-9]{64}$/.test(report.caseDigest)||!Array.isArray(report.operations)||typeof unitId!=='string')return stop('current_research_report_required');
   const matching=report.operations.filter(o=>o&&o.unitId===unitId);
   if(matching.length!==1||!['C','V'].includes(matching[0].operation))return stop('result_unit_required');
-  if(!Array.isArray(vertices)||vertices.length<4||vertices.length>128||!vertices.every(p=>Array.isArray(p)&&p.length===2&&p.every(n=>Number.isSafeInteger(n)&&n>=0&&n<=10000000)))return stop('invalid_vertices');
+  if(!Array.isArray(vertices)||vertices.length<4||vertices.length>128||!Array.from(vertices).every(p=>Array.isArray(p)&&p.length===2&&Array.from(p).every(n=>Number.isSafeInteger(n)&&n>=0&&n<=10000000)))return stop('invalid_vertices');
   const n=vertices.length,keys=new Set(vertices.map(p=>p.join(',')));
   if(keys.size!==n)return stop('repeated_vertex');
   const edges=vertices.map((a,i)=>({a,b:vertices[(i+1)%n]}));
