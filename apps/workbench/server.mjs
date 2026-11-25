@@ -5,6 +5,7 @@ import {pathToFileURL} from 'node:url';
 import {syntheticCase,scenarios} from '../../packages/workbench/fixtures.mjs';
 import {compareSyntheticVisura,syntheticVisuraExample} from '../../packages/workbench/visura-comparison.mjs';
 import {buildPracticeReport} from '../../packages/workbench/index.mjs';
+import {buildSyntheticHandoff} from '../../packages/workbench/synthetic-handoff.mjs';
 const page=readFileSync(new URL('./index.html',import.meta.url));
 const script=readFileSync(new URL('./client.js',import.meta.url));
 const guideScript=readFileSync(new URL('../../packages/workbench/guided-draft.mjs',import.meta.url));
@@ -42,7 +43,7 @@ export function createWorkbenchServer(){
         if(scenario)return json(res,200,syntheticCase(scenario));
         return reject(res,404,'not_found');
       }
-      if(req.method!=='POST'||!['/api/report','/api/visura-check','/api/visura-example'].includes(req.url))return reject(res,404,'not_found');
+      if(req.method!=='POST'||!['/api/report','/api/visura-check','/api/visura-example','/api/handoff'].includes(req.url))return reject(res,404,'not_found');
       if(req.headers.origin!=='http://'+authority||req.headers['content-type']!=='application/json')
         return reject(res,403,'same_origin_json_required');
       if(req.headers['content-encoding']!==undefined)return reject(res,415,'encoding_not_supported');
@@ -62,6 +63,10 @@ export function createWorkbenchServer(){
       if(req.url==='/api/visura-example'){
         try{return json(res,200,syntheticVisuraExample(envelope.draft,envelope.claimId));}
         catch{return reject(res,400,'invalid_example');}
+      }
+      if(req.url==='/api/handoff'){
+        if(!envelope||typeof envelope!=='object'||Array.isArray(envelope)||Object.keys(envelope).length!==2||!Object.hasOwn(envelope,'target')||!Object.hasOwn(envelope,'draft'))return reject(res,400,'invalid_handoff_request');
+        return json(res,200,buildSyntheticHandoff(envelope.draft,envelope.target));
       }
       return json(res,200,buildPracticeReport(envelope));
     }catch{if(!res.headersSent&&!res.destroyed)reject(res,500,'processing_failed');else res.destroy();}
