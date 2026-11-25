@@ -122,7 +122,7 @@ function showOperations(operations){
   for(const op of operations){
     const line=el('tr');
     const ids=op.identifiers.map(r=>[r.identifier.sheet,r.identifier.parcel,r.identifier.subaltern??'—'].join('/')).join(', ');
-    for(const value of [{S:'Soppressione',C:'Costituzione',unchanged:'Conservata'}[op.operation]??op.operation,op.unitId,ids])line.append(el('td',value));
+    for(const value of [{S:'Soppressione',C:'Costituzione',V:'Variazione',unchanged:'Conservata'}[op.operation]??op.operation,op.unitId,ids])line.append(el('td',value));
     body.append(line);
   }
   table.append(body);if(operations.length)byId('operations').append(table);
