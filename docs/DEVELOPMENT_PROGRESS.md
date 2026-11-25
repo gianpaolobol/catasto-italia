@@ -124,3 +124,8 @@
 - PR #22 integrata a 71ff3b7a4867f5e089e780f7186aa5e740d41504; CI 45527687933 job 138914977189, head/base esatti, 556/556 pass; pipeline nativa PDF-raster-OCR ita verificata su fixture sintetica.
 - ID05/29: rifiuto memoria condivisa PDF testuale, validazione header sulla copia, controllo contenimento geometrico gerarchico OCR e invalidazione antenati; revisione sequenziale, 9 nuovi test sintetici predisposti, CI richiesta (attesi 565). Branch fix/document-input-and-ocr-geometry; evidenze docs/qa/ITERATION_024.md.
 - Non sandbox, non mapping PDF/layout verificato, non Windows/multipagina OCR. Prossimo: CI/merge, isolamento OS, corpus territoriale, Building Core, UI e QA 100+100. Nessuna pratica integrale o test ufficiale DOCFA/SISTER.
+
+## Iterazione 25 — 2026-11-25
+- PR #23 integrata a 72236629b88cd647b0002380cdd4c735a7d69bf6; CI 45534682762 job 138938261199, head/base esatti, 565/565 pass.
+- ID05/28: overlay diagnostico OCR in coordinate normalizzate raster, vincolo chainSha256, blocco senza risultati parziali, revisione sequenziale e oracolo BigInt. 11/11 nuovi test locali Node su blob verificati, inclusi 100 sottocasi geometrici sintetici; nuova CI completa richiesta, attesi 576. Branch feat/ocr-raster-review-overlay; evidenze docs/qa/ITERATION_025.md.
+- Non UI operativa, non mapping PDF, non sandbox OS, nessun caso catastale integrale o verifica incrociata professionale conteggiati. Prossimo: CI/merge, UI con raster esatto, isolamento OS, corpus territoriale, Building Core e QA 100+100. Nessun test DOCFA/SISTER reale, nessuna firma o trasmissione.
