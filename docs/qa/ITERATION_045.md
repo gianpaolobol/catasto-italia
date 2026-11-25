@@ -1,0 +1,7 @@
+# Iterazione 045 — 2026-11-25 — modalità C
+## Gate precedente
+PR #42 integrata squash faa91f31e1e0ffb1f35281805037a22092f29463 dopo CI 45687778388 (core 139464840180: 803 pass; Chromium 139464839295 PASS 1280/360, sei scenari, checkout 00d329d su head 1d2522aad1af5421fa9fc437b45761e15c6a19d1 e base 5e46e2e40e8d1e8ed96f0046a2de9c3f06da7974; main identico al base prima del merge). Backup presenti, non modificati.
+## ID14/16/20/28/29 — dossier integrato
+Piano rivisto sequenzialmente: non fidarsi di risultati importati dal client; ricalcolare annessi da dichiarazioni su report corrente, bloccare digest/stato incoerenti e unità non risultanti; assenza esplicita; non alterare logica catastale. Un solo annesso per tipo; anche unità distinte. Nessuna nuova regola normativa, nessun dato reale, nessuna firma o invio. 
+Accettazione: sei scenari, dossier con geometria e prodotto esatto; annessi indipendenti, assenza indicata, modifica invalida il solo annesso interessato; bozza reimportata invalida tutto; blocco richiesta falsa, digest errato, caso bloccato con annessi e origine esterna; escape HTML e CSP conservati. Endpoint loopback con limiti esistenti. 
+Revisione del piano e del diff sequenziale (non agenti indipendenti). Test Node e browser predisposti; clone locale bloccato da DNS github.com, esecuzione completa delegata alla CI non ancora verificata. Non conteggiare come 100 casi integrali o 100 verifiche professionali. Nessuna compatibilità DOCFA/SISTER validata.
