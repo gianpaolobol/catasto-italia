@@ -89,7 +89,7 @@ byId('import-draft').addEventListener('change',async event=>{
   clear();resetGuide();lock(true);field.value='';
   try{
     if(file.size>256*1024)throw Error('too_large');
-    const input=JSON.parse(await file.text());
+    const input=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(await file.arrayBuffer()));
     showGuide(input);field.value=JSON.stringify(input,null,2);
     status.textContent='Bozza sintetica importata. Analisi da eseguire.';
   }catch{resetGuide();status.textContent='Bozza non supportata: nessun dato caricato.';}finally{lock(false);}
