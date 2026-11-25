@@ -46,10 +46,12 @@ export function buildPracticeReport(envelope){
     for(const row of rows){if(!byUnit.has(row.unitId))byUnit.set(row.unitId,[]);byUnit.get(row.unitId).push(row);}
     const operations=[...c.suppressUnitIds.map(unitId=>({operation:'S',unitId})),
       ...c.constituteUnitIds.map(unitId=>({operation:'C',unitId})),
+      ...(c.varyUnitIds??[]).map(unitId=>({operation:'V',unitId})),
       ...c.unchangedUnitIds.map(unitId=>({operation:'unchanged',unitId}))]
       .map(op=>({...op,identifiers:byUnit.get(op.unitId)??[]}));
     const relation='Ipotesi diagnostica sintetica: '+c.cause+'. Unità da sopprimere: '+c.counts.S+
       '; da costituire: '+c.counts.C+'; da variare: '+c.counts.V+
+      (c.counts.V?'. Identificativi dichiarati invariati; classamento e planimetria da riesaminare':'')+
       '. Unità estranee conservate: '+c.unchangedUnitIds.length+
       '. Riferimento di ricerca: '+c.locator+'. Applicabilità, titolarità, completezza e disponibilità da verificare.';
     return {...out,state:'research_candidate',candidate:c,operations,caseDigest,
