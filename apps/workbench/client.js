@@ -1,5 +1,6 @@
 // Copyright (c) 2026 Gian Paolo Franceschini. All rights reserved.
 import {guideFields,editGuidedDraft} from '/guided-draft.mjs';
+import {draftFromReviewedVisura,reviewedVisuraExample} from '/reviewed-visura.mjs';
 const byId=id=>document.getElementById(id);
 const field=byId('case'),status=byId('status'),download=byId('download'),load=byId('load'),analyze=byId('analyze'),guide=byId('guide');
 let report=null,busy=false,draft=null;
@@ -10,7 +11,7 @@ function clear(){
   byId('relation').textContent='—';byId('details').textContent='—';byId('operations').replaceChildren();
 }
 function refresh(){analyze.disabled=busy||invalid.size>0;byId('save-draft').disabled=busy||invalid.size>0;for(const e of guide.querySelectorAll('input,select'))e.disabled=busy;}
-function lock(value){busy=value;byId('import-draft').disabled=value;load.disabled=value;field.readOnly=value;byId('scenario').disabled=value;byId('open-guide').disabled=value;refresh();}
+function lock(value){busy=value;byId('import-draft').disabled=value;byId('reviewed-import').disabled=value;byId('reviewed-example').disabled=value;byId('reviewed-template').disabled=value;load.disabled=value;field.readOnly=value;byId('scenario').disabled=value;byId('open-guide').disabled=value;refresh();}
 function resetGuide(){draft=null;invalid.clear();guide.replaceChildren();refresh();}
 function showGuide(input){
   resetGuide();
@@ -53,6 +54,30 @@ load.addEventListener('click',async()=>{
   if(busy)return;clear();resetGuide();lock(true);
   try{const input=await request('/api/fixture/'+byId('scenario').value);field.value=JSON.stringify(input,null,2);showGuide(input);status.textContent='Esempio sintetico caricato. Le trascrizioni sono modificabili separatamente.';}
   catch{field.value='';resetGuide();status.textContent='Caricamento non riuscito.';}finally{lock(false);}
+});
+function openReviewed(input){
+  const next=draftFromReviewedVisura(input);
+  showGuide(next);field.value=JSON.stringify(next,null,2);
+  status.textContent='Trascrizione sintetica caricata. Verifica separatamente inventario, copertura, presupposti ed evidenze.';
+}
+byId('reviewed-example').addEventListener('click',()=>{
+  if(busy)return;clear();resetGuide();field.value='';
+  try{openReviewed(reviewedVisuraExample(byId('scenario').value));}
+  catch{resetGuide();status.textContent='Esempio non supportato.';}
+});
+byId('reviewed-template').addEventListener('click',()=>{
+  if(busy)return;
+  try{saveJson(reviewedVisuraExample(byId('scenario').value),'catasto-trascrizione-sintetica.json');status.textContent='Download modello sintetico richiesto.';}
+  catch{status.textContent='Download non riuscito.';}
+});
+byId('reviewed-import').addEventListener('change',async event=>{
+  if(busy)return;const file=event.target.files?.[0];event.target.value='';
+  if(!file)return;clear();resetGuide();lock(true);field.value='';
+  try{
+    if(file.size>256*1024)throw Error('too_large');
+    openReviewed(JSON.parse(await file.text()));
+  }catch{resetGuide();field.value='';status.textContent='Trascrizione non supportata: nessun dato caricato.';}
+  finally{lock(false);}
 });
 byId('import-draft').addEventListener('change',async event=>{
   if(busy)return;
