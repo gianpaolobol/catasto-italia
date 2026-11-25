@@ -13,3 +13,6 @@ Revisione del piano: evitare disponibilità presunta, autenticazione implicita e
 - Node locale 22.16.0; git ls-remote fallisce DNS. Test predisposti, non dichiarati superati prima della CI. Revisione sequenziale, nessun agente indipendente.
 - Avvio: node apps/workbench/server.mjs; aprire http://127.0.0.1:8765. Test: node --test tests/workbench.test.mjs.
 - Tre scenari diagnostici non equivalgono a tre pratiche catastali integrali: zero nuovi casi validati ai fini del gate 100+100. Nessuna compatibilità DOCFA/SISTER, firma, invio o dato reale. Restano acquisizione/revisione visure, sandbox, corpus territoriale, classamento, geometrie, integrazioni esterne e collaudi ufficiali.
+
+## Feedback e correzione
+Riletto il flusso: operazioni calcolate solo da candidato dell'audit, nessuna rietichettatura di canExport, report annullato su modifica. Rilevato costo quadratico potenziale nell'associazione delle righe alle unità; sostituito con indice Map. Verifica HTTP e CI ancora da eseguire. Nessun esito di browser inventato.
