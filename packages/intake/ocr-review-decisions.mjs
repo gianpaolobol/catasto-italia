@@ -12,13 +12,15 @@ const validScore=s=>typeof s==='string'&&/^(0|[1-9]\d{0,2})(?:\.\d{1,9})?$/.test
 // One explicit decision per OCR word. No inference of cadastral fields.
 export function buildOcrReviewDecisions(result,bytes,request){
   try{
-    if(request?.version!=='0.1.0'||!Array.isArray(request.decisions)||
+    if(request?.version!=='0.1.0'||Object.keys(request).sort().join(',')!=='chainSha256,decisions,rasterSha256,version'||
+      !Array.isArray(request.decisions)||
       !Array.isArray(result?.words)||result.words.length===0||result.words.length>2048||
       request.decisions.length!==result.words.length)
       return blocked('decision_invalid_request');
     if(!result.words.every(w=>w&&validText(w.text)&&validScore(w.engineScore)))
       return blocked('decision_invalid_source_word');
-    const source=structuredClone(result);
+    const source=structuredClone({version:result.version,state:result.state,operative:result.operative,
+      authenticated:result.authenticated,requiresHumanReview:result.requiresHumanReview,words:result.words,evidence:result.evidence});
     const checked=prepareExactRasterReview(source,bytes);
     if(checked.state!=='raster_review_candidate')return blocked(checked.issues[0].code);
     if(request.chainSha256!==checked.chainSha256||request.rasterSha256!==checked.rasterSha256)
