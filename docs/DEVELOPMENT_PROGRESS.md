@@ -233,3 +233,7 @@
 ## Iterazione 047 — modalità C — 2026-11-25
 - PR #45 integrata a 71acf96be2a7714109d8fa8b1b1fd78a4e756556. CI 45707595416: core 1007/1007, browser PASS 1280/360; CI Windows 45707595483 PASS 242. Head/base verificati nei log.
 - ID14/16/20/28/29: dossier multi-unità con annessi per unità C/V, copertura esplicita, invalidazione selettiva e ricalcolo server atomico; test Node/Chromium predisposti, CI da verificare, DNS locale bloccato. Revisione sequenziale. Evidenze docs/qa/ITERATION_047.md. Backup intatti, licenza invariata, gate 100+100 e prove ufficiali aperti.
+
+## Iterazione 048 — [Codex] — modalità C
+- PR #46 integrata a 41becf5a44e39441946a477128d3896e73ed7d6f: CI 45716042861 core 1016/1016, Chromium PASS 1280/360; Windows 45716042995 251/251, head/base esatti. PR #47 base divergente dopo #46, nuova verifica necessaria.
+- ID15/16/17/28: conversione dichiarata esatta di coordinate sintetiche in mm, UI per unità, controllo limiti e integrità, misura separata, test Node/Chromium predisposti. Verifiche isolate V8 riuscite (8 m², 12000 mm, blocchi). CI nuova non verificata. Evidenze docs/qa/ITERATION_048.md. Revisione sequenziale; nessuna regola operativa, nessuna prova di scala, DOCFA/SISTER o nuovo caso professionale. Backup non modificati, gate 100+100 aperto. Registro centrale non accessibile (404); protocollo letto sul ramo #47.
