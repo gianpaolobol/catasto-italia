@@ -21,3 +21,6 @@ Dopo un'analisi diagnostica positiva, selezionare un'unità C/V, inserire un con
 
 ### Variazione di destinazione dell'intera unità
 Scenario diagnostico limitato a una unità originaria e una risultante, entrambe con un solo subalterno, stessa particella, identificativo proposto distinto, confini e mappa dichiarati invariati, senza fusione/divisione. Le dichiarazioni e trascrizioni restano separate; non è proposta di classamento né verifica edilizia. Fonti storiche: circolari 9/2001 e 1/2006 §4; applicabilità attuale da verificare. I casi combinati o complessi restano esclusi. Nessun export operativo.
+
+### Annesso estimativo sintetico
+Dopo una proposta diagnostica, selezionare un’unità C/V, dichiarare categoria ordinaria, classe, zona fittizia SYNTH-n, consistenza e tariffa inventata. Il server ricalcola il caso e restituisce il prodotto decimale esatto, con download JSON separato. Non è un classamento, tariffario ufficiale o calcolo arrotondato secondo DOCFA. Non usare valori di clienti. Il riferimento metodologico storico è Agenzia delle Entrate, Il Sistema Catastale, edizione 2021, §6 p. 29; non prova la vigenza o la tariffa locale.
