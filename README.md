@@ -15,3 +15,6 @@ Scegliere uno scenario e usare **Prepara da esempio trascritto**, oppure scarica
 
 ### Variazione per distribuzione interna
 Scenario di ricerca ristretto: una sola unità ordinaria con un solo subalterno, confini, destinazione, mappa e identificativi dichiarati invariati. L'ipotesi diagnostica V mantiene l'identificativo osservato e non presume invariati classamento o consistenza. Fonte storica ufficiale: circolare 9/2001; applicabilità vigente e territoriale da verificare. Nessun export operativo.
+
+### Annesso geometrico sintetico
+Dopo un'analisi diagnostica positiva, selezionare un'unità C/V, inserire un contorno ortogonale semplice in mm (senza vertice iniziale duplicato), misurare e scaricare l'annesso JSON separato vincolato al digest del caso. L'esempio a L misura 8 m² geometrici. Nessun coefficiente catastale, scala CAD verificata, foro, sovrapposizione fra contorni, o classamento. Modificare il caso invalida la misura; modificare i vertici invalida l'annesso. Non usare dati reali.
