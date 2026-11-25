@@ -1,0 +1,18 @@
+# Iterazione 028 — 2026-11-25
+## Gate precedente
+- Letti MASTER_PLAN e DEVELOPMENT_PROGRESS su main; verificati main f4207f6a88b9d070d3d724fd2a05093904c74187, branch, unica PR aperta #26, diff e assenza di review/thread esterni.
+- CI [45555425260](https://github.com/gianpaolobol/catasto-italia/actions/runs/45555425260), job core 139006200829, checkout e3c90dad8c3c80ad142a313e3bceeaca93ec8a10 (merge del head 5e9570434877572f20612151f70399d170893c09 sul base f4207f6a88b9d070d3d724fd2a05093904c74187), 597/597 pass, 0 fail/cancel/skip/todo, inclusa integrazione nativa PDF-OCR-HTML. Ricontrollato head/base e mergeability, squash #26 confermato a 88d5cb6583d85d644e19e9b35fb978619e1d11a3.
+## Piano e revisione sequenziale
+- ID05/28/29: collaudare realmente il generatore HTML in Chromium desktop e viewport stretta, con decodifica pixel indipendente, navigazione, escaping e assenza di richieste HTTP(S) della pagina. Solo fixture fissa in memoria, senza documenti di clienti, senza upload o salvataggio automatico.
+- Revisione piano: separare browser reale da verifica DOCFA e da native OCR (fixture browser costruita sinteticamente, non acquisita da motore). Non confondere viewport con dispositivo mobile reale; non considerare test smoke equivalenti ad audit di accessibilità o sicurezza.
+## Implementazione, revisione e correzione
+- dd85014eafb814d65528ba201fb1004cc496f5ab: generatore di fixture sintetica con 32000 campioni grayscale e due parole, una contenente markup letterale.
+- 8b027b5834c71721986104638d5dc0aaea8bebfa: smoke Chromium/Playwright opt-in, verifica DOM, pixel con canvas, navigazione reciproca, tastiera, larghezza e richieste HTTP(S).
+- Primo tentativo file:// bloccato dalla policy amministrativa del browser locale (ERR_BLOCKED_BY_ADMINISTRATOR); nessuna policy modificata. Test separato del DOM in memoria tramite set_content: passato. Revisione critica: aggiunto Tab reale e guardia contro esecuzione Python con assert disabilitate, ripetuto il test con successo. Non attestata apertura file://.
+## Evidenze eseguite
+- Clone GitHub locale ancora bloccato DNS. Copiati cinque moduli dal contenuto GitHub e verificati con git hash-object contro i blob del main: HTML 427216df76304118e2bbecd8b2074512ab1b7178, exact raster 1759f74c66a6aa646a1c94dba516027e5df4312b, overlay a85f54bc1b98849751e42dc70d69ea78a5e057df, raster evidence c2718ee0bfffe4f1257b30aee3386a378cf69dde, TSV 207476153e60c302a2fe7189403586abbce97fbf.
+- Comando effettivo: python scripts/check-ocr-review-browser.py; Node 22.16.0, Chromium 144.0.7559.96 headless, Python Playwright locale. Entrambi i viewport 1280 e 360 px: PASS. 32000 pixel confrontati per viewport, nessuna differenza, due parole esatte, markup non interpretato, zero script/form/iframe, link reciproci e Tab/Enter funzionanti, nessun overflow orizzontale, zero richieste HTTP(S) osservate dalla pagina in contesto offline.
+- Blob dei due script riletti da GitHub e corrispondenti ai file locali effettivamente eseguiti: fixture 703e00f9e5e8dc9e935656de65da67d93d5c9e23, browser dc30feb9e652548033b33cf936a7318febf29467. Test opt-in, non inserito nella CI; CI core completa richiesta prima del merge.
+## Limiti e prossimo passo
+- Revisione sequenziale, nessun agente indipendente. Nessuna modifica alle regole catastali o licenza; nessun dato cliente, firma, trasmissione. Non test file://, Firefox/Safari, Windows o smartphone reale, non audit accessibilità/sicurezza, non sandbox OS, non pratica integrale o verifica professionale. Nessun test DOCFA/SISTER reale.
+- Prossimo: CI/merge, workflow di revisione e correzione tracciato, isolamento OS, corpus territoriale, integrazioni Building Core e QA 100+100. V1.0 non validata.
