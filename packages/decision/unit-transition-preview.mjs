@@ -5,7 +5,7 @@ import {inspectSource} from "../normative/index.mjs";
 // Narrow research preview: ordinary units, one parcel, no combined changes.
 // Evidence references are NOT authentication, nor a finding of legal title.
 const common=["ordinaryTerritory","inventoryComplete","ordinaryUnits","singleIntervention","resultAutonomy","titleReviewed"];
-const extra={fusion:["sameDitta","mapUnchanged"],division:["mapUnchanged"],new_construction:["newBuilding","parcelPreviouslyEmpty","mapPrerequisiteReviewed"],internal_distribution:["mapUnchanged","boundariesUnchanged","useUnchanged","internalLayoutChanged","identifiersUnchanged"]};
+const extra={fusion:["sameDitta","mapUnchanged"],division:["mapUnchanged"],new_construction:["newBuilding","parcelPreviouslyEmpty","mapPrerequisiteReviewed"],internal_distribution:["mapUnchanged","boundariesUnchanged","useUnchanged","internalLayoutChanged","identifiersUnchanged"],destination_change:["mapUnchanged","boundariesUnchanged","entireUseChanged","noFusionOrDivision"]};
 const documentary=new Set(["ordinaryTerritory","inventoryComplete","titleReviewed","sameDitta","parcelPreviouslyEmpty","mapPrerequisiteReviewed","identifiersUnchanged"]);
 const plain=x=>x!==null&&typeof x==="object"&&!Array.isArray(x)&&[Object.prototype,null].includes(Object.getPrototypeOf(x));
 const shape=(x,keys)=>plain(x)&&Object.keys(x).length===keys.length&&keys.every(k=>Object.hasOwn(x,k));
@@ -22,7 +22,7 @@ export function previewUnitTransition(input){
     typeof input.province!=="string"||!/^[A-Z]{2}$/.test(input.province))return reject("invalid_input");
   const {snapshot,scenario,originIds,derivedIds,facts}=input;
   if(!validateSnapshot(snapshot).valid)return reject("invalid_snapshot");
-  const sourceId=scenario==="internal_distribution"?"circ9-2001":"vademecum-docfa-2022";
+  const sourceId=scenario==="internal_distribution"?"circ9-2001":scenario==="destination_change"?"circ1-2006":"vademecum-docfa-2022";
   const ref=inspectSource({id:sourceId,revision:1,asOf:snapshot.asOf,province:input.province});
   out.source={id:sourceId,revision:1,state:ref.state};
   if(ref.state!=="pending_review")return reject("source_unavailable");
@@ -49,12 +49,14 @@ export function previewUnitTransition(input){
   if(!(scenario==="fusion"?originIds.length>=2&&derivedIds.length===1:
     scenario==="division"?originIds.length===1&&derivedIds.length>=2:
     scenario==="internal_distribution"?originIds.length===1&&derivedIds.length===0:
+    scenario==="destination_change"?originIds.length===1&&derivedIds.length===1:
     originIds.length===0&&derivedIds.length>=1))return reject("invalid_unit_counts");
   const units=new Map(snapshot.units.map(u=>[u.id,u]));
   if([...originIds,...derivedIds].some(x=>!units.has(x)))return reject("unknown_unit");
   // Restrict this first research scenario to one ordinary unit with a single explicit subaltern.
   // Complex graffatures, whole parcels and combined changes are outside this prototype.
   if(scenario==="internal_distribution"&&(units.get(originIds[0]).identifiers.length!==1||units.get(originIds[0]).identifiers[0].value?.subaltern==null))return reject("complex_internal_variation_outside_scope");
+  if(scenario==="destination_change"&&[...originIds,...derivedIds].some(x=>units.get(x).identifiers.length!==1||units.get(x).identifiers[0].value?.subaltern==null))return reject("complex_destination_change_outside_scope");
   const keys=new Set(), whole=new Set(), parcelsWithSubs=new Set(), touched=new Set();
   for(const u of snapshot.units){
     const isDerived=derived.has(u.id);
@@ -72,7 +74,7 @@ export function previewUnitTransition(input){
   if(touched.size!==1)return reject("multi_parcel_outside_scope");
   if(scenario==="new_construction"&&snapshot.units.some(u=>!derived.has(u.id)&&u.identifiers.some(c=>touched.has(parcelKey(c.value)))))
     return reject("existing_units_on_target_parcel");
-  const label={fusion:["variation","fusione","p. 57"],division:["variation","divisione","p. 56"],new_construction:["new_registration","nuova costruzione","p. 44"],internal_distribution:["variation","diversa distribuzione degli spazi interni","Circolare 9/2001, §4 e Causali delle denunce di variazione"]}[scenario];
+  const label={fusion:["variation","fusione","p. 57"],division:["variation","divisione","p. 56"],new_construction:["new_registration","nuova costruzione","p. 44"],internal_distribution:["variation","diversa distribuzione degli spazi interni","Circolare 9/2001, §4 e Causali delle denunce di variazione"],destination_change:["variation","variazione di destinazione","Circolare 1/2006, §4, p. 5; richiamo alla circolare 9/2001"]}[scenario];
   out.candidate={procedure:label[0],cause:label[1],locator:label[2],
     counts:{S:scenario==="internal_distribution"?0:originIds.length,C:derivedIds.length,V:scenario==="internal_distribution"?1:0},
     suppressUnitIds:scenario==="internal_distribution"?[]:[...originIds],constituteUnitIds:[...derivedIds],
