@@ -80,6 +80,23 @@ def run():
                             expect(doc.locator("table").first.locator("tbody tr")).to_have_count(count)
                             check(doc.locator("script,iframe,form").count() == 0, "active elements")
                             doc.close()
+                            panel = page.locator('details').filter(has=page.get_by_text('Misura geometrica sintetica', exact=True))
+                            if not panel.evaluate('(e) => e.open'):
+                                panel.locator('summary').click()
+                            page.locator('#geometry-unit').select_option(index=1)
+                            page.locator('#geometry-example').click()
+                            page.locator('#geometry-measure').click()
+                            expect(page.locator('#geometry-result')).to_contain_text('8.000000 m²')
+                            with page.expect_download() as event:
+                                page.locator('#geometry-download').click()
+                            annex = Path(tmp) / 'geometry.json'
+                            event.value.save_as(annex)
+                            measured = json.loads(annex.read_text(encoding='utf-8'))
+                            check(measured['caseDigest'] == report['caseDigest'] and measured['areaMm2'] == '8000000', 'annex mismatch')
+                            page.locator('#geometry-vertices').fill('[]')
+                            expect(page.locator('#geometry-download')).to_be_disabled()
+                            page.locator('#geometry-measure').click()
+                            expect(page.locator('#geometry-result')).to_contain_text('Contorno bloccato')
                             with page.expect_download() as event:
                                 page.locator("#save-draft").click()
                             draft = Path(tmp) / "draft.json"
@@ -87,6 +104,8 @@ def run():
                             page.locator("#import-draft").set_input_files(draft)
                             expect(page.locator("#status")).to_contain_text("Bozza sintetica importata")
                             expect(page.locator("#download-dossier")).to_be_disabled()
+                            expect(page.locator('#geometry-unit')).to_be_disabled()
+                            expect(page.locator('#geometry-download')).to_be_disabled()
                             page.locator("#analyze").click()
                             expect(page.locator("#summary")).to_contain_text("Ipotesi di ricerca")
                             expect(page.locator("#operations tbody tr")).to_have_count(count)

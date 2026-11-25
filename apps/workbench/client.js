@@ -1,18 +1,19 @@
 // Copyright (c) 2026 Gian Paolo Franceschini. All rights reserved.
+import {measureSyntheticPolygon} from '/synthetic-geometry.mjs';
 import {renderDiagnosticDossier} from '/diagnostic-dossier.mjs';
 import {guideFields,editGuidedDraft} from '/guided-draft.mjs';
 import {draftFromReviewedVisura,reviewedVisuraExample} from '/reviewed-visura.mjs';
 const byId=id=>document.getElementById(id);
 const field=byId('case'),status=byId('status'),download=byId('download'),load=byId('load'),analyze=byId('analyze'),guide=byId('guide');
-let report=null,busy=false,draft=null;
+let report=null,busy=false,draft=null,geometryReport=null;
 const invalid=new Set();
 const el=(tag,text)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;return e;};
 function clear(){
   byId('visura-result').textContent='Nessun confronto corrente.';
-  report=null;download.disabled=true;byId('download-dossier').disabled=true;byId('summary').textContent='Nessun rapporto corrente.';
+  report=null;resetGeometry();download.disabled=true;byId('download-dossier').disabled=true;byId('summary').textContent='Nessun rapporto corrente.';
   byId('relation').textContent='—';byId('details').textContent='—';byId('operations').replaceChildren();
 }
-function refresh(){byId('download-dossier').disabled=busy||!report||report.diagnosticReportExportable!==true;for(const id of ['visura-check','visura-example','visura-claim','visura-file','visura-text'])byId(id).disabled=busy||invalid.size>0;analyze.disabled=busy||invalid.size>0;byId('save-draft').disabled=busy||invalid.size>0;for(const e of guide.querySelectorAll('input,select'))e.disabled=busy;}
+function refresh(){refreshGeometry();byId('download-dossier').disabled=busy||!report||report.diagnosticReportExportable!==true;for(const id of ['visura-check','visura-example','visura-claim','visura-file','visura-text'])byId(id).disabled=busy||invalid.size>0;analyze.disabled=busy||invalid.size>0;byId('save-draft').disabled=busy||invalid.size>0;for(const e of guide.querySelectorAll('input,select'))e.disabled=busy;}
 function lock(value){busy=value;byId('import-draft').disabled=value;byId('reviewed-import').disabled=value;byId('reviewed-example').disabled=value;byId('reviewed-template').disabled=value;load.disabled=value;field.readOnly=value;byId('scenario').disabled=value;byId('open-guide').disabled=value;refresh();}
 function resetGuide(){draft=null;invalid.clear();guide.replaceChildren();const option=el('option','Carica un caso nell’editor guidato');option.value='';byId('visura-claim').replaceChildren(option);byId('visura-text').value='';clearVisura();refresh();}
 function showGuide(input){
@@ -135,7 +136,7 @@ analyze.addEventListener('click',async()=>{
     report=await request('/api/report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)});
     byId('summary').textContent=report.state==='research_candidate'?'Ipotesi di ricerca: '+report.candidate.cause:'Bloccato — nessuna ipotesi disponibile.';
     byId('relation').textContent=report.relation??'Nessuna relazione di proposta.';
-    showOperations(report.operations);
+    showOperations(report.operations);populateGeometryUnits();
     byId('details').textContent=JSON.stringify({warning:report.warning,operations:report.operations,evidence:report.evidence,source:report.source,blockers:report.blockers},null,2);
     status.textContent='Analisi diagnostica completata; nessuna approvazione.';
     download.disabled=report.diagnosticReportExportable!==true;
@@ -202,3 +203,51 @@ async function runVisura(example){
 }
 byId('visura-example').addEventListener('click',()=>runVisura(true));
 byId('visura-check').addEventListener('click',()=>runVisura(false));
+
+function clearGeometryAnnex(){
+  geometryReport=null;byId('geometry-result').textContent='Nessuna misura corrente.';byId('geometry-download').disabled=true;
+}
+function resetGeometry(){
+  const option=el('option','Analizza il caso');option.value='';
+  byId('geometry-unit').replaceChildren(option);byId('geometry-vertices').value='';clearGeometryAnnex();refreshGeometry();
+}
+function populateGeometryUnits(){
+  const option=el('option','Seleziona unità risultante');option.value='';
+  byId('geometry-unit').replaceChildren(option);
+  if(report?.state==='research_candidate')for(const op of report.operations)if(['C','V'].includes(op.operation)){
+    const row=el('option',op.operation+' · '+op.unitId);row.value=op.unitId;byId('geometry-unit').append(row);
+  }
+  refreshGeometry();
+}
+function refreshGeometry(){
+  const enabled=!busy&&!invalid.size&&report?.state==='research_candidate';
+  byId('geometry-unit').disabled=!enabled;
+  for(const id of ['geometry-example','geometry-vertices','geometry-measure'])byId(id).disabled=!enabled||!byId('geometry-unit').value;
+  byId('geometry-download').disabled=!enabled||!geometryReport;
+}
+byId('geometry-unit').addEventListener('change',()=>{byId('geometry-vertices').value='';clearGeometryAnnex();refreshGeometry();});
+byId('geometry-vertices').addEventListener('input',()=>{clearGeometryAnnex();refreshGeometry();});
+byId('geometry-example').addEventListener('click',()=>{
+  if(busy||invalid.size||!report||!byId('geometry-unit').value)return;
+  byId('geometry-vertices').value=JSON.stringify([[0,0],[4000,0],[4000,1000],[2000,1000],[2000,3000],[0,3000]],null,2);
+  clearGeometryAnnex();refreshGeometry();
+});
+byId('geometry-measure').addEventListener('click',()=>{
+  if(busy||invalid.size||!report||!byId('geometry-unit').value)return;
+  clearGeometryAnnex();
+  try{
+    const raw=byId('geometry-vertices').value;
+    if(raw.length>16384)throw Error('too_large');
+    const measured=measureSyntheticPolygon(report,byId('geometry-unit').value,JSON.parse(raw));
+    if(measured.state==='measured'){
+      geometryReport=measured;
+      byId('geometry-result').textContent='Area geometrica: '+measured.areaM2+' m²; perimetro: '+measured.perimeterMm+' mm. Non catastale.';
+    }else byId('geometry-result').textContent='Contorno bloccato: '+measured.blocker;
+  }catch{byId('geometry-result').textContent='Contorno JSON non valido.';}
+  refreshGeometry();
+});
+byId('geometry-download').addEventListener('click',()=>{
+  if(busy||invalid.size||!geometryReport||geometryReport.caseDigest!==report?.caseDigest)return;
+  try{saveJson(geometryReport,'catasto-annesso-geometrico-sintetico.json');status.textContent='Download annesso geometrico richiesto.';}
+  catch{status.textContent='Download non riuscito.';}
+});
