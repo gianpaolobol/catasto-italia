@@ -50,6 +50,10 @@ test('native synthetic PDF to OCR preserves words and chain integrity',()=>{
   assert.equal(chain.raster.documentSha256,hash(pdf));assert.equal(chain.raster.rasterSha256,chain.ocr.rasterSha256);
   assert.equal(chain.raster.widthPx,640);assert.equal(chain.raster.heightPx,160);
   assert.equal(chain.nativeRun.evidenceSha256,chain.ocr.evidenceSha256);
+  const {evidenceSha256:rasterHash,...rasterFields}=chain.raster;
+  assert.equal(rasterHash,hash(JSON.stringify(rasterFields)));
+  const {runSha256,...runFields}=chain.nativeRun;
+  assert.equal(runSha256,hash(JSON.stringify(runFields)));
   const {evidenceSha256:ocrHash,...ocr}=chain.ocr;
   assert.equal(ocrHash,hash(JSON.stringify({evidence:ocr,words:result.words})));
   assert.ok(result.issues.some(i=>i.code==='ocr_layout_unverified'));
