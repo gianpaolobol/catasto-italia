@@ -27,3 +27,6 @@ Dopo una proposta diagnostica, selezionare un’unità C/V, dichiarare categoria
 
 ### Dossier diagnostico con annessi correnti
 Dopo l’analisi, è possibile misurare un contorno e calcolare un prodotto estimativo per una o due unità risultanti (un annesso per tipo). Il dossier HTML stampabile riunisce relazione, operazioni, evidenze e gli annessi correnti; il server locale ricalcola entrambi dalle dichiarazioni e blocca incoerenze. Se un annesso è stato modificato e non ricalcolato, il dossier dichiara esplicitamente che non è incluso. Nessuna superficie o rendita catastale ufficiale, nessun file DOCFA. Anche lo scenario ampliamento a sagoma in mappa invariata è disponibile.
+
+### Avvio locale su Windows (prototipo sintetico)
+Con Node.js 22 o successivo già installato, fare doppio clic su `Avvia-Catasto-Italia.cmd` nella cartella del repository estratto. Il browser apre l'indirizzo locale indicato nella console; se non si apre, copiarlo manualmente. La porta è assegnata dal sistema, non esposta in rete. Lasciare la finestra aperta durante l'uso; Ctrl+C arresta il server. Alternativa: `node apps/workbench/launch-local.mjs --no-browser`. Nessun installer, DOCFA o invio ufficiale. Usare esclusivamente fixture sintetiche; il collaudo Windows è da verificare.
