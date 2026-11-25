@@ -103,8 +103,9 @@ function runPoppler(executable,args,input,env){
 // Local diagnostic only. Requires a trusted Poppler installation; production
 // must run native PDF processing in a restricted worker. No OCR or layout inference.
 export function extractPdfWords(bytes){
-  if(!Buffer.isBuffer(bytes)||bytes.length<8||bytes.length>MAX_BYTES||!bytes.subarray(0,5).equals(Buffer.from('%PDF-')))return blocked('invalid_pdf_input');
+  if(!Buffer.isBuffer(bytes)||!(bytes.buffer instanceof ArrayBuffer)||bytes.length<8||bytes.length>MAX_BYTES)return blocked('invalid_pdf_input');
   const input=Buffer.from(bytes);
+  if(!input.subarray(0,5).equals(Buffer.from('%PDF-')))return blocked('invalid_pdf_input');
   const env=pdfProcessEnvironment();
   if(!env)return blocked('extractor_environment_invalid');
   const metadataBinary=resolvePopplerExecutable('pdfinfo',env);
