@@ -2,6 +2,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {draftFromReviewedVisura,reviewedVisuraExample} from '../packages/workbench/reviewed-visura.mjs';
+import {compareSyntheticVisura,syntheticVisuraExample} from '../packages/workbench/visura-comparison.mjs';
 import {buildPracticeReport} from '../packages/workbench/index.mjs';
 import {guideFields,editGuidedDraft} from '../packages/workbench/guided-draft.mjs';
 const examined=scenario=>{
@@ -69,3 +70,16 @@ for(const [name,mutate] of [
 ]){
   test('reject '+name,()=>{const i=examined('fusion');mutate(i);assert.throws(()=>draftFromReviewedVisura(i),/invalid_synthetic_reviewed_visura/);});
 }
+
+test('integrated visura comparison on imported inventory never promotes evidence',()=>{
+  const draft=draftFromReviewedVisura(reviewedVisuraExample('fusion'));
+  const before=JSON.stringify(draft);
+  const claimId=draft.input.snapshot.units[0].identifiers[0].id;
+  const transcription=syntheticVisuraExample(draft,claimId);
+  assert.equal(transcription.sourceId,'synthetic-visura');
+  const result=compareSyntheticVisura({version:'0.1.0',kind:'synthetic-visura-check',draft,claimId,transcription});
+  assert.equal(result.state,'transcription_matches_demo_claim');
+  assert.equal(result.authenticated,false);assert.equal(result.operative,false);
+  assert.equal(JSON.stringify(draft),before);
+  assert.equal(buildPracticeReport(draft).state,'blocked');
+});
