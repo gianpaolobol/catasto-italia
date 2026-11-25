@@ -119,3 +119,8 @@
 - PR #21 integrata a b31ea2b40ae54e3f01cd733aea0bcb8651c2e888; CI 45520681145 job 138891429995, head/base esatti, 551/551 pass.
 - ID05/29: composizione diagnostica nativa PDF-raster-OCR, digest ricalcolati e blocco senza risultati parziali; revisione sequenziale, 5 test sintetici predisposti e CI aggiornata con modello italiano obbligatorio. Branch feat/pdf-ocr-diagnostic-chain; evidenze docs/qa/ITERATION_023.md. Attesi 556 test, non ancora verificati.
 - Non sandbox, non mapping PDF o layout verificato, non Windows/multipagina. Prossimo: CI/merge, isolamento OS, corpus territoriale, adattatori Building Core, UI e QA 100+100. Nessun caso catastale integrale o test ufficiale DOCFA/SISTER.
+
+## Iterazione 24 — 2026-11-25
+- PR #22 integrata a 71ff3b7a4867f5e089e780f7186aa5e740d41504; CI 45527687933 job 138914977189, head/base esatti, 556/556 pass; pipeline nativa PDF-raster-OCR ita verificata su fixture sintetica.
+- ID05/29: rifiuto memoria condivisa PDF testuale, validazione header sulla copia, controllo contenimento geometrico gerarchico OCR e invalidazione antenati; revisione sequenziale, 9 nuovi test sintetici predisposti, CI richiesta (attesi 565). Branch fix/document-input-and-ocr-geometry; evidenze docs/qa/ITERATION_024.md.
+- Non sandbox, non mapping PDF/layout verificato, non Windows/multipagina OCR. Prossimo: CI/merge, isolamento OS, corpus territoriale, Building Core, UI e QA 100+100. Nessuna pratica integrale o test ufficiale DOCFA/SISTER.
