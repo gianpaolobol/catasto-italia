@@ -10,7 +10,7 @@ const digest=v=>hash(JSON.stringify(v));
 function fixture(){
   const widthPx=320,heightPx=100;
   const bytes=Buffer.concat([Buffer.from('P5\n320 100\n255\n'),Buffer.alloc(32000,255)]);
-  const words=[{id:'ocr-1-1-1-1-1',boxPx:[20,20,90,50],text:'0007',engineScore:'95.25',requiresHumanReview:true},
+  const words=[{id:'ocr-1-1-1-1-1',boxPx:[0,20,90,50],text:'0007',engineScore:'95.25',requiresHumanReview:true},
     {id:'ocr-1-1-1-1-2',boxPx:[110,20,290,50],text:'012X',engineScore:'72',requiresHumanReview:true}];
   const raster={widthPx,heightPx,rasterSha256:hash(bytes),coordinateSpace:'raster-pixel-top-left'};
   const ocr={...raster,rasterByteLength:bytes.length};
@@ -98,4 +98,14 @@ const cases=[
 for(const [label,mutate] of cases)test('replay blocks '+label,()=>{
   const f=saved();mutate(f);const out=replay(f);
   assert.equal(out.state,'blocked');assert.equal(out.manifest,null);
+});
+
+test('signed zero source coordinate survives canonical JSON replay',()=>{
+  const f=saved();
+  // JSON evidence digests do not distinguish -0 from 0.
+  f.result.words[0].boxPx[0]=-0;
+  const rebuilt=buildOcrReviewDecisions(f.result,f.bytes,f.request);
+  assert.equal(rebuilt.state,'review_proposal');
+  assert.equal(Object.is(rebuilt.manifest.decisions[0].boxPx[0],0),true);
+  assert.deepEqual(replay(f).manifest,f.manifest);
 });
