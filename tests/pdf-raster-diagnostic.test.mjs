@@ -47,7 +47,7 @@ test('synthetic native raster retains exact evidence and dimensions on Linux',()
   const s=snapshotCanonicalPgm(out.raster);assert.equal(s.widthPx,640);assert.equal(s.heightPx,160);
   assert.equal(out.evidence.documentSha256,hash(pdf));assert.equal(out.evidence.rasterSha256,hash(out.raster));
   const {evidenceSha256,...evidence}=out.evidence;assert.equal(evidenceSha256,hash(JSON.stringify(evidence)));
-  assert.equal(evidence.annotationsHidden,true);
+  assert.equal(evidence.hideAnnotationsRequested,true);
   assert.ok(s.raster.subarray(s.raster.length-640*160).some(v=>v<128),'render contains visible marks');
 });
 test('native rotated PDF never yields partial raster on Linux',()=>{
