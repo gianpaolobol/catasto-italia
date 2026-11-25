@@ -1,0 +1,15 @@
+# Iterazione 027 — 2026-11-25
+## Gate precedente
+- Letti MASTER_PLAN, DEVELOPMENT_PROGRESS su main, ricerca branch e PR aperte; diff #25 e review/thread (nessuna revisione esterna).
+- CI [45548773792](https://github.com/gianpaolobol/catasto-italia/actions/runs/45548773792), job core 138984648909: checkout 0ef1df7742ed5154d6305078e13e1499648170bb, merge di 16d8fa187440fdaf36ab058234c4b182e3923009 su cb937d0f11ae9c5a3f11fe6b71f8a30057da4ad1, 588/588 pass, zero fail/cancel/skip/todo; prova nativa raster opt-in positiva. Ricontrollato head/base; squash merge #25 confermato f4207f6a88b9d070d3d724fd2a05093904c74187.
+## Piano e revisione sequenziale
+- ID05/28/29: prima vista locale HTML autonoma, senza JS, server o risorse remote: PNG grayscale lossless del PGM esatto, SVG in coordinate pixel, link reciproci fra parole e aree; navigazione da tastiera, lista con score grezzo e avvisi. Restituire stringa solo dopo ri-verifica catena e raster; nessuna scrittura su disco automatica o approvazione.
+- Revisione piano: evitare ricampionamento e confusione con coordinate PDF; evitare injection da testo OCR, script, URL esterni e salvataggio implicito. HTML restituito contiene potenzialmente dati riservati, non pubblicarlo. Consistenza dei digest non equivale ad autenticità.
+## Implementazione e revisione critica
+- 41ff6ebf8df355f6b866f36993a2591a16400771: renderLocalOcrReview, PNG con zlib e CRC, overlay su coordinate pixel verificate, escape testo/attributi, CSP restrittiva, nessun JS, form o risorsa remota.
+- fdc068c55340ff5a6e4d311f770614bab51f0fcd e c294742e2c8324942531ac7957a16920e8fe49ae: test di struttura e sicurezza, decompressione PNG e CRC indipendente (algoritmo bitwise), prova integrazione PDF-OCR-HTML.
+- Revisione critica sequenziale: la prima versione clonava la lista prima dei limiti; correzione 9089fd4fea5b1a897c4be07e71af5dfd5b4cdce1 con preflight lista/testo/score e focus esplicito SVG; test aggiuntivo dfd16141a94a12e25a7c86d1c303d27fea2cf6c7. Il controllo non costituisce confine per payload di rete ostili; metadati devono provenire dalla pipeline locale.
+## Test e limiti
+- 8 nuovi test unitari + 1 integrazione nativa, comando previsto node --test tests/ocr-local-review-html.test.mjs tests/pdf-ocr-diagnostic.test.mjs; CI completa attesa 597. Clone locale ancora bloccato da DNS (git ls-remote), Node v22.16.0 presente. Non dichiarati pass prima di verifica CI. Nessun browser reale collaudato: i test HTML non dimostrano accessibilità/rendering nei browser.
+- Nessun agente indipendente: revisione sequenziale. Prima vista HTML generabile, non applicazione desktop/web/mobile integrata, non workflow approvativo o modifica dati. Non sandbox OS, mapping PDF o OCR multipagina/Windows. Nessun caso catastale integrale o verifica professionale conteggiati; nessun dato cliente, nuova regola catastale, modifica licenza, test DOCFA/SISTER, firma o trasmissione.
+- Prossimo: verifica CI/merge, collaudo browser e interfaccia locale senza persistenza implicita, isolamento OS, corpus territoriale, adattatori Building Core e QA 100+100.
