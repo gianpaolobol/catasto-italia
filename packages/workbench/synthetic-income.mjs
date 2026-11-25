@@ -5,7 +5,7 @@ const reference=Object.freeze({title:'Agenzia delle Entrate — Il Sistema Catas
 const shape=(x,keys)=>x!==null&&typeof x==='object'&&!Array.isArray(x)&&Object.keys(x).length===keys.length&&keys.every(k=>Object.hasOwn(x,k));
 const units={A:'vani',B:'m3',C:'m2'};
 const decimal=(v,scale)=>{
-  if(typeof v!=='string'||v.length>16||!new RegExp('^(?:0|[1-9][0-9]{0,6})(?:\\.[0-9]{1,'+scale+'})?$').test(v))return null;
+  if(typeof v!=='string'||v!==v.trim()||v.length>16||!new RegExp('^(?:0|[1-9][0-9]{0,6})(?:\\.[0-9]{1,'+scale+'})?$').test(v))return null;
   const [whole,frac='']=v.split('.');
   const n=BigInt(whole)*10n**BigInt(scale)+BigInt(frac.padEnd(scale,'0'));
   return n>0n?n:null;
@@ -23,9 +23,9 @@ export function syntheticIncomeWorksheet(request){
     if(!report.operations.some(op=>op.unitId===request.unitId&&['C','V'].includes(op.operation)))return block('not_resulting_unit');
     const d=request.declared;
     if(!shape(d,['category','classNumber','zone','consistency','tariff','unit','sourceId'])||
-      typeof d.category!=='string'||!/^(?:A\/(?:[1-9]|10|11)|B\/[1-8]|C\/[1-7])$/.test(d.category)||
-      typeof d.classNumber!=='string'||!/^[1-9][0-9]?$/.test(d.classNumber)||
-      typeof d.zone!=='string'||!/^SYNTH-[1-9][0-9]{0,2}$/.test(d.zone)||
+      typeof d.category!=='string'||d.category!==d.category.trim()||!/^(?:A\/(?:[1-9]|10|11)|B\/[1-8]|C\/[1-7])$/.test(d.category)||
+      typeof d.classNumber!=='string'||d.classNumber!==d.classNumber.trim()||!/^[1-9][0-9]?$/.test(d.classNumber)||
+      typeof d.zone!=='string'||d.zone!==d.zone.trim()||!/^SYNTH-[1-9][0-9]{0,2}$/.test(d.zone)||
       d.sourceId!=='synthetic-tariff'||d.unit!==units[d.category[0]])return block('invalid_declared_classification');
     const c=decimal(d.consistency,3),t=decimal(d.tariff,4);
     if(c===null||t===null)return block('invalid_decimal');
