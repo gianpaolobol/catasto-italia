@@ -9,3 +9,6 @@ Solo dati sintetici, Node.js 22 o successivo. Dal clone: `node apps/workbench/se
 
 ### Confronto visura sintetica
 Nell'editor guidato, aprire il pannello di confronto, selezionare un identificativo osservato e generare un esempio derivato o importare una trascrizione JSON sintetica di campi isolati. Il confronto mostra campi trascritti, locatori, divergenze e valori irrisolti; non modifica né valida la pratica. L'esempio non è una prova indipendente; non importare visure reali. Il segnaposto Z999 della fixture non rappresenta un'associazione ufficiale con SYNTH.
+
+### Partenza da trascrizione sintetica
+Scegliere uno scenario e usare **Prepara da esempio trascritto**, oppure scaricare il modello JSON e reimportarlo dopo modifiche. Il formato `synthetic-reviewed-visura` separa gruppi osservati/proposti, unità di origine, copertura e coppie dichiarato/trascritto con locatore. L'esempio nasce con presupposti non accertati; esaminarli separatamente nell'editor prima dell'analisi. L'import è locale, non certifica i raggruppamenti o le prove e non accetta documenti ufficiali. Nessun OCR automatico collegato.
