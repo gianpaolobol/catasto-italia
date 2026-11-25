@@ -11,18 +11,25 @@ export function buildIntegratedDossier(request){
     if(!shape(request,['draft','expectedState','expectedDigest','geometry','income']))return block('invalid_dossier_request');
     const report=buildPracticeReport(request.draft);
     if(report.state!==request.expectedState||report.caseDigest!==request.expectedDigest)return block('case_changed');
-    if(report.state!=='research_candidate'&&(request.geometry!==null||request.income!==null))return block('blocked_case_annex');
-    let geometry=null,income=null;
-    if(request.geometry!==null){
-      if(!shape(request.geometry,['unitId','vertices']))return block('invalid_geometry_request');
-      geometry=measureSyntheticPolygon(report,request.geometry.unitId,request.geometry.vertices);
-      if(geometry.state!=='measured')return block('geometry_blocked');
+    // Keep the earlier single-annex request compatible; new callers submit arrays.
+    const list=value=>value===null?[]:Array.isArray(value)?value:[value];
+    const geometries=list(request.geometry),incomes=list(request.income);
+    if(geometries.length>64||incomes.length>64)return block('too_many_annexes');
+    if(report.state!=='research_candidate'&&(geometries.length||incomes.length))return block('blocked_case_annex');
+    const geometry=[],income=[],gIds=new Set(),iIds=new Set();
+    for(const item of geometries){
+      if(!shape(item,['unitId','vertices'])||typeof item.unitId!=='string'||gIds.has(item.unitId))return block('invalid_geometry_request');
+      gIds.add(item.unitId);
+      const measured=measureSyntheticPolygon(report,item.unitId,item.vertices);
+      if(measured.state!=='measured')return block('geometry_blocked');
+      geometry.push(measured);
     }
-    if(request.income!==null){
-      if(!shape(request.income,['unitId','declared']))return block('invalid_income_request');
-      const result=syntheticIncomeWorksheet({draft:request.draft,...request.income});
+    for(const item of incomes){
+      if(!shape(item,['unitId','declared'])||typeof item.unitId!=='string'||iIds.has(item.unitId))return block('invalid_income_request');
+      iIds.add(item.unitId);
+      const result=syntheticIncomeWorksheet({draft:request.draft,...item});
       if(!result.ok)return block('income_blocked');
-      income=result.worksheet;
+      income.push(result.worksheet);
     }
     return {ok:true,error:null,html:renderDiagnosticDossier(report,{geometry,income})};
   }catch{return block('dossier_processing_failed');}
