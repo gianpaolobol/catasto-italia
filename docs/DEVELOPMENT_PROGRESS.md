@@ -154,3 +154,8 @@
 - PR #28 già integrata a a47e95231d0c3f0fbef588d09c78d96c6743ff1c; CI 45570917039 job 139057052788, head/base esatti, 616/616 pass.
 - ID05/28/29: replay JSON contro evidenze OCR e raster originari, ricostruzione canonica e controllo campi derivati; revisione sequenziale e correzione zero con segno. 29 nuovi test predisposti, CI richiesta (attesi 645), clone locale bloccato DNS. Branch feat/ocr-review-replay, evidenze docs/qa/ITERATION_030.md.
 - Non autenticazione, firma, approvazione, storage sicuro o sandbox OS. Prossimo: CI/merge, UI editing e replay, isolamento OS, corpus territoriale, Building Core e QA 100+100. Nessuna pratica integrale, verifica professionale, prova DOCFA/SISTER reale, firma o invio.
+
+## Iterazione 31 — 2026-11-25
+- PR #29 integrata a f128cffb0504eee2a3873341f0c91fa00199eb41; CI 45582584870 job 139096061782, head/base esatti, 645/645 pass.
+- ID05/28/29: editor HTML locale opt-in, azione esplicita per parola, download su gesto utente di richiesta JSON non validata, script statico vincolato da hash CSP; API read-only preservata. Revisione sequenziale e correzioni; 12 test sintetici predisposti, CI richiesta (attesi 657), clone locale bloccato DNS. Branch feat/local-ocr-review-editor, evidenze docs/qa/ITERATION_031.md.
+- Non collaudo browser reale del nuovo editor, import/replay UI, autenticazione, storage sicuro, sandbox OS o approvazione. Prossimo: CI/merge, browser download reale, integrazione import/replay, isolamento OS, corpus territoriale, Building Core e QA 100+100. Nessuna pratica integrale, verifica professionale, test DOCFA/SISTER reale, firma o invio.
