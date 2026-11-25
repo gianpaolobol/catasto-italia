@@ -12,11 +12,12 @@ function clear(){
 }
 function refresh(){for(const id of ['visura-check','visura-example','visura-claim','visura-file','visura-text'])byId(id).disabled=busy||invalid.size>0;analyze.disabled=busy||invalid.size>0;byId('save-draft').disabled=busy||invalid.size>0;for(const e of guide.querySelectorAll('input,select'))e.disabled=busy;}
 function lock(value){busy=value;byId('import-draft').disabled=value;load.disabled=value;field.readOnly=value;byId('scenario').disabled=value;byId('open-guide').disabled=value;refresh();}
-function resetGuide(){draft=null;invalid.clear();guide.replaceChildren();refresh();}
+function resetGuide(){draft=null;invalid.clear();guide.replaceChildren();const option=el('option','Carica un caso nell’editor guidato');option.value='';byId('visura-claim').replaceChildren(option);byId('visura-text').value='';clearVisura();refresh();}
 function showGuide(input){
   resetGuide();
   const rows=guideFields(input);
   draft=input;
+  refreshVisuraClaims();
   let group='',section;
   for(const row of [...new Set(rows.map(r=>r.group))].flatMap(g=>rows.filter(r=>r.group===g))){
     if(group!==row.group){group=row.group;section=el('fieldset');section.append(el('legend',group));guide.append(section);}
@@ -33,7 +34,7 @@ function showGuide(input){
       clear();
       try{
         draft=editGuidedDraft(draft,row.key,row.kind==='identifier'&&control.value===''?null:control.value);
-        field.value=JSON.stringify(draft,null,2);invalid.delete(row.key);control.removeAttribute('aria-invalid');
+        field.value=JSON.stringify(draft,null,2);refreshVisuraClaims();invalid.delete(row.key);control.removeAttribute('aria-invalid');
         status.textContent='Dati modificati: analisi da ripetere.';
       }catch{
         invalid.add(row.key);control.setAttribute('aria-invalid','true');
@@ -131,9 +132,18 @@ download.addEventListener('click',()=>{
 });
 
 const visuraText=byId('visura-text'),visuraClaim=byId('visura-claim'),visuraResult=byId('visura-result');
+function refreshVisuraClaims(){
+  const previous=visuraClaim.value,option=el('option','Seleziona identificativo osservato');option.value='';
+  visuraClaim.replaceChildren(option);
+  for(const unit of draft.input.snapshot.units)for(const claim of unit.identifiers)if(claim.status==='observed'){
+    const o=el('option',unit.id+' · '+claim.value.sheet+'/'+claim.value.parcel+'/'+(claim.value.subaltern??'—')+' · '+claim.id);
+    o.value=claim.id;visuraClaim.append(o);
+  }
+  visuraClaim.value=[...visuraClaim.options].some(o=>o.value===previous)?previous:'';
+}
 function clearVisura(){visuraResult.textContent='Nessun confronto corrente.';}
 visuraText.addEventListener('input',clearVisura);
-visuraClaim.addEventListener('input',clearVisura);
+visuraClaim.addEventListener('change',()=>{visuraText.value='';clearVisura();});
 byId('visura-file').addEventListener('change',async event=>{
   const file=event.target.files?.[0];event.target.value='';
   if(!file||busy||invalid.size)return;
@@ -150,6 +160,7 @@ async function runVisura(example){
   if(example)visuraText.value='';
   try{
     if(new TextEncoder().encode(field.value).length>256*1024||new TextEncoder().encode(visuraText.value).length>256*1024)throw Error('too_large');
+    if(!visuraClaim.value)throw Error('select_claim');
     const payload={draft:JSON.parse(field.value),claimId:visuraClaim.value};
     if(!example)Object.assign(payload,{version:'0.1.0',kind:'synthetic-visura-check',transcription:JSON.parse(visuraText.value)});
     const value=await request(example?'/api/visura-example':'/api/visura-check',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
