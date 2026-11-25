@@ -72,3 +72,11 @@ test('metadata encrypted',()=>{assert.equal(parsePdfInfo(info().replace('Encrypt
 test('metadata inconsistent page count',()=>{assert.equal(parsePdfInfo(info().replace('Pages: 1','Pages: 2')),null);});
 test('TSV dimensions mismatch metadata',()=>{const r=parsePopplerTsv(tsv(page(1,400,300),word()),parsePdfInfo(info()));assert.equal(r.issues[0].code,'page_geometry_mismatch');});
 test('TSV missing page versus metadata',()=>{const g=parsePdfInfo(info());const r=parsePopplerTsv(tsv(page(),word()),[...g,...g]);assert.equal(r.issues[0].code,'page_count_mismatch');});
+
+test('text PDF extraction rejects shared storage even with a valid PDF header',()=>{
+  const source=pdf(), shared=Buffer.from(new SharedArrayBuffer(source.length));
+  source.copy(shared);
+  const result=extractPdfWords(shared);
+  assert.equal(result.issues[0].code,'invalid_pdf_input');
+  assert.equal(result.documentSha256,null);assert.deepEqual(result.spans,[]);
+});
