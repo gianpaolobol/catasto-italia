@@ -29,3 +29,29 @@ export function measureSyntheticPolygon(report, unitId, vertices) {
   const area=twice/2n;
   return {...out,state:'measured',caseDigest:report.caseDigest,unitId,operation:matching[0].operation,areaMm2:area.toString(),areaM2:(area/1000000n).toString()+'.'+(area%1000000n).toString().padStart(6,'0'),perimeterMm:perimeter.toString(),vertices:vertices.map(p=>[...p])};
 }
+
+// [Codex] Declared uniform conversion of synthetic drawing coordinates.
+// No image calibration, affine transform, CAD parser or official scale verification.
+export function convertSyntheticPlanScale(input){
+  const blocked=blocker=>({ok:false,blocker,vertices:null});
+  if(!input||typeof input!=='object'||Array.isArray(input)||
+    Object.keys(input).length!==3||!['vertices','drawingLength','actualLengthMm'].every(k=>Object.hasOwn(input,k)))return blocked('invalid_scale_input');
+  const {vertices,drawingLength,actualLengthMm}=input;
+  const positive=n=>Number.isSafeInteger(n)&&n>0&&n<=10000000;
+  if(!positive(drawingLength)||!positive(actualLengthMm))return blocked('invalid_reference_length');
+  if(!Array.isArray(vertices)||vertices.length<4||vertices.length>128||
+    !Array.from(vertices).every(p=>Array.isArray(p)&&p.length===2&&Array.from(p).every(n=>Number.isSafeInteger(n)&&Math.abs(n)<=10000000)))return blocked('invalid_drawing_vertices');
+  // Translate the drawing origin before converting. The reference lengths
+  // are declared independently; do not assume any actual CAD/raster units.
+  const minX=Math.min(...vertices.map(p=>p[0])),minY=Math.min(...vertices.map(p=>p[1]));
+  const denominator=BigInt(drawingLength),numerator=BigInt(actualLengthMm);
+  const converted=[];
+  for(const [x,y] of vertices){
+    const scaled=[BigInt(x-minX)*numerator,BigInt(y-minY)*numerator];
+    if(scaled.some(n=>n%denominator!==0n))return blocked('non_integral_millimetres');
+    const point=scaled.map(n=>n/denominator);
+    if(point.some(n=>n>10000000n))return blocked('converted_coordinate_out_of_range');
+    converted.push(point.map(Number));
+  }
+  return {ok:true,blocker:null,vertices:converted};
+}
