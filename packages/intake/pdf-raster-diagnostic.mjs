@@ -55,7 +55,7 @@ export function rasterizeDiagnosticPdf(bytes){
   if(snapshot.widthPx!==plan.widthPx||snapshot.heightPx!==plan.heightPx)
     return blocked('raster_dimensions_mismatch');
   const evidence={version:'0.1.0',relationship:'local_render_unverified',coordinateSpace:'raster-pixel-top-left',
-    ...plan,annotationsHidden:true,documentSha256:sha256(input),rasterSha256:sha256(snapshot.raster)};
+    ...plan,hideAnnotationsRequested:true,documentSha256:sha256(input),rasterSha256:sha256(snapshot.raster)};
   return {version:'0.1.0',state:'raster_candidate',operative:false,authenticated:false,requiresHumanReview:true,
     raster:snapshot.raster,evidence:{...evidence,evidenceSha256:sha256(JSON.stringify(evidence))},
     issues:[{code:'raster_mapping_unverified'}]};
