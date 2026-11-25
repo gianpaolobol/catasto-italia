@@ -40,6 +40,8 @@ export function parseOcrTsv(tsv,raster){
       if(!parent||box[0]<parent[0]||box[1]<parent[1]||box[2]>parent[2]||box[3]>parent[3])
         return blocked('ocr_child_outside_parent');
     }
+    // A new sibling invalidates all lower-level geometry; a child outside its
+    // reported parent is unsupported, even if it remains inside the raster.
     ancestors.length=level-1;
     ancestors.push(box);
     current={level,path};
