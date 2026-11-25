@@ -6,7 +6,7 @@ import {inspectSource} from "../normative/index.mjs";
 // Evidence references are NOT authentication, nor a finding of legal title.
 const common=["ordinaryTerritory","inventoryComplete","ordinaryUnits","singleIntervention","resultAutonomy","titleReviewed"];
 const extra={fusion:["sameDitta","mapUnchanged"],division:["mapUnchanged"],new_construction:["newBuilding","parcelPreviouslyEmpty","mapPrerequisiteReviewed"],internal_distribution:["mapUnchanged","boundariesUnchanged","useUnchanged","internalLayoutChanged","identifiersUnchanged"]};
-const documentary=new Set(["ordinaryTerritory","inventoryComplete","titleReviewed","sameDitta","parcelPreviouslyEmpty","mapPrerequisiteReviewed"]);
+const documentary=new Set(["ordinaryTerritory","inventoryComplete","titleReviewed","sameDitta","parcelPreviouslyEmpty","mapPrerequisiteReviewed","identifiersUnchanged"]);
 const plain=x=>x!==null&&typeof x==="object"&&!Array.isArray(x)&&[Object.prototype,null].includes(Object.getPrototypeOf(x));
 const shape=(x,keys)=>plain(x)&&Object.keys(x).length===keys.length&&keys.every(k=>Object.hasOwn(x,k));
 const id=x=>typeof x==="string"&&/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(x);
