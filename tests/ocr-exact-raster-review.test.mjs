@@ -47,7 +47,7 @@ test('shared memory or noncanonical raster rejected',()=>{
 });
 test('candidate flags mandatory',()=>{
   const {result,bytes}=fixture();
-  for(const patch of [{state:'blocked'},{operative:true},{authenticated:true},{requiresHumanReview:false}])
+  for(const patch of [{version:'0.2.0'},{state:'blocked'},{operative:true},{authenticated:true},{requiresHumanReview:false}])
     reject({...result,...patch},bytes,'review_result_not_candidate');
 });
 test('changed text invalidates the OCR digest',()=>{
