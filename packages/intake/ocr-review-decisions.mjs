@@ -6,13 +6,14 @@ const digest=v=>createHash('sha256').update(JSON.stringify(v)).digest('hex');
 const blocked=code=>({state:'blocked',manifest:null,issues:[{code}]});
 const validText=s=>typeof s==='string'&&s.length>0&&s.length<=512&&s.trim()===s&&
   !/[\p{Cc}\p{Cf}\p{Cs}\u2028\u2029]/u.test(s);
+const exactKeys=(obj,keys)=>Object.keys(obj).length===keys.length&&keys.every(k=>Object.hasOwn(obj,k));
 const validScore=s=>typeof s==='string'&&/^(0|[1-9]\d{0,2})(?:\.\d{1,9})?$/.test(s)&&Number(s)<=100;
 
 // Inputs must be local JSON-like data, not executable objects or network payloads.
 // One explicit decision per OCR word. No inference of cadastral fields.
 export function buildOcrReviewDecisions(result,bytes,request){
   try{
-    if(request?.version!=='0.1.0'||Object.keys(request).sort().join(',')!=='chainSha256,decisions,rasterSha256,version'||
+    if(request?.version!=='0.1.0'||!exactKeys(request,['chainSha256','decisions','rasterSha256','version'])||
       !Array.isArray(request.decisions)||
       !Array.isArray(result?.words)||result.words.length===0||result.words.length>2048||
       request.decisions.length!==result.words.length)
@@ -28,11 +29,10 @@ export function buildOcrReviewDecisions(result,bytes,request){
     const byId=new Map();
     for(const d of request.decisions){
       if(!d||typeof d.id!=='string'||byId.has(d.id))return blocked('decision_invalid_id');
-      const keys=Object.keys(d).sort().join(',');
-      if(d.action==='retain'&&keys==='action,id')byId.set(d.id,{action:d.action});
-      else if(d.action==='correct'&&keys==='action,id,reason,text'&&validText(d.text)&&validText(d.reason))
+      if(d.action==='retain'&&exactKeys(d,['action','id']))byId.set(d.id,{action:d.action});
+      else if(d.action==='correct'&&exactKeys(d,['action','id','reason','text'])&&validText(d.text)&&validText(d.reason))
         byId.set(d.id,{action:d.action,text:d.text,reason:d.reason});
-      else if(d.action==='exclude'&&keys==='action,id,reason'&&validText(d.reason))
+      else if(d.action==='exclude'&&exactKeys(d,['action','id','reason'])&&validText(d.reason))
         byId.set(d.id,{action:d.action,reason:d.reason});
       else return blocked('decision_invalid_action');
     }
