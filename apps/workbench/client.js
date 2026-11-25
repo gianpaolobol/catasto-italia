@@ -6,6 +6,7 @@ const byId=id=>document.getElementById(id);
 const field=byId('case'),status=byId('status'),download=byId('download'),load=byId('load'),analyze=byId('analyze'),guide=byId('guide');
 let report=null,busy=false,draft=null,geometryReport=null,incomeReport=null;
 const invalid=new Set();
+const geometries=new Map(),incomes=new Map();
 const incomeFields=['category','class','zone','consistency','tariff'];
 const el=(tag,text)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;return e;};
 function clear(){
@@ -164,8 +165,8 @@ byId('download-dossier').addEventListener('click',async()=>{
   lock(true);
   try{
     const payload={draft:JSON.parse(field.value),expectedState:report.state,expectedDigest:report.caseDigest,
-      geometry:geometryReport?{unitId:geometryReport.unitId,vertices:geometryReport.vertices}:null,
-      income:incomeReport?{unitId:incomeReport.unitId,declared:incomeReport.declared}:null};
+      geometry:[...geometries.values()].map(a=>({unitId:a.unitId,vertices:a.vertices})),
+      income:[...incomes.values()].map(a=>({unitId:a.unitId,declared:a.declared}))};
     if(new TextEncoder().encode(JSON.stringify(payload)).length>256*1024)throw Error('too_large');
     const result=await request('/api/dossier',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!result.ok||typeof result.html!=='string')throw Error('blocked');
@@ -215,9 +216,10 @@ byId('visura-example').addEventListener('click',()=>runVisura(true));
 byId('visura-check').addEventListener('click',()=>runVisura(false));
 
 function clearGeometryAnnex(){
-  geometryReport=null;byId('geometry-result').textContent='Nessuna misura corrente.';byId('geometry-download').disabled=true;
+  geometries.delete(byId('geometry-unit').value);geometryReport=null;byId('geometry-result').textContent='Nessuna misura corrente.';byId('geometry-download').disabled=true;
 }
 function resetGeometry(){
+  geometries.clear();
   const option=el('option','Analizza il caso');option.value='';
   byId('geometry-unit').replaceChildren(option);byId('geometry-vertices').value='';clearGeometryAnnex();refreshGeometry();
 }
@@ -230,12 +232,18 @@ function populateGeometryUnits(){
   refreshGeometry();
 }
 function refreshGeometry(){
+  byId('geometry-count').textContent='Unità con misura corrente: '+geometries.size;
   const enabled=!busy&&!invalid.size&&report?.state==='research_candidate';
   byId('geometry-unit').disabled=!enabled;
   for(const id of ['geometry-example','geometry-vertices','geometry-measure'])byId(id).disabled=!enabled||!byId('geometry-unit').value;
   byId('geometry-download').disabled=!enabled||!geometryReport;
 }
-byId('geometry-unit').addEventListener('change',()=>{byId('geometry-vertices').value='';clearGeometryAnnex();refreshGeometry();});
+byId('geometry-unit').addEventListener('change',()=>{
+  geometryReport=geometries.get(byId('geometry-unit').value)??null;
+  byId('geometry-vertices').value=geometryReport?JSON.stringify(geometryReport.vertices,null,2):'';
+  byId('geometry-result').textContent=geometryReport?'Area geometrica: '+geometryReport.areaM2+' m²; perimetro: '+geometryReport.perimeterMm+' mm. Non catastale.':'Nessuna misura corrente.';
+  refreshGeometry();
+});
 byId('geometry-vertices').addEventListener('input',()=>{clearGeometryAnnex();refreshGeometry();});
 byId('geometry-example').addEventListener('click',()=>{
   if(busy||invalid.size||!report||!byId('geometry-unit').value)return;
@@ -250,7 +258,7 @@ byId('geometry-measure').addEventListener('click',()=>{
     if(raw.length>16384)throw Error('too_large');
     const measured=measureSyntheticPolygon(report,byId('geometry-unit').value,JSON.parse(raw));
     if(measured.state==='measured'){
-      geometryReport=measured;
+      geometryReport=measured;geometries.set(measured.unitId,measured);
       byId('geometry-result').textContent='Area geometrica: '+measured.areaM2+' m²; perimetro: '+measured.perimeterMm+' mm. Non catastale.';
     }else byId('geometry-result').textContent='Contorno bloccato: '+measured.blocker;
   }catch{byId('geometry-result').textContent='Contorno JSON non valido.';}
@@ -278,8 +286,9 @@ byId('handoff-download').addEventListener('click',async()=>{
   finally{lock(false);}
 });
 
-function clearIncome(){incomeReport=null;byId('income-result').textContent='Nessun calcolo corrente.';}
+function clearIncome(){incomes.delete(byId('income-unit').value);incomeReport=null;byId('income-result').textContent='Nessun calcolo corrente.';}
 function resetIncome(){
+  incomes.clear();
   const option=el('option','Analizza il caso');option.value='';
   byId('income-unit').replaceChildren(option);
   for(const k of incomeFields)byId('income-'+k).value='';
@@ -294,14 +303,18 @@ function populateIncomeUnits(){
   refreshIncome();
 }
 function refreshIncome(){
+  byId('income-count').textContent='Unità con calcolo corrente: '+incomes.size;
   const enabled=!busy&&!invalid.size&&report?.state==='research_candidate';
   byId('income-unit').disabled=!enabled;
   for(const k of [...incomeFields,'example','calculate'])byId('income-'+k).disabled=!enabled||!byId('income-unit').value;
   byId('income-download').disabled=!enabled||!incomeReport;
 }
 byId('income-unit').addEventListener('change',()=>{
-  for(const k of incomeFields)byId('income-'+k).value='';
-  clearIncome();refreshIncome();
+  incomeReport=incomes.get(byId('income-unit').value)??null;
+  const d=incomeReport?.declared;
+  [d?.category,d?.classNumber,d?.zone,d?.consistency,d?.tariff].forEach((v,i)=>byId('income-'+incomeFields[i]).value=v??'');
+  byId('income-result').textContent=incomeReport?'Prodotto esatto: € '+incomeReport.exactProductEur+' (simulazione, non rendita ufficiale).':'Nessun calcolo corrente.';
+  refreshIncome();
 });
 for(const k of incomeFields)byId('income-'+k).addEventListener('input',()=>{clearIncome();refreshIncome();});
 byId('income-example').addEventListener('click',()=>{
@@ -321,7 +334,7 @@ byId('income-calculate').addEventListener('click',async()=>{
     if(new TextEncoder().encode(JSON.stringify(payload)).length>256*1024)throw Error('too_large');
     const result=await request('/api/income',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!result.ok||result.worksheet?.caseDigest!==digest||result.worksheet?.unitId!==unitId)throw Error('blocked');
-    incomeReport=result.worksheet;
+    incomeReport=result.worksheet;incomes.set(unitId,incomeReport);
     byId('income-result').textContent='Prodotto esatto: € '+incomeReport.exactProductEur+' (simulazione, non rendita ufficiale).';
   }catch{byId('income-result').textContent='Calcolo bloccato: controlla categoria, classe, zona sintetica e valori positivi.';}
   finally{lock(false);}
