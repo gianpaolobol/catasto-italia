@@ -134,3 +134,8 @@
 - PR #24 integrata a cb937d0f11ae9c5a3f11fe6b71f8a30057da4ad1; CI 45542302228 job 138963485147, head/base esatti, 576/576 pass.
 - ID05/28/29: raster PGM opt-in dalla stessa invocazione OCR; verifica copia, digest annidati, overlay ricalcolato e blocco senza dati parziali. API metadata-only invariata. Revisione sequenziale e correzione versione; 12 test nuovi predisposti, CI richiesta (attesi 588), clone locale bloccato DNS. Branch feat/ocr-exact-raster-review, evidenze docs/qa/ITERATION_026.md.
 - Non UI, non autenticazione, non sandbox OS, non mapping PDF o Windows/multipagina OCR. Prossimo: CI/merge, UI locale, isolamento OS, corpus territoriale, Building Core e QA 100+100. Nessun caso integrale, verifica professionale o test DOCFA/SISTER reale, firma o invio.
+
+## Iterazione 27 — 2026-11-25
+- PR #25 integrata a f4207f6a88b9d070d3d724fd2a05093904c74187; CI 45548773792 job 138984648909, head/base esatti, 588/588 pass.
+- ID05/28/29: generatore vista HTML locale autonoma senza JS/server, PNG lossless, overlay pixel e link reciproci, score grezzo, escaping e CSP, nessuna scrittura automatica; revisione sequenziale con preflight input. 9 test nuovi predisposti (8 unitari + 1 nativo), CI richiesta (attesi 597); clone locale bloccato DNS. Branch feat/local-ocr-review-html, evidenze docs/qa/ITERATION_027.md.
+- Non test browser reale o UI integrata, non sandbox OS, mapping PDF, multipagina OCR o Windows. Prossimo: CI/merge, collaudo browser, UI locale, isolamento OS, corpus territoriale, Building Core e QA 100+100. Nessun caso integrale, verifica professionale, test DOCFA/SISTER reale, firma o trasmissione.
