@@ -15,12 +15,16 @@ export function recognizeDiagnosticPdfBlock(pdf){
   const rendered=rasterizeDiagnosticPdf(pdf);
   if(rendered.state!=='raster_candidate')return blocked('raster',rendered.issues[0].code);
   const raster=rendered.evidence;
-  if(sha256(rendered.raster)!==raster.rasterSha256)
+  const {evidenceSha256:rasterDigest,...rasterFields}=raster;
+  if(digest(rasterFields)!==rasterDigest||sha256(rendered.raster)!==raster.rasterSha256)
     return blocked('binding','pdf_ocr_raster_digest_mismatch');
   const recognized=recognizeRasterBlock(rendered.raster);
   if(recognized.state!=='ocr_evidence_candidates')return blocked('ocr',recognized.issues[0].code);
   const ocr=recognized.evidence,run=recognized.nativeRun;
-  if(ocr.rasterSha256!==raster.rasterSha256||ocr.widthPx!==raster.widthPx||
+  const {evidenceSha256:ocrDigest,...ocrFields}=ocr;
+  const {runSha256,...runFields}=run;
+  if(digest({evidence:ocrFields,words:recognized.words})!==ocrDigest||digest(runFields)!==runSha256||
+    ocr.rasterSha256!==raster.rasterSha256||ocr.widthPx!==raster.widthPx||
     ocr.heightPx!==raster.heightPx||ocr.coordinateSpace!==raster.coordinateSpace||
     run.evidenceSha256!==ocr.evidenceSha256)
     return blocked('binding','pdf_ocr_evidence_mismatch');
