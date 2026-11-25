@@ -114,3 +114,8 @@
 - PR #20 integrata a 2c0610045de2e3e472700c47b2c00d17bcda4dbc; CI 45513165590, job 138865793014, head/base esatti, 538/538 pass.
 - ID05/29: rasterizzazione diagnostica Linux PDF singola pagina a PGM 144 DPI con geometria limitata, controllo dimensioni e digest PDF/raster, revisione sequenziale e correzione della semantica del flag annotazioni. Prova CLI separata PDF sintetico 320x80 pt -> PGM 640x160 -> Tesseract ita TEST 0007 riuscita; non test del modulo. 13 nuovi test predisposti, CI richiesta. Branch feat/pdf-raster-diagnostic; evidenze docs/qa/ITERATION_022.md.
 - Non sandbox, non mapping PDF affidabile, non OCR automatico o Windows/multipagina. Prossimo: gate CI e merge, collegamento raster/OCR, isolamento OS, fonti territoriali, Building Core e QA 100+100. Nessun caso integrale o test ufficiale DOCFA/SISTER.
+
+## Iterazione 23 — 2026-11-25
+- PR #21 integrata a b31ea2b40ae54e3f01cd733aea0bcb8651c2e888; CI 45520681145 job 138891429995, head/base esatti, 551/551 pass.
+- ID05/29: composizione diagnostica nativa PDF-raster-OCR, digest ricalcolati e blocco senza risultati parziali; revisione sequenziale, 5 test sintetici predisposti e CI aggiornata con modello italiano obbligatorio. Branch feat/pdf-ocr-diagnostic-chain; evidenze docs/qa/ITERATION_023.md. Attesi 556 test, non ancora verificati.
+- Non sandbox, non mapping PDF o layout verificato, non Windows/multipagina. Prossimo: CI/merge, isolamento OS, corpus territoriale, adattatori Building Core, UI e QA 100+100. Nessun caso catastale integrale o test ufficiale DOCFA/SISTER.
