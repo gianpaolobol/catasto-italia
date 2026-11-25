@@ -14,7 +14,15 @@ fieldset{border:1px solid #d7e0db;margin:12px 0;padding:10px;min-width:0}legend{
 <button id="open-guide" type="button">Apri editor guidato dal JSON</button></details><button id="analyze" type="button">Analizza proposta</button>
 <p id="status" role="status" class="status"></p></section>
 <section><h2>2. Esamina l'ipotesi</h2><p id="summary">Carica un esempio e avvia l'analisi.</p>
-<h3>Relazione di ricerca</h3><p id="relation">—</p>
+<details><summary>Confronta trascrizione visura sintetica</summary>
+<p>Verifica separata, non modifica né convalida la pratica. Nessun PDF o dato reale.</p>
+<label for="visura-claim">Identificativo osservato (unità e subalterno)</label><select id="visura-claim"><option value="">Carica un caso nell’editor guidato</option></select>
+<button id="visura-example" type="button">Genera esempio sintetico dal caso</button>
+<label for="visura-file">Importa trascrizione sintetica JSON</label><input id="visura-file" type="file" accept=".json,application/json">
+<label for="visura-text">Trascrizione dei campi isolati (JSON)</label><textarea id="visura-text" spellcheck="false" autocomplete="off"></textarea>
+<button id="visura-check" type="button">Confronta con l’inventario</button>
+<pre id="visura-result" aria-live="polite">Nessun confronto corrente.</pre>
+</details><h3>Relazione di ricerca</h3><p id="relation">—</p>
 <h3>Operazioni proposte</h3><div id="operations"></div><h3>Dettagli, evidenze e blocchi</h3><pre id="details">—</pre>
 <button id="download" type="button" disabled>Scarica rapporto JSON non ufficiale</button>
 <small>Il rapporto è diagnostico; non è un file importabile in DOCFA.</small>
