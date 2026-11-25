@@ -22,7 +22,7 @@ const values=['yes','no','unknown'];
 export function draftFromReviewedVisura(input){
   if(!shape(input,['version','kind','scenario','province','asOf','observedUnits','proposedUnits','originIds','coverage','factRows'])||
     input.version!=='0.1.0'||input.kind!=='synthetic-reviewed-visura'||!day(input.asOf)||
-    !['fusion','division','new_construction','internal_distribution'].includes(input.scenario)||typeof input.province!=='string'||!/^[A-Z]{2}$/.test(input.province)||
+    !['fusion','division','new_construction','internal_distribution','destination_change'].includes(input.scenario)||typeof input.province!=='string'||!/^[A-Z]{2}$/.test(input.province)||
     !arr(input.observedUnits,100)||!arr(input.proposedUnits,100)||input.observedUnits.length+input.proposedUnits.length>100||
     !arr(input.originIds,100)||!input.originIds.every(id)||!unique(input.originIds)||
     !shape(input.coverage,['parcel','observedClaims'])||!parcel(input.coverage.parcel)||
