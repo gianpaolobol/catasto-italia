@@ -120,6 +120,21 @@
       "url": "https://def.finanze.it/DocTribFrontend/executePrintArticolo.do?articolo=Allegato+C&codiceOrdinamento=60C+++++0000000&id=%7BCE130656-7850-4531-9B95-F17CC19790C4%7D",
       "locator": "Allegato C, criteri generali e gruppi R/P/T, pp. 1–2",
       "note": "Testo e pagine verificati sul portale MEF; raccordo con categorie e poligoni DOCFA da verificare."
+    },
+    {
+      "id": "circ9-2001",
+      "revision": 1,
+      "title": "Circolare 9/2001, prot. 69262",
+      "kind": "guidance",
+      "scope": "national",
+      "publishedOn": "2001-11-26",
+      "effectiveFrom": "2002-01-01",
+      "effectiveUntil": null,
+      "reviewedOn": "2026-11-25",
+      "status": "pending",
+      "url": "https://www1.agenziaentrate.gov.it/mt/circolari/circolari_2001/circolare_9_2001.pdf",
+      "locator": "PDF pp. 3 e 6; §4 e Causali delle denunce di variazione",
+      "note": "Fonte storica ufficiale consultata; DOCFA 3.0. Ricerca diagnostica sulla redistribuzione interna senza cambio identificativo; condizioni attuali, territoriali e classamento da accertare. Non abilitata a regole operative."
     }
   ]
 }
