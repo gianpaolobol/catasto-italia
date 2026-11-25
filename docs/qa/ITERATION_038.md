@@ -1,0 +1,13 @@
+# Iterazione 038 — modalità C — 2026-11-25
+
+## Gate precedente
+PR #37 integrata squash f96945ef7d47a6779075331f55b0251d41e210b2. CI 45616322957, job 139212538588: 725/725, zero fail/cancel/skip/todo. Log checkout 13a72dc, head 618799eaa78ec3fcab717877727064095374488a, base e364dfddc35e3137c8a02e59d7fd0d9043e44e90; main identico al base prima del merge, mergeable verificato. Backup entrambi presenti e non modificati.
+
+## Piano, implementazione e revisione
+ID15/16/17/26/28/29: primo annesso geometrico sintetico nel workbench, dopo analisi positiva, legato al digest e a una sola unità risultante C/V. Nessuna modifica al rapporto o al dossier, nessuna approvazione implicita. Contorno ortogonale semplice senza fori, 4–128 vertici interi in mm, limite coordinate, area esatta BigInt con conversione decimale a m² e perimetro. Rifiuto intersezioni, tangenze non adiacenti, duplicati e segmenti degeneri; nessun risultato parziale. Nessun coefficiente, tariffa o regola catastale nuova: sola geometria euclidea. La misura non rappresenta superficie catastale, scala CAD, sovrapposizioni tra più contorni, planimetria o poligono DOCFA. Non collegare a rendita/classamento senza fonti ufficiali e validazione.
+Revisione sequenziale, non agenti indipendenti: corrette liste sparse e ordine di invalidazione del rapporto prima del reset geometrico. UI separata, output textContent, download esplicito, stato invalidato su cambio caso/unità/vertici, nessuna persistenza. Job browser CI separato read-only con timeout, checkout già pin, Playwright 1.57.0 e Chromium associato; prova sintetica su 2 viewport e 4 scenari, estesa a download geometrico e invalidazione.
+
+## Accettazione e prove
+- Blob modulo eeb67fe779dbb02054e236f6ffc1085b038464d3 verificato con git hash-object sulla copia locale. Node 22.16.0: 210 asserzioni isolate pass (10 controlli mirati + area/perimetro su 100 rettangoli sintetici con oracolo indipendente); 11 controlli preliminari V8 pass prima della correzione. Non sono pratiche integrali né revisioni professionali.
+- tests/synthetic-geometry.test.mjs predisposto per 4 percorsi integrati, casi positivi e negativi e oracolo rettangoli. Comando node --test tests/*.test.mjs. Clone completo locale ancora bloccato DNS. Nuovo job browser e suite completa non ancora verificati; no merge finché entrambi non passano.
+- Solo sintetico. Licenza invariata. Nessuna compatibilità DOCFA/SISTER, firma o invio. Gate 100 pratiche + 100 verifiche incrociate professionali ancora aperti. Priorità successive: ampliamento e cambio d'uso, geometrie calibrate/territoriali, classamento/rendita con fonti ufficiali e Building Core con applicazioni esterne.
