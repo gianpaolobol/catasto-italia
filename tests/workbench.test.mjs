@@ -92,7 +92,7 @@ for(const [category,unit,consistency,tariff,expected] of [['B/1','m3','12','2.5'
 for(const [label,mutate] of [
   ['real zone',q=>q.declared.zone='BO'],['unknown group',q=>q.declared.category='D/1'],['unit mismatch',q=>q.declared.unit='m2'],
   ['zero',q=>q.declared.tariff='0'],['exponent',q=>q.declared.tariff='1e3'],['negative',q=>q.declared.consistency='-1'],
-  ['comma',q=>q.declared.consistency='4,5'],['overprecision',q=>q.declared.consistency='1.0001'],
+  ['comma',q=>q.declared.consistency='4,5'],['trailing newline',q=>q.declared.consistency='1\n'],['category newline',q=>q.declared.category='A/2\n'],['overprecision',q=>q.declared.consistency='1.0001'],
   ['numeric JSON',q=>q.declared.consistency=1],['not resulting',q=>q.unitId='other'],
   ['blocked case',q=>q.draft.assertions.pop()],['unexpected approval',q=>q.declared.approved=true],
   ['non-synthetic source',q=>q.declared.sourceId='official']
