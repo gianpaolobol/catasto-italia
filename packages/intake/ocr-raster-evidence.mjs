@@ -7,19 +7,29 @@ import {parseOcrTsv} from './ocr-tsv-candidates.mjs';
 const MAX_PIXELS=16_000_000, MAX_TSV_BYTES=4*1024*1024;
 const sha256=bytes=>createHash('sha256').update(bytes).digest('hex');
 const ownedBuffer=value=>Buffer.isBuffer(value)&&value.buffer instanceof ArrayBuffer;
+const validRasterBytes=value=>ownedBuffer(value)&&value.length<=MAX_PIXELS+64;
 const blocked=code=>({version:'0.1.0',state:'blocked',operative:false,authenticated:false,requiresHumanReview:true,evidence:null,words:[],issues:[{code}]});
 
 // Deliberately restricted canonical P5: one 8-bit grayscale image, LF header,
 // no comments or padding, no trailing data. Other legal PGM variants are unsupported.
-export function bindOcrRasterEvidence(rasterBytes,tsvBytes){
-  if(!ownedBuffer(rasterBytes)||rasterBytes.length>MAX_PIXELS+64)return blocked('invalid_raster_bytes');
-  if(!ownedBuffer(tsvBytes)||tsvBytes.length>MAX_TSV_BYTES)return blocked('invalid_tsv_bytes');
-  const raster=Buffer.from(rasterBytes),tsv=Buffer.from(tsvBytes);
+// Reused before native processing; the validated copy is the exact input to OCR.
+export function snapshotCanonicalPgm(rasterBytes){
+  if(!validRasterBytes(rasterBytes))return {code:'invalid_raster_bytes'};
+  const raster=Buffer.from(rasterBytes);
   const header=/^P5\n([1-9]\d{0,4}) ([1-9]\d{0,4})\n255\n/.exec(raster.subarray(0,64).toString('latin1'));
-  if(!header)return blocked('unsupported_pgm_header');
+  if(!header)return {code:'unsupported_pgm_header'};
   const widthPx=Number(header[1]),heightPx=Number(header[2]),pixels=widthPx*heightPx;
   if(widthPx>20000||heightPx>20000||pixels>MAX_PIXELS||raster.length!==header[0].length+pixels)
-    return blocked('invalid_pgm_size');
+    return {code:'invalid_pgm_size'};
+  return {raster,widthPx,heightPx};
+}
+
+export function bindOcrRasterEvidence(rasterBytes,tsvBytes){
+  if(!validRasterBytes(rasterBytes))return blocked('invalid_raster_bytes');
+  if(!ownedBuffer(tsvBytes)||tsvBytes.length>MAX_TSV_BYTES)return blocked('invalid_tsv_bytes');
+  const snapshot=snapshotCanonicalPgm(rasterBytes);
+  if(snapshot.code)return blocked(snapshot.code);
+  const {raster,widthPx,heightPx}=snapshot,tsv=Buffer.from(tsvBytes);
   let decoded;
   try{
     // Retain BOM so the strict TSV header rejects it; never replace invalid UTF-8.
