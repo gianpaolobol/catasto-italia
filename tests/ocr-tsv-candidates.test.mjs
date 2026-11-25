@@ -53,3 +53,19 @@ test('control and bidi characters rejected',()=>expectBlock(make(...base,word(1,
 test('structural row cannot claim score',()=>expectBlock(make(page,block.replace('-1','90'),par,line,word()),'invalid_ocr_structure'));
 test('empty page has no candidates',()=>expectBlock(make(page),'ocr_no_words'));
 test('bad row after valid word never returns partial output',()=>expectBlock(make(...base,word(),'invalid'),'invalid_ocr_row'));
+
+test('word inside raster but outside active line is rejected',()=>expectBlock(make(...base,word(1,300)),'ocr_child_outside_parent'));
+test('word starts before active line',()=>expectBlock(make(...base,word(1,9)),'ocr_child_outside_parent'));
+test('line outside paragraph is rejected',()=>expectBlock(make(page,block,par,row(4,1,1,1,1,0,10,450,300,30,-1,''),word()),'ocr_child_outside_parent'));
+test('paragraph outside block is rejected',()=>expectBlock(make(page,block,row(3,1,1,1,0,0,9,10,600,450,-1,''),line,word()),'ocr_child_outside_parent'));
+test('word exactly on line right boundary remains a candidate',()=>assert.equal(parseOcrTsv(make(...base,word(1,280)),dims).state,'ocr_candidates'));
+test('sibling line cannot reuse previous line geometry',()=>{
+  const second=row(4,1,1,1,2,0,10,50,300,30,-1,'');
+  const wrong=row(5,1,1,1,2,1,10,10,30,20,'95','F');
+  expectBlock(make(...base,word(),second,wrong),'ocr_child_outside_parent');
+});
+test('new block replaces all previous ancestors',()=>{
+  const next=[row(2,1,2,0,0,0,400,100,100,100,-1,''),row(3,1,2,1,0,0,400,100,100,100,-1,''),row(4,1,2,1,1,0,400,100,100,20,-1,''),row(5,1,2,1,1,1,400,100,100,20,'95','F')];
+  const out=parseOcrTsv(make(...base,word(),...next),dims);
+  assert.equal(out.state,'ocr_candidates');assert.equal(out.words[1].text,'F');
+});

@@ -66,3 +66,8 @@ test('no external engine or page provenance inferred',()=>{
  const x=bind(pgm(),tsv());assert.equal(x.evidence.page,undefined);assert.equal(x.evidence.engineVersion,undefined);
  assert.equal(x.evidence.documentSha256,undefined);assert.equal(x.words[0].requiresHumanReview,true);
 });
+
+test('inconsistent hierarchy cannot produce a bound OCR digest',()=>{
+  const bad=Buffer.from(tsv().toString().replace('5\t1\t1\t1\t1\t1\t2\t2\t20\t10','5\t1\t1\t1\t1\t1\t30\t2\t20\t10'));
+  reject(pgm(),bad,'ocr_child_outside_parent');
+});
