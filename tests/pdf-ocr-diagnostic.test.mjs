@@ -103,3 +103,13 @@ test('opt-in review fails without raster or words on invalid and blank PDF',()=>
     assert.equal(result.evidence,null);assert.deepEqual(result.words,[]);
   }
 });
+
+test('native OCR review renders local HTML with exact raster and words',async()=>{
+  const {renderLocalOcrReview}=await import('../packages/intake/ocr-local-review-html.mjs');
+  const result=recognizeDiagnosticPdfReview(syntheticPdf());
+  const view=renderLocalOcrReview(result,result.reviewRaster);
+  if(process.platform!=='linux'){assert.equal(view.html,null);return;}
+  assert.equal(view.state,'local_review_candidate',JSON.stringify(view.issues));
+  assert.match(view.html,/<bdi>TEST<\/bdi>/);assert.match(view.html,/<bdi>0007<\/bdi>/);
+  assert.match(view.html,/viewBox="0 0 640 160"/);
+});
