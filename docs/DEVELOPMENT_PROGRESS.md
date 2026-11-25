@@ -149,3 +149,8 @@
 - PR #27 integrata a bc6df6f754b8f7243e347cd9de100d89ae1dbb74; CI 45563521436 job 139032677933 sul head/base esatti, 597/597 pass; browser smoke opt-in escluso dalla CI.
 - ID05/28/29: proposta locale di revisione OCR vincolata a raster e catena, retain/correct/exclude con copertura completa, originale e coordinate preservati, motivo obbligatorio per modifica/esclusione, digest canonico. Revisione sequenziale e correzioni; 19 test sintetici predisposti, CI richiesta (attesi 616), clone locale bloccato DNS. Branch feat/ocr-review-decisions, evidenze docs/qa/ITERATION_029.md.
 - Non approvazione professionale, UI editing, firma o autenticazione, storage sicuro, sandbox OS, pratica integrale o verifica professionale. Prossimo: CI/merge, UI/replay, isolamento OS, corpus territoriale, Building Core e QA 100+100. Nessun test DOCFA/SISTER reale, firma o trasmissione.
+
+## Iterazione 30 — 2026-11-25
+- PR #28 già integrata a a47e95231d0c3f0fbef588d09c78d96c6743ff1c; CI 45570917039 job 139057052788, head/base esatti, 616/616 pass.
+- ID05/28/29: replay JSON contro evidenze OCR e raster originari, ricostruzione canonica e controllo campi derivati; revisione sequenziale e correzione zero con segno. 29 nuovi test predisposti, CI richiesta (attesi 645), clone locale bloccato DNS. Branch feat/ocr-review-replay, evidenze docs/qa/ITERATION_030.md.
+- Non autenticazione, firma, approvazione, storage sicuro o sandbox OS. Prossimo: CI/merge, UI editing e replay, isolamento OS, corpus territoriale, Building Core e QA 100+100. Nessuna pratica integrale, verifica professionale, prova DOCFA/SISTER reale, firma o invio.
