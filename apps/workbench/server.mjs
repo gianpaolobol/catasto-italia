@@ -6,6 +6,7 @@ import {syntheticCase,scenarios} from '../../packages/workbench/fixtures.mjs';
 import {compareSyntheticVisura,syntheticVisuraExample} from '../../packages/workbench/visura-comparison.mjs';
 import {buildPracticeReport} from '../../packages/workbench/index.mjs';
 import {syntheticIncomeWorksheet} from '../../packages/workbench/synthetic-income.mjs';
+import {buildIntegratedDossier} from '../../packages/workbench/integrated-dossier.mjs';
 import {buildSyntheticHandoff} from '../../packages/workbench/synthetic-handoff.mjs';
 const page=readFileSync(new URL('./index.html',import.meta.url));
 const script=readFileSync(new URL('./client.js',import.meta.url));
@@ -44,7 +45,7 @@ export function createWorkbenchServer(){
         if(scenario)return json(res,200,syntheticCase(scenario));
         return reject(res,404,'not_found');
       }
-      if(req.method!=='POST'||!['/api/report','/api/visura-check','/api/visura-example','/api/handoff','/api/income'].includes(req.url))return reject(res,404,'not_found');
+      if(req.method!=='POST'||!['/api/report','/api/visura-check','/api/visura-example','/api/handoff','/api/income','/api/dossier'].includes(req.url))return reject(res,404,'not_found');
       if(req.headers.origin!=='http://'+authority||req.headers['content-type']!=='application/json')
         return reject(res,403,'same_origin_json_required');
       if(req.headers['content-encoding']!==undefined)return reject(res,415,'encoding_not_supported');
@@ -65,6 +66,7 @@ export function createWorkbenchServer(){
         try{return json(res,200,syntheticVisuraExample(envelope.draft,envelope.claimId));}
         catch{return reject(res,400,'invalid_example');}
       }
+      if(req.url==='/api/dossier'){const result=buildIntegratedDossier(envelope);return json(res,result.ok?200:400,result);}
       if(req.url==='/api/income')return json(res,200,syntheticIncomeWorksheet(envelope));
       if(req.url==='/api/handoff'){
         if(!envelope||typeof envelope!=='object'||Array.isArray(envelope)||Object.keys(envelope).length!==2||!Object.hasOwn(envelope,'target')||!Object.hasOwn(envelope,'draft'))return reject(res,400,'invalid_handoff_request');
