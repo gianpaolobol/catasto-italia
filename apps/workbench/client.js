@@ -10,10 +10,10 @@ const invalid=new Set();
 const el=(tag,text)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;return e;};
 function clear(){
   byId('visura-result').textContent='Nessun confronto corrente.';
-  report=null;resetGeometry();download.disabled=true;byId('download-dossier').disabled=true;byId('summary').textContent='Nessun rapporto corrente.';
+  report=null;byId('handoff-status').textContent='Analizza un caso sintetico.';resetGeometry();download.disabled=true;byId('download-dossier').disabled=true;byId('summary').textContent='Nessun rapporto corrente.';
   byId('relation').textContent='—';byId('details').textContent='—';byId('operations').replaceChildren();
 }
-function refresh(){refreshGeometry();byId('download-dossier').disabled=busy||!report||report.diagnosticReportExportable!==true;for(const id of ['visura-check','visura-example','visura-claim','visura-file','visura-text'])byId(id).disabled=busy||invalid.size>0;analyze.disabled=busy||invalid.size>0;byId('save-draft').disabled=busy||invalid.size>0;for(const e of guide.querySelectorAll('input,select'))e.disabled=busy;}
+function refresh(){refreshGeometry();const handoffEnabled=!busy&&!invalid.size&&report?.state==='research_candidate';byId('handoff-target').disabled=!handoffEnabled;byId('handoff-download').disabled=!handoffEnabled;byId('download-dossier').disabled=busy||!report||report.diagnosticReportExportable!==true;for(const id of ['visura-check','visura-example','visura-claim','visura-file','visura-text'])byId(id).disabled=busy||invalid.size>0;analyze.disabled=busy||invalid.size>0;byId('save-draft').disabled=busy||invalid.size>0;for(const e of guide.querySelectorAll('input,select'))e.disabled=busy;}
 function lock(value){busy=value;byId('import-draft').disabled=value;byId('reviewed-import').disabled=value;byId('reviewed-example').disabled=value;byId('reviewed-template').disabled=value;load.disabled=value;field.readOnly=value;byId('scenario').disabled=value;byId('open-guide').disabled=value;refresh();}
 function resetGuide(){draft=null;invalid.clear();guide.replaceChildren();const option=el('option','Carica un caso nell’editor guidato');option.value='';byId('visura-claim').replaceChildren(option);byId('visura-text').value='';clearVisura();refresh();}
 function showGuide(input){
@@ -250,4 +250,20 @@ byId('geometry-download').addEventListener('click',()=>{
   if(busy||invalid.size||!geometryReport||geometryReport.caseDigest!==report?.caseDigest)return;
   try{saveJson(geometryReport,'catasto-annesso-geometrico-sintetico.json');status.textContent='Download annesso geometrico richiesto.';}
   catch{status.textContent='Download non riuscito.';}
+});
+
+byId('handoff-target').addEventListener('change',()=>{byId('handoff-status').textContent='Destinatario selezionato.';});
+byId('handoff-download').addEventListener('click',async()=>{
+  if(busy||invalid.size||report?.state!=='research_candidate')return;
+  const digest=report.caseDigest,target=byId('handoff-target').value;
+  lock(true);
+  try{
+    const payload={target,draft:JSON.parse(field.value)};
+    if(new TextEncoder().encode(JSON.stringify(payload)).length>256*1024)throw Error('too_large');
+    const result=await request('/api/handoff',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(!result.ok||result.handoff?.caseDigest!==digest||result.handoff?.target!==target)throw Error('blocked');
+    saveJson(result.handoff,'catasto-handoff-'+target+'-sintetico.json');
+    byId('handoff-status').textContent='Download richiesto: interscambio non ufficiale, importatore destinatario non validato.';
+  }catch{byId('handoff-status').textContent='Interscambio bloccato: nessun file generato.';}
+  finally{lock(false);}
 });
