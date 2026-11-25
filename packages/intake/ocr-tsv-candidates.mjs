@@ -15,6 +15,7 @@ export function parseOcrTsv(tsv,raster){
   if(rows.shift()!==HEADER||!rows.length||rows.length>MAX_ROWS)return blocked('invalid_ocr_header_or_rows');
   const words=[],seen=new Set(),seenBoxes=new Set();
   let current=null;
+  const ancestors=[];
   for(const row of rows){
     const c=row.split('\t');
     if(c.length!==12)return blocked('invalid_ocr_row');
@@ -33,6 +34,14 @@ export function parseOcrTsv(tsv,raster){
       if(!current||current.level<level-1||
         path.slice(0,level-1).some((v,i)=>v!==current.path[i]))return blocked('invalid_ocr_order');
     }
+    const box=[x,y,x+w,y+h];
+    if(level>1){
+      const parent=ancestors[level-2];
+      if(!parent||box[0]<parent[0]||box[1]<parent[1]||box[2]>parent[2]||box[3]>parent[3])
+        return blocked('ocr_child_outside_parent');
+    }
+    ancestors.length=level-1;
+    ancestors.push(box);
     current={level,path};
     if(level<5){
       if(c[10]!=='-1'||c[11]!=='')return blocked('invalid_ocr_structure');
@@ -45,7 +54,7 @@ export function parseOcrTsv(tsv,raster){
     const boxKey=[x,y,w,h].join('/');
     if(seenBoxes.has(boxKey))return blocked('duplicate_ocr_word_geometry');
     seenBoxes.add(boxKey);
-    words.push({id:'ocr-'+path.join('-'),boxPx:[x,y,x+w,y+h],text:value,engineScore:raw,requiresHumanReview:true});
+    words.push({id:'ocr-'+path.join('-'),boxPx:box,text:value,engineScore:raw,requiresHumanReview:true});
   }
   if(!words.length)return blocked('ocr_no_words');
   return {version:'0.1.0',state:'ocr_candidates',operative:false,authenticated:false,requiresHumanReview:true,
