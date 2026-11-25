@@ -81,3 +81,11 @@ test('invalid result cannot emit a partial page',()=>{
   const {result,bytes}=fixture();result.operative=true;
   assert.equal(render(result,bytes).html,null);
 });
+
+test('oversized display word list and text fail before rendering',()=>{
+  const {result,bytes}=fixture();
+  result.words=Array.from({length:2049},()=>result.words[0]);
+  assert.equal(render(result,bytes).issues[0].code,'review_invalid_display_word');
+  const long=fixture('x'.repeat(513));
+  assert.equal(render(long.result,long.bytes).issues[0].code,'review_invalid_display_word');
+});
