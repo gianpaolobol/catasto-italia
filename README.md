@@ -6,3 +6,6 @@
 
 ## Laboratorio locale (prototipo non ufficiale)
 Solo dati sintetici, Node.js 22 o successivo. Dal clone: `node apps/workbench/server.mjs`; aprire `http://127.0.0.1:8765`. Selezionare un esempio (fusione, divisione, nuova costruzione), caricarlo, modificare i campi guidati (inventario, subalterni proposti, copertura e trascrizioni distinte), analizzarlo e scaricare il rapporto diagnostico JSON. La modalità JSON avanzata rimane disponibile; le modifiche invalidano il rapporto e non aggiornano automaticamente le evidenze. È una UI di ricerca con dati modificabili, non un programma DOCFA né una pratica validata. Non usare documenti reali e non esporre il server in rete. Test: `node --test tests/workbench.test.mjs`.
+
+### Partenza da trascrizione sintetica
+Scegliere uno scenario e usare **Prepara da esempio trascritto**, oppure scaricare il modello JSON e reimportarlo dopo modifiche. Il formato `synthetic-reviewed-visura` separa gruppi osservati/proposti, unità di origine, copertura e coppie dichiarato/trascritto con locatore. L'esempio nasce con presupposti non accertati; esaminarli separatamente nell'editor prima dell'analisi. L'import è locale, non certifica i raggruppamenti o le prove e non accetta documenti ufficiali. Nessun OCR automatico collegato.
