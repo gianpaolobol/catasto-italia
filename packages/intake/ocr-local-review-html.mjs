@@ -35,6 +35,9 @@ function validText(w){
 export function renderLocalOcrReview(result,bytes){
   try{
     const {version,state,operative,authenticated,requiresHumanReview,words,evidence}=result;
+    // Reject oversized word lists/text before cloning or recomputing digests.
+    if(!Array.isArray(words)||words.length===0||words.length>2048||!words.every(w=>w&&validText(w)))
+      return blocked('review_invalid_display_word');
     const snapshot=structuredClone({version,state,operative,authenticated,requiresHumanReview,words,evidence});
     const checked=prepareExactRasterReview(snapshot,bytes);
     if(checked.state!=='raster_review_candidate')return blocked(checked.issues[0].code);
@@ -44,7 +47,7 @@ export function renderLocalOcrReview(result,bytes){
     const areas=[],rows=[];
     for(const [i,word] of snapshot.words.entries()){
       const [x,y,r,b]=word.boxPx, n=i+1, label=esc(word.text), score=esc(word.engineScore);
-      areas.push('<a href="#word-'+n+'" aria-label="Parola '+n+': '+label+'"><rect id="area-'+n+'" x="'+x+'" y="'+y+'" width="'+(r-x)+'" height="'+(b-y)+'"><title>'+label+'</title></rect></a>');
+      areas.push('<a href="#word-'+n+'" tabindex="0" aria-label="Parola '+n+': '+label+'"><rect id="area-'+n+'" x="'+x+'" y="'+y+'" width="'+(r-x)+'" height="'+(b-y)+'"><title>'+label+'</title></rect></a>');
       rows.push('<li id="word-'+n+'"><a href="#area-'+n+'">Area '+n+'</a> <bdi>'+label+'</bdi> <small>Score OCR: '+score+' / 100 — da verificare</small></li>');
     }
     const html='<!doctype html><html lang="it"><head><meta charset="utf-8">'+
