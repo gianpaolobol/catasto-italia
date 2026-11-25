@@ -5,15 +5,16 @@ import {guideFields,editGuidedDraft} from '/guided-draft.mjs';
 import {draftFromReviewedVisura,reviewedVisuraExample} from '/reviewed-visura.mjs';
 const byId=id=>document.getElementById(id);
 const field=byId('case'),status=byId('status'),download=byId('download'),load=byId('load'),analyze=byId('analyze'),guide=byId('guide');
-let report=null,busy=false,draft=null,geometryReport=null;
+let report=null,busy=false,draft=null,geometryReport=null,incomeReport=null;
 const invalid=new Set();
+const incomeFields=['category','class','zone','consistency','tariff'];
 const el=(tag,text)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;return e;};
 function clear(){
   byId('visura-result').textContent='Nessun confronto corrente.';
-  report=null;byId('handoff-status').textContent='Analizza un caso sintetico.';resetGeometry();download.disabled=true;byId('download-dossier').disabled=true;byId('summary').textContent='Nessun rapporto corrente.';
+  report=null;byId('handoff-status').textContent='Analizza un caso sintetico.';resetGeometry();resetIncome();download.disabled=true;byId('download-dossier').disabled=true;byId('summary').textContent='Nessun rapporto corrente.';
   byId('relation').textContent='—';byId('details').textContent='—';byId('operations').replaceChildren();
 }
-function refresh(){refreshGeometry();const handoffEnabled=!busy&&!invalid.size&&report?.state==='research_candidate';byId('handoff-target').disabled=!handoffEnabled;byId('handoff-download').disabled=!handoffEnabled;byId('download-dossier').disabled=busy||!report||report.diagnosticReportExportable!==true;for(const id of ['visura-check','visura-example','visura-claim','visura-file','visura-text'])byId(id).disabled=busy||invalid.size>0;analyze.disabled=busy||invalid.size>0;byId('save-draft').disabled=busy||invalid.size>0;for(const e of guide.querySelectorAll('input,select'))e.disabled=busy;}
+function refresh(){refreshGeometry();refreshIncome();const handoffEnabled=!busy&&!invalid.size&&report?.state==='research_candidate';byId('handoff-target').disabled=!handoffEnabled;byId('handoff-download').disabled=!handoffEnabled;byId('download-dossier').disabled=busy||!report||report.diagnosticReportExportable!==true;for(const id of ['visura-check','visura-example','visura-claim','visura-file','visura-text'])byId(id).disabled=busy||invalid.size>0;analyze.disabled=busy||invalid.size>0;byId('save-draft').disabled=busy||invalid.size>0;for(const e of guide.querySelectorAll('input,select'))e.disabled=busy;}
 function lock(value){busy=value;byId('import-draft').disabled=value;byId('reviewed-import').disabled=value;byId('reviewed-example').disabled=value;byId('reviewed-template').disabled=value;load.disabled=value;field.readOnly=value;byId('scenario').disabled=value;byId('open-guide').disabled=value;refresh();}
 function resetGuide(){draft=null;invalid.clear();guide.replaceChildren();const option=el('option','Carica un caso nell’editor guidato');option.value='';byId('visura-claim').replaceChildren(option);byId('visura-text').value='';clearVisura();refresh();}
 function showGuide(input){
@@ -136,7 +137,7 @@ analyze.addEventListener('click',async()=>{
     report=await request('/api/report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)});
     byId('summary').textContent=report.state==='research_candidate'?'Ipotesi di ricerca: '+report.candidate.cause:'Bloccato — nessuna ipotesi disponibile.';
     byId('relation').textContent=report.relation??'Nessuna relazione di proposta.';
-    showOperations(report.operations);populateGeometryUnits();
+    showOperations(report.operations);populateGeometryUnits();populateIncomeUnits();
     byId('details').textContent=JSON.stringify({warning:report.warning,operations:report.operations,evidence:report.evidence,source:report.source,blockers:report.blockers},null,2);
     status.textContent='Analisi diagnostica completata; nessuna approvazione.';
     download.disabled=report.diagnosticReportExportable!==true;
@@ -266,4 +267,57 @@ byId('handoff-download').addEventListener('click',async()=>{
     byId('handoff-status').textContent='Download richiesto: interscambio non ufficiale, importatore destinatario non validato.';
   }catch{byId('handoff-status').textContent='Interscambio bloccato: nessun file generato.';}
   finally{lock(false);}
+});
+
+function clearIncome(){incomeReport=null;byId('income-result').textContent='Nessun calcolo corrente.';}
+function resetIncome(){
+  const option=el('option','Analizza il caso');option.value='';
+  byId('income-unit').replaceChildren(option);
+  for(const k of incomeFields)byId('income-'+k).value='';
+  clearIncome();refreshIncome();
+}
+function populateIncomeUnits(){
+  const option=el('option','Seleziona unità risultante');option.value='';
+  byId('income-unit').replaceChildren(option);
+  if(report?.state==='research_candidate')for(const op of report.operations)if(['C','V'].includes(op.operation)){
+    const row=el('option',op.operation+' · '+op.unitId);row.value=op.unitId;byId('income-unit').append(row);
+  }
+  refreshIncome();
+}
+function refreshIncome(){
+  const enabled=!busy&&!invalid.size&&report?.state==='research_candidate';
+  byId('income-unit').disabled=!enabled;
+  for(const k of [...incomeFields,'example','calculate'])byId('income-'+k).disabled=!enabled||!byId('income-unit').value;
+  byId('income-download').disabled=!enabled||!incomeReport;
+}
+byId('income-unit').addEventListener('change',()=>{
+  for(const k of incomeFields)byId('income-'+k).value='';
+  clearIncome();refreshIncome();
+});
+for(const k of incomeFields)byId('income-'+k).addEventListener('input',()=>{clearIncome();refreshIncome();});
+byId('income-example').addEventListener('click',()=>{
+  if(busy||invalid.size||report?.state!=='research_candidate'||!byId('income-unit').value)return;
+  ['A/2','2','SYNTH-1','4.5','123.4567'].forEach((v,i)=>byId('income-'+incomeFields[i]).value=v);
+  clearIncome();refreshIncome();
+});
+byId('income-calculate').addEventListener('click',async()=>{
+  if(busy||invalid.size||report?.state!=='research_candidate'||!byId('income-unit').value)return;
+  clearIncome();
+  const unitId=byId('income-unit').value,digest=report.caseDigest;
+  const [category,classNumber,zone,consistency,tariff]=incomeFields.map(k=>byId('income-'+k).value.trim());
+  const unit={A:'vani',B:'m3',C:'m2'}[category[0]];
+  lock(true);
+  try{
+    const payload={draft:JSON.parse(field.value),unitId,declared:{category,classNumber,zone,consistency,tariff,unit,sourceId:'synthetic-tariff'}};
+    if(new TextEncoder().encode(JSON.stringify(payload)).length>256*1024)throw Error('too_large');
+    const result=await request('/api/income',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(!result.ok||result.worksheet?.caseDigest!==digest||result.worksheet?.unitId!==unitId)throw Error('blocked');
+    incomeReport=result.worksheet;
+    byId('income-result').textContent='Prodotto esatto: € '+incomeReport.exactProductEur+' (simulazione, non rendita ufficiale).';
+  }catch{byId('income-result').textContent='Calcolo bloccato: controlla categoria, classe, zona sintetica e valori positivi.';}
+  finally{lock(false);}
+});
+byId('income-download').addEventListener('click',()=>{
+  if(busy||invalid.size||!incomeReport||incomeReport.caseDigest!==report?.caseDigest||incomeReport.unitId!==byId('income-unit').value)return;
+  saveJson(incomeReport,'catasto-annesso-estimativo-sintetico.json');
 });

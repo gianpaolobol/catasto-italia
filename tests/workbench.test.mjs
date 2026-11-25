@@ -65,3 +65,46 @@ test('actual loopback HTTP workflow and security boundaries',async t=>{
     const r=httpRequest(base,{headers:{Host:'example.invalid'}},res=>{res.resume();resolve(res.statusCode);});r.on('error',reject);r.end();
   });assert.equal(invalidHost,403);
 });
+
+import {syntheticIncomeWorksheet} from '../packages/workbench/synthetic-income.mjs';
+const incomeRequest=(scenario='fusion')=>{
+  const draft=syntheticCase(scenario);
+  const unitId=buildPracticeReport(draft).operations.find(o=>['C','V'].includes(o.operation)).unitId;
+  return {draft,unitId,declared:{category:'A/2',classNumber:'2',zone:'SYNTH-1',consistency:'4.5',tariff:'123.4567',unit:'vani',sourceId:'synthetic-tariff'}};
+};
+for(const scenario of ['fusion','division','new_construction','internal_distribution','destination_change']){
+  test('synthetic income linked to '+scenario,()=>{
+    const input=incomeRequest(scenario),before=JSON.stringify(input);
+    const result=syntheticIncomeWorksheet(input);
+    assert.equal(result.ok,true);const w=result.worksheet;
+    assert.equal(w.caseDigest,buildPracticeReport(input.draft).caseDigest);
+    assert.equal(w.exactProductEur,'555.5551500');
+    for(const key of ['operative','officialTariffVerified','classificationVerified','officialRoundingApplied'])assert.equal(w[key],false);
+    assert.equal(JSON.stringify(input),before);
+  });
+}
+for(const [category,unit,consistency,tariff,expected] of [['B/1','m3','12','2.5','30.0000000'],['C/2','m2','0.001','0.0001','0.0000001'],['A/11','vani','9999999.999','9999999.9999','99999999989000.0000001']]){
+  test('exact arithmetic '+category,()=>{
+    const q=incomeRequest();Object.assign(q.declared,{category,unit,consistency,tariff});
+    assert.equal(syntheticIncomeWorksheet(q).worksheet?.exactProductEur,expected);
+  });
+}
+for(const [label,mutate] of [
+  ['real zone',q=>q.declared.zone='BO'],['unknown group',q=>q.declared.category='D/1'],['unit mismatch',q=>q.declared.unit='m2'],
+  ['zero',q=>q.declared.tariff='0'],['exponent',q=>q.declared.tariff='1e3'],['negative',q=>q.declared.consistency='-1'],
+  ['comma',q=>q.declared.consistency='4,5'],['trailing newline',q=>q.declared.consistency='1\n'],['category newline',q=>q.declared.category='A/2\n'],['overprecision',q=>q.declared.consistency='1.0001'],
+  ['numeric JSON',q=>q.declared.consistency=1],['not resulting',q=>q.unitId='other'],
+  ['blocked case',q=>q.draft.assertions.pop()],['unexpected approval',q=>q.declared.approved=true],
+  ['non-synthetic source',q=>q.declared.sourceId='official']
+]){
+  test('income blocks '+label,()=>{const q=incomeRequest();mutate(q);const r=syntheticIncomeWorksheet(q);assert.equal(r.ok,false);assert.equal(r.worksheet,null);});
+}
+test('income endpoint recomputes case and rejects external origin',async t=>{
+  const server=createWorkbenchServer();server.listen(0,'127.0.0.1');await once(server,'listening');
+  t.after(()=>new Promise(resolve=>{server.close(resolve);server.closeAllConnections();}));
+  const base='http://127.0.0.1:'+server.address().port;
+  const opts={method:'POST',headers:{Origin:base,'Content-Type':'application/json'},body:JSON.stringify(incomeRequest())};
+  const response=await fetch(base+'/api/income',opts);
+  assert.equal(response.status,200);assert.equal((await response.json()).worksheet.exactProductEur,'555.5551500');
+  assert.equal((await fetch(base+'/api/income',{...opts,headers:{...opts.headers,Origin:'https://example.invalid'}})).status,403);
+});

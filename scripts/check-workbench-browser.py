@@ -54,6 +54,7 @@ def run():
                         expect(page.locator("#summary")).to_contain_text("Bloccato")
                         expect(page.locator("#operations tbody tr")).to_have_count(0)
                         expect(page.locator("#handoff-download")).to_be_disabled()
+                        expect(page.locator('#income-unit')).to_be_disabled()
                         for scenario, count in (("fusion", 4), ("division", 4), ("new_construction", 2), ("internal_distribution", 2), ("destination_change", 3)):
                             page.locator("#scenario").select_option(scenario)
                             page.locator("#load").click()
@@ -81,6 +82,29 @@ def run():
                                 check(handoff['caseDigest'] == report['caseDigest'] and handoff['target'] == target, 'handoff mismatch')
                                 check(all(v is False for v in handoff['assertions'].values()), 'unexpected approval')
                                 check(handoff['operations'] == [{'unitId': o['unitId'], 'operation': o['operation']} for o in report['operations'] if o['operation'] in ('C', 'V')], 'handoff operations mismatch')
+                            income = page.locator('details').filter(has=page.get_by_text('Classamento dichiarato e simulazione rendita', exact=True))
+                            if not income.evaluate('(e) => e.open'):
+                                income.locator('summary').click()
+                            page.locator('#income-unit').select_option(index=1)
+                            page.locator('#income-example').click()
+                            page.locator('#income-calculate').click()
+                            expect(page.locator('#income-result')).to_contain_text('555.5551500')
+                            with page.expect_download() as event:
+                                page.locator('#income-download').click()
+                            income_file = Path(tmp) / 'income.json'
+                            event.value.save_as(income_file)
+                            worksheet = json.loads(income_file.read_text(encoding='utf-8'))
+                            check(worksheet['caseDigest'] == report['caseDigest'] and worksheet['exactProductEur'] == '555.5551500', 'income mismatch')
+                            check(worksheet['officialTariffVerified'] is False and worksheet['operative'] is False, 'unexpected income approval')
+                            page.locator('#income-tariff').fill('0')
+                            expect(page.locator('#income-download')).to_be_disabled()
+                            page.locator('#income-calculate').click()
+                            expect(page.locator('#income-result')).to_contain_text('Calcolo bloccato')
+                            expect(page.locator('#income-download')).to_be_disabled()
+                            page.locator('#income-example').click()
+                            page.locator('#income-calculate').click()
+                            expect(page.locator('#income-result')).to_contain_text('555.5551500')
+                            expect(page.locator('#income-download')).to_be_enabled()
                             with page.expect_download() as event:
                                 page.locator("#download-dossier").click()
                             dossier = Path(tmp) / "dossier.html"
@@ -109,6 +133,9 @@ def run():
                             check(measured['caseDigest'] == report['caseDigest'] and measured['areaMm2'] == '8000000', 'annex mismatch')
                             page.locator('#geometry-vertices').fill('[]')
                             expect(page.locator('#geometry-download')).to_be_disabled()
+                            # Separate annexes: editing geometry does not change the case or the income declaration.
+                            expect(page.locator('#income-download')).to_be_enabled()
+                            expect(page.locator('#income-unit')).to_be_enabled()
                             page.locator('#geometry-measure').click()
                             expect(page.locator('#geometry-result')).to_contain_text('Contorno bloccato')
                             with page.expect_download() as event:
@@ -121,13 +148,15 @@ def run():
                             expect(page.locator("#handoff-download")).to_be_disabled()
                             expect(page.locator('#geometry-unit')).to_be_disabled()
                             expect(page.locator('#geometry-download')).to_be_disabled()
+                            expect(page.locator('#income-unit')).to_be_disabled()
+                            expect(page.locator('#income-download')).to_be_disabled()
                             page.locator("#analyze").click()
                             expect(page.locator("#summary")).to_contain_text("Ipotesi di ricerca")
                             expect(page.locator("#operations tbody tr")).to_have_count(count)
                         check(page.evaluate("document.documentElement.scrollWidth <= innerWidth"), "horizontal page overflow")
                         check(not errors and not external, f"browser errors or external requests: {errors}, {external}")
                         context.close()
-                        print(f"PASS workbench {width}px: blocked reviewed case, 5 diagnostic scenarios, JSON/HTML downloads, draft reimport")
+                        print(f"PASS workbench {width}px: blocked reviewed case, 5 diagnostic scenarios, JSON/HTML downloads, independent geometry/income annexes, draft reimport")
                 finally:
                     browser.close()
         finally:
