@@ -220,3 +220,7 @@
 ## Iterazione 044 — modalità C — 2026-11-25
 - PR #41 integrata a 5e46e2e40e8d1e8ed96f0046a2de9c3f06da7974; CI 45678783217 core 791/791 e Chromium PASS 1280/360 px, head/base esatti.
 - ID07/09/10/20/28: ampliamento sintetico a sagoma in mappa dichiarata invariata, una unità S e una C, evidenze distinte, conservazione estranee, relazione e UI. Vademecum nazionale 2022 p.57 verificato, stato pending. Revisione sequenziale, test Node e browser predisposti, DNS locale bloccato, nuova CI da verificare. Evidenze docs/qa/ITERATION_044.md. Backup intatti, gate 100+100 e prove ufficiali aperti. Prossimo: CI, ampliamento con Tipo Mappale e fonti tariffarie, integrazione geometrie e dossier.
+
+## Iterazione 045 — modalità C — 2026-11-25
+- PR #42 integrata a faa91f31e1e0ffb1f35281805037a22092f29463, CI 45687778388: 803 pass, Chromium PASS 1280/360 px, sei scenari, checkout esatto.
+- ID14/16/20/28/29: dossier unitario con annessi correnti ricalcolati lato server; test Node e Chromium predisposti; DNS locale bloccato, CI da verificare. Revisione sequenziale. Evidenze docs/qa/ITERATION_045.md. Gate 100+100 e prove ufficiali aperti, backup non modificati, licenza invariata. Prossimo: CI, fonti tariffarie, Tipo Mappale, corpus integrale.

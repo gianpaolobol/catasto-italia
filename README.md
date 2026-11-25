@@ -24,3 +24,6 @@ Scenario diagnostico limitato a una unità originaria e una risultante, entrambe
 
 ### Annesso estimativo sintetico
 Dopo una proposta diagnostica, selezionare un’unità C/V, dichiarare categoria ordinaria, classe, zona fittizia SYNTH-n, consistenza e tariffa inventata. Il server ricalcola il caso e restituisce il prodotto decimale esatto, con download JSON separato. Non è un classamento, tariffario ufficiale o calcolo arrotondato secondo DOCFA. Non usare valori di clienti. Il riferimento metodologico storico è Agenzia delle Entrate, Il Sistema Catastale, edizione 2021, §6 p. 29; non prova la vigenza o la tariffa locale.
+
+### Dossier diagnostico con annessi correnti
+Dopo l’analisi, è possibile misurare un contorno e calcolare un prodotto estimativo per una o due unità risultanti (un annesso per tipo). Il dossier HTML stampabile riunisce relazione, operazioni, evidenze e gli annessi correnti; il server locale ricalcola entrambi dalle dichiarazioni e blocca incoerenze. Se un annesso è stato modificato e non ricalcolato, il dossier dichiara esplicitamente che non è incluso. Nessuna superficie o rendita catastale ufficiale, nessun file DOCFA. Anche lo scenario ampliamento a sagoma in mappa invariata è disponibile.

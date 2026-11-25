@@ -114,6 +114,7 @@ def run():
                             event.value.save_as(dossier)
                             html = dossier.read_text(encoding="utf-8")
                             check(report["caseDigest"] in html and "NON UFFICIALE" in html, "dossier mismatch")
+                            check("555.5551500" in html and "Nessuna misura corrente inclusa." in html, "income-only dossier mismatch")
                             # Render downloaded bytes offline without bypassing file:// browser policy.
                             doc = context.new_page()
                             doc.set_content(html)
@@ -134,6 +135,11 @@ def run():
                             event.value.save_as(annex)
                             measured = json.loads(annex.read_text(encoding='utf-8'))
                             check(measured['caseDigest'] == report['caseDigest'] and measured['areaMm2'] == '8000000', 'annex mismatch')
+                            with page.expect_download() as event:
+                                page.locator("#download-dossier").click()
+                            event.value.save_as(dossier)
+                            both = dossier.read_text(encoding="utf-8")
+                            check("555.5551500" in both and "8.000000" in both and "14000" in both, "integrated dossier mismatch")
                             page.locator('#geometry-vertices').fill('[]')
                             expect(page.locator('#geometry-download')).to_be_disabled()
                             # Separate annexes: editing geometry does not change the case or the income declaration.
@@ -141,6 +147,11 @@ def run():
                             expect(page.locator('#income-unit')).to_be_enabled()
                             page.locator('#geometry-measure').click()
                             expect(page.locator('#geometry-result')).to_contain_text('Contorno bloccato')
+                            with page.expect_download() as event:
+                                page.locator("#download-dossier").click()
+                            event.value.save_as(dossier)
+                            after_edit = dossier.read_text(encoding="utf-8")
+                            check("555.5551500" in after_edit and "Nessuna misura corrente inclusa." in after_edit and "8.000000" not in after_edit, "stale geometry included")
                             with page.expect_download() as event:
                                 page.locator("#save-draft").click()
                             draft = Path(tmp) / "draft.json"

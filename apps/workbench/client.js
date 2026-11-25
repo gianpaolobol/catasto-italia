@@ -1,6 +1,5 @@
 // Copyright (c) 2026 Gian Paolo Franceschini. All rights reserved.
 import {measureSyntheticPolygon} from '/synthetic-geometry.mjs';
-import {renderDiagnosticDossier} from '/diagnostic-dossier.mjs';
 import {guideFields,editGuidedDraft} from '/guided-draft.mjs';
 import {draftFromReviewedVisura,reviewedVisuraExample} from '/reviewed-visura.mjs';
 const byId=id=>document.getElementById(id);
@@ -160,10 +159,20 @@ download.addEventListener('click',()=>{
   }catch{status.textContent='Download non riuscito.';}
 });
 
-byId('download-dossier').addEventListener('click',()=>{
-  if(!report||busy||report.diagnosticReportExportable!==true)return;
-  try{saveFile(renderDiagnosticDossier(report),'text/html;charset=utf-8','catasto-dossier-sintetico-non-ufficiale.html');status.textContent='Download dossier richiesto; aprire localmente per stampare.';}
-  catch{status.textContent='Dossier non disponibile: ripetere l’analisi.';}
+byId('download-dossier').addEventListener('click',async()=>{
+  if(!report||busy||invalid.size||report.diagnosticReportExportable!==true)return;
+  lock(true);
+  try{
+    const payload={draft:JSON.parse(field.value),expectedState:report.state,expectedDigest:report.caseDigest,
+      geometry:geometryReport?{unitId:geometryReport.unitId,vertices:geometryReport.vertices}:null,
+      income:incomeReport?{unitId:incomeReport.unitId,declared:incomeReport.declared}:null};
+    if(new TextEncoder().encode(JSON.stringify(payload)).length>256*1024)throw Error('too_large');
+    const result=await request('/api/dossier',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(!result.ok||typeof result.html!=='string')throw Error('blocked');
+    saveFile(result.html,'text/html;charset=utf-8','catasto-dossier-sintetico-non-ufficiale.html');
+    status.textContent='Download dossier richiesto, con gli annessi correnti disponibili; aprire localmente per stampare.';
+  }catch{status.textContent='Dossier non disponibile: ripetere l’analisi.';}
+  finally{lock(false);}
 });
 const visuraText=byId('visura-text'),visuraClaim=byId('visura-claim'),visuraResult=byId('visura-result');
 function refreshVisuraClaims(){
