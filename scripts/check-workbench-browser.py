@@ -53,7 +53,7 @@ def run():
                         page.locator("#analyze").click()
                         expect(page.locator("#summary")).to_contain_text("Bloccato")
                         expect(page.locator("#operations tbody tr")).to_have_count(0)
-                        for scenario, count in (("fusion", 4), ("division", 4), ("new_construction", 2)):
+                        for scenario, count in (("fusion", 4), ("division", 4), ("new_construction", 2), ("internal_distribution", 2)):
                             page.locator("#scenario").select_option(scenario)
                             page.locator("#load").click()
                             expect(page.locator("#status")).to_contain_text("Esempio sintetico caricato")
@@ -93,7 +93,7 @@ def run():
                         check(page.evaluate("document.documentElement.scrollWidth <= innerWidth"), "horizontal page overflow")
                         check(not errors and not external, f"browser errors or external requests: {errors}, {external}")
                         context.close()
-                        print(f"PASS workbench {width}px: blocked reviewed case, 3 diagnostic scenarios, JSON/HTML downloads, draft reimport")
+                        print(f"PASS workbench {width}px: blocked reviewed case, 4 diagnostic scenarios, JSON/HTML downloads, draft reimport")
                 finally:
                     browser.close()
         finally:
