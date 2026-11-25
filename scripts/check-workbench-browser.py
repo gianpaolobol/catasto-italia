@@ -53,6 +53,7 @@ def run():
                         page.locator("#analyze").click()
                         expect(page.locator("#summary")).to_contain_text("Bloccato")
                         expect(page.locator("#operations tbody tr")).to_have_count(0)
+                        expect(page.locator("#handoff-download")).to_be_disabled()
                         for scenario, count in (("fusion", 4), ("division", 4), ("new_construction", 2), ("internal_distribution", 2), ("destination_change", 3)):
                             page.locator("#scenario").select_option(scenario)
                             page.locator("#load").click()
@@ -67,6 +68,19 @@ def run():
                             report = json.loads(path.read_text(encoding="utf-8"))
                             check(report["state"] == "research_candidate" and report["operative"] is False and report["canExport"] is False, "bad report state")
                             check(len(report["operations"]) == count, "operation mismatch")
+                            exchange = page.locator('details').filter(has=page.get_by_text('Interscambio Building Core sintetico', exact=True))
+                            if not exchange.evaluate('(e) => e.open'):
+                                exchange.locator('summary').click()
+                            for target in ('pianta-libera', 'mpe', 'ape-italia'):
+                                page.locator('#handoff-target').select_option(target)
+                                with page.expect_download() as event:
+                                    page.locator('#handoff-download').click()
+                                exchange_file = Path(tmp) / 'handoff.json'
+                                event.value.save_as(exchange_file)
+                                handoff = json.loads(exchange_file.read_text(encoding='utf-8'))
+                                check(handoff['caseDigest'] == report['caseDigest'] and handoff['target'] == target, 'handoff mismatch')
+                                check(all(v is False for v in handoff['assertions'].values()), 'unexpected approval')
+                                check(handoff['operations'] == [{'unitId': o['unitId'], 'operation': o['operation']} for o in report['operations'] if o['operation'] in ('C', 'V')], 'handoff operations mismatch')
                             with page.expect_download() as event:
                                 page.locator("#download-dossier").click()
                             dossier = Path(tmp) / "dossier.html"
@@ -104,6 +118,7 @@ def run():
                             page.locator("#import-draft").set_input_files(draft)
                             expect(page.locator("#status")).to_contain_text("Bozza sintetica importata")
                             expect(page.locator("#download-dossier")).to_be_disabled()
+                            expect(page.locator("#handoff-download")).to_be_disabled()
                             expect(page.locator('#geometry-unit')).to_be_disabled()
                             expect(page.locator('#geometry-download')).to_be_disabled()
                             page.locator("#analyze").click()
