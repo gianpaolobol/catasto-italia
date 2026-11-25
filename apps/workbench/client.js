@@ -6,10 +6,11 @@ let report=null,busy=false,draft=null;
 const invalid=new Set();
 const el=(tag,text)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;return e;};
 function clear(){
+  byId('visura-result').textContent='Nessun confronto corrente.';
   report=null;download.disabled=true;byId('summary').textContent='Nessun rapporto corrente.';
   byId('relation').textContent='—';byId('details').textContent='—';byId('operations').replaceChildren();
 }
-function refresh(){analyze.disabled=busy||invalid.size>0;byId('save-draft').disabled=busy||invalid.size>0;for(const e of guide.querySelectorAll('input,select'))e.disabled=busy;}
+function refresh(){for(const id of ['visura-check','visura-example','visura-claim','visura-file','visura-text'])byId(id).disabled=busy||invalid.size>0;analyze.disabled=busy||invalid.size>0;byId('save-draft').disabled=busy||invalid.size>0;for(const e of guide.querySelectorAll('input,select'))e.disabled=busy;}
 function lock(value){busy=value;byId('import-draft').disabled=value;load.disabled=value;field.readOnly=value;byId('scenario').disabled=value;byId('open-guide').disabled=value;refresh();}
 function resetGuide(){draft=null;invalid.clear();guide.replaceChildren();refresh();}
 function showGuide(input){
@@ -128,3 +129,33 @@ download.addEventListener('click',()=>{
     status.textContent='Download richiesto; verificare il file locale.';
   }catch{status.textContent='Download non riuscito.';}
 });
+
+const visuraText=byId('visura-text'),visuraClaim=byId('visura-claim'),visuraResult=byId('visura-result');
+function clearVisura(){visuraResult.textContent='Nessun confronto corrente.';}
+visuraText.addEventListener('input',clearVisura);
+visuraClaim.addEventListener('input',clearVisura);
+byId('visura-file').addEventListener('change',async event=>{
+  const file=event.target.files?.[0];event.target.value='';
+  if(!file||busy||invalid.size)return;
+  clearVisura();visuraText.value='';lock(true);
+  try{
+    if(file.size>256*1024)throw Error('too_large');
+    const value=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(await file.arrayBuffer()));
+    visuraText.value=JSON.stringify(value,null,2);
+  }catch{visuraResult.textContent='Trascrizione non leggibile.';}finally{lock(false);}
+});
+async function runVisura(example){
+  if(busy||invalid.size)return;
+  clearVisura();lock(true);
+  if(example)visuraText.value='';
+  try{
+    if(new TextEncoder().encode(field.value).length>256*1024||new TextEncoder().encode(visuraText.value).length>256*1024)throw Error('too_large');
+    const payload={draft:JSON.parse(field.value),claimId:visuraClaim.value};
+    if(!example)Object.assign(payload,{version:'0.1.0',kind:'synthetic-visura-check',transcription:JSON.parse(visuraText.value)});
+    const value=await request(example?'/api/visura-example':'/api/visura-check',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(example){visuraText.value=JSON.stringify(value,null,2);visuraResult.textContent='Esempio derivato dal caso, non prova indipendente. Modifica o importa una trascrizione sintetica.';}
+    else visuraResult.textContent=JSON.stringify(value,null,2);
+  }catch{visuraResult.textContent='Confronto non eseguito: controlla il caso, l’ID e la trascrizione.';}finally{lock(false);}
+}
+byId('visura-example').addEventListener('click',()=>runVisura(true));
+byId('visura-check').addEventListener('click',()=>runVisura(false));
