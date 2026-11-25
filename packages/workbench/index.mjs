@@ -42,10 +42,12 @@ export function buildPracticeReport(envelope){
     if(!inventory.validSnapshot||inventory.issues.length)return stop('inventory_inconsistent');
     const c=audit.candidate;
     const rows=inventory.rows.map(r=>({unitId:r.unitId,claimId:r.claimId,status:r.status,identifier:r.identifier,sourceIds:r.sourceIds}));
+    const byUnit=new Map();
+    for(const row of rows){if(!byUnit.has(row.unitId))byUnit.set(row.unitId,[]);byUnit.get(row.unitId).push(row);}
     const operations=[...c.suppressUnitIds.map(unitId=>({operation:'S',unitId})),
       ...c.constituteUnitIds.map(unitId=>({operation:'C',unitId})),
       ...c.unchangedUnitIds.map(unitId=>({operation:'unchanged',unitId}))]
-      .map(op=>({...op,identifiers:rows.filter(r=>r.unitId===op.unitId)}));
+      .map(op=>({...op,identifiers:byUnit.get(op.unitId)??[]}));
     const relation='Ipotesi diagnostica sintetica: '+c.cause+'. Unità da sopprimere: '+c.counts.S+
       '; da costituire: '+c.counts.C+'; da variare: '+c.counts.V+
       '. Unità estranee conservate: '+c.unchangedUnitIds.length+
