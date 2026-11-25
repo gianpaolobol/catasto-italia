@@ -4,7 +4,10 @@ import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {inflateSync} from 'node:zlib';
 import {buildRasterReviewOverlay} from '../packages/intake/ocr-raster-review-overlay.mjs';
-import {renderLocalOcrReview as render} from '../packages/intake/ocr-local-review-html.mjs';
+import {runInNewContext} from 'node:vm';
+import {buildOcrReviewDecisions} from '../packages/intake/ocr-review-decisions.mjs';
+import {replayOcrReviewProposal} from '../packages/intake/ocr-review-replay.mjs';
+import {renderLocalOcrReview as render,renderLocalOcrEditor as renderEditor} from '../packages/intake/ocr-local-review-html.mjs';
 const hash=x=>createHash('sha256').update(x).digest('hex');
 const digest=x=>hash(JSON.stringify(x));
 function fixture(text='0007',engineScore='95.25'){
@@ -88,4 +91,74 @@ test('oversized display word list and text fail before rendering',()=>{
   assert.equal(render(result,bytes).issues[0].code,'review_invalid_display_word');
   const long=fixture('x'.repeat(513));
   assert.equal(render(long.result,long.bytes).issues[0].code,'review_invalid_display_word');
+});
+
+function editorFixture(text='012X'){
+  const f=fixture(text),view=renderEditor(f.result,f.bytes);
+  assert.equal(view.state,'local_editor_candidate');
+  return {...f,html:view.html,script:/<script>([\s\S]*?)<\/script>/.exec(view.html)[1]};
+}
+// Execute the exact generated script against a minimal DOM contract. This is
+// not a browser/download/CSP integration test.
+function runEditor(f,action,text='',reason=''){
+  let click,blob,downloads=0,focus=0,revoked=0;
+  const feedback={textContent:''};
+  const select={value:action,focus(){focus++;}};
+  const row={dataset:{wordId:f.result.words[0].id},
+    closest(){return {querySelector(){return {textContent:f.result.words[0].text};}};},
+    querySelector(s){return s==='select'?select:{value:s==='[data-correction]'?text:reason};}};
+  const editor={dataset:{chain:f.result.evidence.chainSha256,raster:f.result.evidence.raster.rasterSha256},
+    querySelectorAll(){return [row];}};
+  const button={addEventListener(event,fn){assert.equal(event,'click');click=fn;}};
+  const document={getElementById(id){return {'review-export':button,'review-status':feedback,'review-editor':editor}[id];},
+    createElement(tag){assert.equal(tag,'a');return {click(){downloads++;},remove(){}};},body:{append(){}}};
+  const URL={createObjectURL(b){blob=b;return 'blob:local-test';},revokeObjectURL(){revoked++;}};
+  runInNewContext(f.script,{document,URL,Blob,setTimeout(fn){fn();}});
+  assert.equal(downloads,0);
+  click();
+  return {blob,downloads,focus,revoked,feedback:feedback.textContent};
+}
+test('editor starts undecided, binds exact source and permits only hashed static script',()=>{
+  const f=editorFixture();
+  assert.match(f.html,/<option value="">Da decidere<\/option>/);
+  assert.ok(f.html.includes('data-chain="'+f.result.evidence.chainSha256+'"'));
+  assert.ok(f.html.includes('data-raster="'+f.result.evidence.raster.rasterSha256+'"'));
+  const h=createHash('sha256').update(f.script).digest('base64');
+  assert.ok(f.html.includes("script-src 'sha256-"+h+"'"));
+  assert.match(f.html,/form-action 'none'/);
+  assert.doesNotMatch(f.html,/<(?:form|iframe|link)\b/i);
+  assert.equal((f.html.match(/<script>/g)||[]).length,1);
+});
+test('editor escapes injected markup without altering the static script',()=>{
+  const f=editorFixture('"><script>alert(1)</script>&');
+  assert.ok(f.html.includes('&lt;script&gt;'));
+  assert.equal(f.script,editorFixture().script);
+  assert.equal((f.html.match(/<script>/g)||[]).length,1);
+});
+test('editor blocks altered raster',()=>{
+  const f=fixture();f.bytes[f.bytes.length-1]=0;
+  assert.equal(renderEditor(f.result,f.bytes).html,null);
+});
+for(const [action,text,reason,expected] of [
+  ['retain','','',{action:'retain'}],
+  ['correct','0123','Synthetic correction',{action:'correct',text:'0123',reason:'Synthetic correction'}],
+  ['exclude','','Synthetic exclusion',{action:'exclude',reason:'Synthetic exclusion'}]
+])test('editor exports '+action+' request accepted by the canonical engine',async()=>{
+  const f=editorFixture(),out=runEditor(f,action,text,reason);
+  assert.equal(out.downloads,1);assert.equal(out.revoked,1);
+  const request=JSON.parse(await out.blob.text());
+  assert.deepEqual(request.decisions,[{id:f.result.words[0].id,...expected}]);
+  const proposal=buildOcrReviewDecisions(f.result,f.bytes,request);
+  assert.equal(proposal.state,'review_proposal');
+  assert.equal(proposal.manifest.operative,false);
+  assert.equal(replayOcrReviewProposal(f.result,f.bytes,JSON.parse(JSON.stringify(proposal.manifest))).state,'replayed_review_proposal');
+});
+for(const [label,action,text,reason] of [
+  ['undecided','','',''],['missing reason','correct','0123',''],
+  ['no change','correct','012X','Synthetic'],['control','correct','01\u202e23','Synthetic'],
+  ['oversized','correct','x'.repeat(513),'Synthetic'],['empty exclusion','exclude','','']
+])test('editor blocks '+label+' without export',()=>{
+  const out=runEditor(editorFixture(),action,text,reason);
+  assert.equal(out.downloads,0);assert.equal(out.focus,1);
+  assert.equal(out.blob,undefined);
 });
