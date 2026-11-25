@@ -2,7 +2,7 @@
 // Presentation only. Input is the current server-generated diagnostic report.
 const esc=x=>String(x??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const table=(headers,rows)=>'<table><thead><tr>'+headers.map(x=>'<th scope="col">'+esc(x)+'</th>').join('')+'</tr></thead><tbody>'+rows.map(row=>'<tr>'+row.map(x=>'<td>'+esc(x)+'</td>').join('')+'</tr>').join('')+'</tbody></table>';
-export function renderDiagnosticDossier(r){
+export function renderDiagnosticDossier(r,{geometry=null,income=null}={}){
   if(!r||r.version!=='0.1.0'||r.kind!=='synthetic-diagnostic-report'||
     !['blocked','research_candidate'].includes(r.state)||r.operative!==false||
     r.canExport!==false||r.availability!=='unverified'||r.diagnosticReportExportable!==true||
@@ -15,6 +15,12 @@ export function renderDiagnosticDossier(r){
       op.identifiers.some(row=>row.identifier?.municipalityCode!=='SYNTH'))throw Error('unsupported_operation');
     return [labels[op.operation],op.unitId,op.identifiers.map(row=>[row.identifier.municipalityCode,row.identifier.section??'—',row.identifier.sheet,row.identifier.parcel,row.identifier.subaltern??'—'].join('/')).join('; ')];
   });
+  const resulting=a=>r.state==='research_candidate'&&a.caseDigest===r.caseDigest&&r.operations.some(o=>o.unitId===a.unitId&&['C','V'].includes(o.operation));
+  if(geometry!==null&&(!resulting(geometry)||geometry.kind!=='synthetic-geometry-annex'||geometry.state!=='measured'||geometry.coordinateUnit!=='mm'||!Array.isArray(geometry.vertices)||geometry.vertices.length>128))throw Error('invalid_geometry_annex');
+  if(income!==null&&(!resulting(income)||income.kind!=='synthetic-income-worksheet'||income.operative!==false||income.officialTariffVerified!==false||income.classificationVerified!==false||income.officialRoundingApplied!==false))throw Error('invalid_income_annex');
+  const annexes='<h2>Annesso geometrico sintetico</h2>'+ (geometry?table(['Unità','Area geometrica m²','Perimetro mm','Vertici in mm'],[[geometry.unitId,geometry.areaM2,geometry.perimeterMm,JSON.stringify(geometry.vertices)]])+'<p>Misura geometrica non catastale. Scala e coefficienti ufficiali non verificati.</p>':'<p>Nessuna misura corrente inclusa.</p>')+
+    '<h2>Annesso estimativo sintetico</h2>'+ (income?table(['Unità','Categoria / classe / zona inventata','Consistenza dichiarata','Tariffa inventata EUR/unità','Prodotto esatto EUR'],[[income.unitId,[income.declared.category,income.declared.classNumber,income.declared.zone].join(' / '),income.declared.consistency+' '+income.declared.unit,income.declared.tariff,income.exactProductEur]])+'<p>Prodotto dimostrativo non arrotondato; non rendita catastale attribuita.</p><p>'+esc(income.source.title)+'</p>':'<p>Nessun calcolo corrente incluso.</p>')+
+    '<p>Gli annessi si riferiscono esclusivamente alle unità indicate; assenza di annessi non equivale a verifica.</p>';
   const h='<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'+
     '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'; base-uri \'none\'; form-action \'none\'"><meta name="referrer" content="no-referrer">'+
     '<title>Catasto Italia — dossier diagnostico sintetico</title><style>'+
@@ -27,7 +33,7 @@ export function renderDiagnosticDossier(r){
     '<h2>Evidenze dichiarate</h2>'+(r.evidence.length?table(['Fatto','Fonte','Valore','Locatore'],r.evidence.map(e=>[e.fact,e.sourceId,e.value,JSON.stringify(e.locator??null)])):'<p>Nessuna evidenza restituita.</p>')+
     '<h2>Riferimento di ricerca</h2><p>'+esc(r.source?.title)+' — '+esc(r.source?.id)+' — revisione '+esc(r.source?.revision)+'</p><p>'+esc(r.source?.url)+'</p><p>Applicabilità operativa non attestata dal dossier.</p>'+
     '<h2>Blocchi e verifiche ancora necessarie</h2>'+(r.blockers.length?'<ul>'+r.blockers.map(b=>'<li>'+esc(b)+'</li>').join('')+'</ul>':'<p>Nessun blocco diagnostico restituito; ciò non equivale a validazione.</p>')+
-    '<p>Verifica professionale, fonti vigenti e controllo con strumenti ufficiali ancora necessari.</p></body></html>';
+    annexes+'<p>Verifica professionale, fonti vigenti e controllo con strumenti ufficiali ancora necessari.</p></body></html>';
   if(new TextEncoder().encode(h).length>4*1024*1024)throw Error('dossier_too_large');
   return h;
 }
