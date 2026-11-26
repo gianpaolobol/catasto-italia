@@ -5,6 +5,8 @@ Requires Node.js, Python Playwright and Chromium. Run from any directory.
 Set CHROMIUM_EXECUTABLE if using an installed system browser.
 """
 import json
+import hashlib
+import zipfile
 import os
 from pathlib import Path
 import subprocess
@@ -282,12 +284,36 @@ def run():
                                 event.value.save_as(dossier)
                                 check('Conservata — contesto' in dossier.read_text(encoding='utf-8'), 'retained context missing in dossier')
                             with page.expect_download() as event:
+                                page.locator("#download-archive").click()
+                            archive = Path(tmp) / "diagnostic.zip"
+                            event.value.save_as(archive)
+                            with zipfile.ZipFile(archive) as z:
+                                check(z.testzip() is None and len(z.namelist()) == 8, "invalid diagnostic ZIP")
+                                manifest = json.loads(z.read("manifest.json"))
+                                check(manifest["official"] is False and manifest["signature"] is False, "archive safety flags")
+                                for member in manifest["files"]:
+                                    data = z.read(member["name"])
+                                    check(len(data) == member["bytes"] and hashlib.sha256(data).hexdigest() == member["sha256"], "archive manifest mismatch")
+                                check("NON UFFICIALE" in z.read("dossier-sintetico.html").decode("utf-8"), "archive disclaimer missing")
+                                check(manifest["submission"] is False, "archive submission safety flag")
+                                extracted = Path(tmp) / "extracted-session.json"
+                                extracted.write_bytes(z.read("sessione-sintetica.json"))
+                                packed_html = z.read("dossier-sintetico.html")
+                            page.locator("#import-session").set_input_files(extracted)
+                            expect(page.locator("#status")).to_contain_text("Sessione sintetica ripristinata")
+                            with page.expect_download() as event:
+                                page.locator("#download-dossier").click()
+                            replayed_dossier = Path(tmp) / "replayed-dossier.html"
+                            event.value.save_as(replayed_dossier)
+                            check(replayed_dossier.read_bytes() == packed_html, "archive session replay differs from bundled dossier")
+                            with page.expect_download() as event:
                                 page.locator("#save-draft").click()
                             draft = Path(tmp) / "draft.json"
                             event.value.save_as(draft)
                             page.locator("#import-draft").set_input_files(draft)
                             expect(page.locator("#status")).to_contain_text("Bozza sintetica importata")
                             expect(page.locator("#download-dossier")).to_be_disabled()
+                            expect(page.locator("#download-archive")).to_be_disabled()
                             expect(page.locator("#handoff-download")).to_be_disabled()
                             expect(page.locator('#geometry-unit')).to_be_disabled()
                             expect(page.locator('#geometry-download')).to_be_disabled()
@@ -301,7 +327,7 @@ def run():
                         check(page.evaluate("document.documentElement.scrollWidth <= innerWidth"), "horizontal page overflow")
                         check(not errors and not external, f"browser errors or external requests: {errors}, {external}")
                         context.close()
-                        print(f"PASS workbench {width}px: blocked reviewed case, 6 diagnostic scenarios, JSON/HTML downloads, independent geometry/income annexes, draft reimport")
+                        print(f"PASS workbench {width}px: blocked reviewed case, 6 diagnostic scenarios, JSON/HTML/ZIP downloads, independent geometry/income annexes, archive session and draft reimport")
                 finally:
                     browser.close()
         finally:
