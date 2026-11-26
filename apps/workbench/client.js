@@ -16,10 +16,10 @@ function setTariffSource(source='synthetic-tariff'){tariffSource=source;byId('in
 const el=(tag,text)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;return e;};
 function clear(){
   byId('visura-result').textContent='Nessun confronto corrente.';
-  report=null;byId('handoff-status').textContent='Analizza un caso sintetico.';resetGeometry();resetIncome();download.disabled=true;byId('save-session').disabled=true;byId('download-archive').disabled=true;byId('download-dossier').disabled=true;byId('summary').textContent='Nessun rapporto corrente.';
+  report=null;byId('manual-docfa-download').disabled=true;byId('manual-docfa-status').textContent='Nessuna verifica ufficiale effettuata.';byId('handoff-status').textContent='Analizza un caso sintetico.';resetGeometry();resetIncome();download.disabled=true;byId('save-session').disabled=true;byId('download-archive').disabled=true;byId('download-dossier').disabled=true;byId('summary').textContent='Nessun rapporto corrente.';
   byId('relation').textContent='—';byId('details').textContent='—';byId('operations').replaceChildren();byId('inventory').replaceChildren();
 }
-function refresh(){refreshGeometry();refreshIncome();byId('save-session').disabled=busy||invalid.size>0||report?.state!=='research_candidate';byId('download-archive').disabled=byId('save-session').disabled;const handoffEnabled=!busy&&!invalid.size&&report?.state==='research_candidate';byId('handoff-target').disabled=!handoffEnabled;byId('handoff-download').disabled=!handoffEnabled;byId('geometry-handoff-download').disabled=!handoffEnabled;byId('download-dossier').disabled=busy||!report||report.diagnosticReportExportable!==true;for(const id of ['visura-check','visura-example','visura-claim','visura-file','visura-text'])byId(id).disabled=busy||invalid.size>0;analyze.disabled=busy||invalid.size>0;byId('save-draft').disabled=busy||invalid.size>0;for(const e of guide.querySelectorAll('input,select'))e.disabled=busy;}
+function refresh(){refreshGeometry();refreshIncome();byId('save-session').disabled=busy||invalid.size>0||report?.state!=='research_candidate';byId('download-archive').disabled=byId('save-session').disabled;byId('manual-docfa-download').disabled=byId('save-session').disabled;const handoffEnabled=!busy&&!invalid.size&&report?.state==='research_candidate';byId('handoff-target').disabled=!handoffEnabled;byId('handoff-download').disabled=!handoffEnabled;byId('geometry-handoff-download').disabled=!handoffEnabled;byId('download-dossier').disabled=busy||!report||report.diagnosticReportExportable!==true;for(const id of ['visura-check','visura-example','visura-claim','visura-file','visura-text'])byId(id).disabled=busy||invalid.size>0;analyze.disabled=busy||invalid.size>0;byId('save-draft').disabled=busy||invalid.size>0;for(const e of guide.querySelectorAll('input,select'))e.disabled=busy;}
 function lock(value){busy=value;byId('import-session').disabled=value;byId('import-draft').disabled=value;byId('reviewed-import').disabled=value;byId('reviewed-example').disabled=value;byId('reviewed-template').disabled=value;load.disabled=value;field.readOnly=value;byId('scenario').disabled=value;byId('open-guide').disabled=value;refresh();}
 function resetGuide(){draft=null;invalid.clear();guide.replaceChildren();const option=el('option','Carica un caso nell’editor guidato');option.value='';byId('visura-claim').replaceChildren(option);byId('visura-text').value='';clearVisura();refresh();}
 function showGuide(input){
@@ -554,6 +554,22 @@ async function replaySession(session){
   return result;
 }
 // [Codex] One local download, all members rebuilt from current declarations.
+// [Codex] Generate a fresh non-official worklist; never import into DOCFA.
+byId('manual-docfa-download').addEventListener('click',async()=>{
+  if(busy||invalid.size||report?.state!=='research_candidate')return;
+  lock(true);
+  try{
+    const session={version:'0.1.0',kind:'synthetic-practice-session',request:currentDeclarations()};
+    const body=JSON.stringify(session);
+    if(new TextEncoder().encode(body).length>256*1024)throw Error('too_large');
+    const result=await request('/api/manual-docfa-worklist',{method:'POST',headers:{'Content-Type':'application/json'},body});
+    const w=result.worklist;
+    if(!result.ok||w?.caseDigest!==report.caseDigest||w.officialValidation!==false||w.officialExport!==false)throw Error('blocked');
+    saveJson(w,'catasto-promemoria-verifica-docfa-non-ufficiale.json');
+    byId('manual-docfa-status').textContent='Promemoria scaricato su richiesta. Al momento del download: geometrie mancanti '+w.gaps.geometry.length+', posizioni mancanti '+w.gaps.placement.length+', simulazioni mancanti '+w.gaps.income.length+', possibili sovrapposizioni '+w.gaps.potentialOverlaps.length+'. Verifiche ufficiali tutte aperte.';
+  }catch{byId('manual-docfa-status').textContent='Promemoria non disponibile: controlla caso e annessi.';}
+  finally{lock(false);}
+});
 byId('download-archive').addEventListener('click',async()=>{
   if(busy||invalid.size||report?.state!=='research_candidate')return;
   lock(true);

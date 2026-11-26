@@ -310,6 +310,15 @@ def run():
                                 page.locator('#geometry-batch-file').set_input_files(batch_file)
                                 expect(page.locator('#geometry-batch-status')).to_contain_text('Import bloccato')
                                 expect(page.locator('#geometry-count')).to_contain_text('3')
+                            with page.expect_download() as review_event:
+                                page.locator("#manual-docfa-download").click()
+                            worklist_file = Path(tmp) / "manual-review.json"
+                            review_event.value.save_as(worklist_file)
+                            worklist = json.loads(worklist_file.read_text(encoding="utf-8"))
+                            check(worklist["officialValidation"] is False and worklist["officialExport"] is False, "worklist official flags")
+                            check(all(c["state"] == "unverified" for c in worklist["checks"]), "worklist falsely verified")
+                            check(len(worklist["rows"]) > 0, "worklist missing operations")
+                            expect(page.locator("#manual-docfa-status")).to_contain_text("Verifiche ufficiali tutte aperte")
                             with page.expect_download() as event:
                                 page.locator("#download-archive").click()
                             archive = Path(tmp) / "diagnostic.zip"
@@ -353,6 +362,7 @@ def run():
                             expect(page.locator("#status")).to_contain_text("Bozza sintetica importata")
                             expect(page.locator("#download-dossier")).to_be_disabled()
                             expect(page.locator("#download-archive")).to_be_disabled()
+                            expect(page.locator("#manual-docfa-download")).to_be_disabled()
                             expect(page.locator("#handoff-download")).to_be_disabled()
                             expect(page.locator('#geometry-unit')).to_be_disabled()
                             expect(page.locator('#geometry-download')).to_be_disabled()

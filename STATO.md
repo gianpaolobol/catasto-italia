@@ -45,3 +45,5 @@ Segue la versione **1.1.0** (`LINEE_GUIDA.md`).
 - 2026-11-26 [Codex] PR #59 integrata dopo CI core/Chromium/Windows/linee guida; import geometrico multiplo add-only implementato, nuova CI da verificare. V1.0 non validata.
 
 - 2026-11-26 [Codex] PR #60 integrata dopo CI core, Chromium, Windows 275/275 e linee guida; corpus diagnostico integrale 108+108 predisposto, CI da verificare. V1.0 non validata.
+
+- 2026-11-26 [Codex] PR #61 integrata, corpus sintetico 108+108 superato in CI; promemoria manuale DOCFA implementato, CI da verificare. Nessuna V1.0 professionale validata.

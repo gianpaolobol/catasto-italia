@@ -44,3 +44,6 @@ Nel pannello Building Core, selezionare il destinatario e scaricare l'interscamb
 
 ### Importazione geometrica multipla [Codex]
 Nel pannello geometrico scaricare il modello JSON delle unità senza misura, compilare i vertici in mm e le eventuali posizioni (obbligatorie per le conservate), eliminare le righe vuote e importare il file. Il digest vincola il modello alla pratica corrente; l'import aggiunge soltanto nuove misure, tutte ricalcolate dal server, e non modifica quelle già presenti. Un errore blocca l'intero gruppo. Solo dichiarazioni sintetiche, non import CAD/IFC/DOCFA. PR #59 integrata dopo CI positive, nuovo import da collaudare.
+
+### Promemoria per verifica manuale DOCFA [Codex]
+Dopo l'analisi scaricare il promemoria JSON: operazioni, identificativi, evidenze, relazione, misure e simulazioni ricalcolate, lacune geometriche/estimative e possibili sovrapposizioni degli ingombri. Anche con tutti gli annessi presenti, i controlli ufficiali restano aperti. Non è un tracciato o un modello importabile in DOCFA; non usare dati reali. PR #61: 108 pratiche sintetiche integrali e 108 cross-check superati in CI, non validazione professionale. Nuovo promemoria in attesa di CI.

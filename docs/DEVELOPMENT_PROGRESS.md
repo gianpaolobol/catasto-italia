@@ -289,3 +289,6 @@ PR #59 integrata squash 6a8f4396f7e76dd2a4309fba324e324ace997253; CI 45823039811
 
 ## Iterazione 063 — [Codex] — modalità C — 2026-11-26
 PR #60 integrata squash 0c90ac34f7c63dac0e5dc3e25c7832fc2c63b9fe dopo CI 45832231983 Windows 275/275, 45832232026 linee guida, 45832232009 core e Chromium 1280/360; checkout 530773d8ff1912098e1e30e98d68f4c5347d28a3 verificato nei quattro log. ID30: predisposto corpus di 108 pratiche sintetiche strutturalmente distinte e 108 verifiche incrociate abbinate, dalla visura revisionata al dossier/ZIP/riapertura e handoff. Test non eseguiti localmente (DNS), CI da verificare. Nessuna attestazione professionale; gate 100+100 e prove ufficiali ancora aperti. Evidenze docs/qa/ITERATION_063.md; nessuna regola nuova, backup non modificati.
+
+## Iterazione 064 — [Codex] — modalità C — 2026-11-26
+PR #61 integrata squash d3e39f8b8c7cf87402eb8fad15cee95f1566f1db; CI 45842099534 core 1313/1313, 108 pratiche e 108 cross-check nominativi PASS, Chromium 1280/360; Windows 45842099519 275/275, linee guida 45842099481. ID19/21/22/28: promemoria manuale DOCFA diagnostico JSON, lacune e controlli ufficiali aperti, nuova CI obbligatoria. Revisione sequenziale, nessuna compatibilità attestata. Dettagli docs/qa/ITERATION_064.md. Gate quantitativo sintetico soddisfatto, professionale ancora aperto.
