@@ -95,3 +95,13 @@ test('dossier rejects forged calibration fields',()=>{
  const q=make();q.geometry.calibration={vertices:q.geometry.vertices,drawingLength:1,actualLengthMm:1,verified:true};
  assert.equal(buildIntegratedDossier(q).ok,false);
 });
+
+test('one resulting unit may contain multiple disjoint contours; dossier replays all or rejects',()=>{
+ const q=make();
+ q.geometry.vertices=[[[0,0],[4000,0],[4000,2000],[0,2000]],[[5000,0],[7000,0],[7000,1000],[5000,1000]]];
+ const r=buildIntegratedDossier(q);assert.equal(r.ok,true);assert.match(r.html,/10\.000000/);
+ assert.match(r.html,/18000/);assert.equal((r.html.match(/<polygon points=/g)||[]).length,2);
+ assert.match(r.html,/7000 × 2000 mm/);
+ q.geometry.vertices[1]=[[4000,0],[5000,0],[5000,1000],[4000,1000]];
+ assert.equal(buildIntegratedDossier(q).html,null);
+});

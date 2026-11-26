@@ -241,17 +241,21 @@ function refreshPlanPreview(){
   const box=byId('geometry-preview');box.replaceChildren();
   const p=!invalid.size&&geometryReport?syntheticPlanPreview(report,geometryReport):null;
   if(!p){box.textContent='Nessun contorno misurato da mostrare.';return;}
-  const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg'),polygon=document.createElementNS(ns,'polygon');
+  const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');
   for(const [k,v] of Object.entries({viewBox:p.viewBox,width:'100%',height:'220',preserveAspectRatio:'xMidYMid meet',role:'img','aria-label':'Contorno geometrico sintetico non in scala di stampa'}))svg.setAttribute(k,v);
-  for(const [k,v] of Object.entries({points:p.points,fill:'#e2eee9',stroke:'#245e4b','stroke-width':'2','vector-effect':'non-scaling-stroke'}))polygon.setAttribute(k,v);
-  svg.append(polygon);box.append(svg,el('p','Ingombro: '+p.widthMm+' × '+p.heightMm+' mm. Schema proporzionale; asse Y verso l’alto. Scala di stampa non verificata.'));
+  for(const points of p.polygons??[p.points]){
+    const polygon=document.createElementNS(ns,'polygon');
+    for(const [k,v] of Object.entries({points,fill:'#e2eee9',stroke:'#245e4b','stroke-width':'2','vector-effect':'non-scaling-stroke'}))polygon.setAttribute(k,v);
+    svg.append(polygon);
+  }
+  box.append(svg,el('p','Ingombro: '+p.widthMm+' × '+p.heightMm+' mm. Schema proporzionale; asse Y verso l’alto. Scala di stampa non verificata.'));
 }
 function refreshGeometry(){
   refreshPlanPreview();
   byId('geometry-count').textContent='Unità con misura corrente: '+geometries.size;
   const enabled=!busy&&!invalid.size&&report?.state==='research_candidate';
   byId('geometry-unit').disabled=!enabled;
-  for(const id of ['geometry-example','geometry-vertices','geometry-measure','scale-vertices','scale-drawing','scale-mm','scale-example','scale-convert'])byId(id).disabled=!enabled||!byId('geometry-unit').value;
+  for(const id of ['geometry-example','geometry-multi-example','geometry-vertices','geometry-measure','scale-vertices','scale-drawing','scale-mm','scale-example','scale-convert'])byId(id).disabled=!enabled||!byId('geometry-unit').value;
   byId('geometry-download').disabled=!enabled||!geometryReport;
 }
 byId('geometry-unit').addEventListener('change',()=>{
@@ -295,6 +299,12 @@ byId('geometry-example').addEventListener('click',()=>{
   if(busy||invalid.size||!report||!byId('geometry-unit').value)return;
   resetScale();
   byId('geometry-vertices').value=JSON.stringify([[0,0],[4000,0],[4000,1000],[2000,1000],[2000,3000],[0,3000]],null,2);
+  clearGeometryAnnex();refreshGeometry();
+});
+byId('geometry-multi-example').addEventListener('click',()=>{
+  if(busy||invalid.size||!report||!byId('geometry-unit').value)return;
+  resetScale();
+  byId('geometry-vertices').value=JSON.stringify([[[0,0],[4000,0],[4000,2000],[0,2000]],[[5000,0],[7000,0],[7000,1000],[5000,1000]]],null,2);
   clearGeometryAnnex();refreshGeometry();
 });
 byId('geometry-measure').addEventListener('click',()=>{

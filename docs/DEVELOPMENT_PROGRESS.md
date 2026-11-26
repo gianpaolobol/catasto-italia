@@ -249,3 +249,7 @@
 ## Iterazione 051 — [Codex] — modalità C
 - PR #49 integrata a 69ddc75c3c99908a0823cdc3024a2f116ddc0680; CI 45738052389 core 1042/1042 e Chromium PASS 1280/360, Windows 45738052346 251/251, head/base esatti. PR #47 aggiornata nel suo ramo, nuova CI necessaria.
 - ID15/16/20/28: provenienza della scala dichiarata conservata per unità in annesso e dossier, replay server, invalidazione e ripristino UI; verifica isolata V8 7/7, test Node e browser predisposti. Evidenze docs/qa/ITERATION_051.md. Revisione sequenziale, nuova CI da verificare. Backup intatti, licenza invariata, gate 100+100 e prove ufficiali aperti; nessun nuovo dato tariffario o regola operativa.
+
+## Iterazione 052 — [Codex] — modalità C
+- PR #50 integrata a 23ab1dc21145bb7255207b1d726bc17c696e694a, CI 45745088467 1045/1045 e Chromium PASS, Windows 45745088485 success; head/base esatti. PR #47 CI positiva sul base precedente: nuova verifica richiesta.
+- ID16/17/20/28: contorni ortogonali disgiunti sullo stesso piano in mm, area/perimetro esatti, preview UI e dossier server; limiti e blocchi topologici, nessuna nuova regola catastale. 13 gruppi di verifiche isolate V8 superati con report e TextEncoder sostitutivi, Node/Chromium predisposti, CI da verificare. Evidenze docs/qa/ITERATION_052.md. Revisione sequenziale. Backup intatti, gate 100+100 e prove ufficiali aperti.
