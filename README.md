@@ -1,5 +1,10 @@
 # catasto-italia
 
+<!-- inizio-riquadro-linee-guida -->
+> **Linee guida v1.1.0** — Questo progetto segue le linee guida comuni dei progetti di Gian Paolo Franceschini: leggi prima [`LINEE_GUIDA.md`](LINEE_GUIDA.md), poi [`AGENTS.md`](AGENTS.md) e [`STATO.md`](STATO.md).
+<!-- fine-riquadro-linee-guida -->
+
+
 ## Diritti / Copyright
 
 **Copyright © 2026 Gian Paolo Franceschini** — Tutti i diritti riservati esclusivamente sui contributi originali di sua legittima titolarità, nei limiti delle licenze applicabili e delle concessioni preesistenti. Restano salvi i diritti di terzi. Vedi [LICENSE](LICENSE) e [RIGHTS_NOTICE.md](RIGHTS_NOTICE.md).
