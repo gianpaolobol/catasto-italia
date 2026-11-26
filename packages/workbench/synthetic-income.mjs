@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Gian Paolo Franceschini. All rights reserved.
 // Arithmetic laboratory only; no official tariff, rounding or classification decision.
 import {buildPracticeReport} from './index.mjs';
+import {catalogId,lookupSyntheticTariff} from './synthetic-tariff-catalog.mjs';
 const reference=Object.freeze({title:'Agenzia delle Entrate — Il Sistema Catastale, edizione 2021, §6, p. 29',url:'https://agenziaentrate.gov.it/portale/documents/20143/233848/Il%20Sistema%20Catastale%202021%20-%20pubblicato%20set2021.pdf/b4e3de16-ad6d-2814-d77d-b0c846e7ee70',status:'historical_method_reference_not_current_tariff'});
 const shape=(x,keys)=>x!==null&&typeof x==='object'&&!Array.isArray(x)&&Object.keys(x).length===keys.length&&keys.every(k=>Object.hasOwn(x,k));
 const units={A:'vani',B:'m3',C:'m2'};
@@ -26,7 +27,11 @@ export function syntheticIncomeWorksheet(request){
       typeof d.category!=='string'||d.category!==d.category.trim()||!/^(?:A\/(?:[1-9]|10|11)|B\/[1-8]|C\/[1-7])$/.test(d.category)||
       typeof d.classNumber!=='string'||d.classNumber!==d.classNumber.trim()||!/^[1-9][0-9]?$/.test(d.classNumber)||
       typeof d.zone!=='string'||d.zone!==d.zone.trim()||!/^SYNTH-[1-9][0-9]{0,2}$/.test(d.zone)||
-      d.sourceId!=='synthetic-tariff'||d.unit!==units[d.category[0]])return block('invalid_declared_classification');
+      !['synthetic-tariff',catalogId].includes(d.sourceId)||d.unit!==units[d.category[0]])return block('invalid_declared_classification');
+    if(d.sourceId===catalogId){
+      const found=lookupSyntheticTariff({draft:request.draft,unitId:request.unitId,zone:d.zone,category:d.category,classNumber:d.classNumber});
+      if(!found.ok||found.row.tariff!==d.tariff||found.row.unit!==d.unit)return block('catalog_tariff_mismatch');
+    }
     const c=decimal(d.consistency,3),t=decimal(d.tariff,4);
     if(c===null||t===null)return block('invalid_decimal');
     return {ok:true,blocker:null,worksheet:{version:'0.1.0',kind:'synthetic-income-worksheet',caseDigest:report.caseDigest,
