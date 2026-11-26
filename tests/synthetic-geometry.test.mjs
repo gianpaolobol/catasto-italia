@@ -33,3 +33,14 @@ test('non-simple or diagonal contours fail closed',()=>{
 });
 test('invalid coordinates and sparse arrays fail closed',()=>{for(const points of [null,[],Array(4),[[0,0],[3,0],[3,3],Array(2)],[[0,0],[3.1,0],[3,3],[0,3]],[[0,0],[10000001,0],[3,3],[0,3]],Array(129).fill([0,0])])assert.equal(measure(points).blocker,'invalid_vertices');});
 test('independent rectangle oracle, 100 synthetic dimensions (not whole practices)',()=>{for(let i=1;i<=100;i++){const w=i*137,h=10001-i*53;const r=measure([[0,0],[w,0],[w,h],[0,h]]);assert.equal(r.areaMm2,String(w*h));assert.equal(r.perimeterMm,String(2*(w+h)));}});
+
+// [Codex] A conversion is a declaration, not a verified scale.
+test('geometry calibration replays exact vertices and preserves immutable provenance',()=>{
+ const input={vertices:[[-20,-10],[20,-10],[20,10],[-20,10]],drawingLength:40,actualLengthMm:4000};
+ const points=[[0,0],[4000,0],[4000,2000],[0,2000]];
+ const r=measureSyntheticPolygon(fake,'d1',points,input);assert.equal(r.state,'measured');assert.equal(r.areaM2,'8.000000');assert.deepEqual(r.calibration,input);
+ input.vertices[0][0]=0;assert.equal(r.calibration.vertices[0][0],-20);
+ assert.equal(measureSyntheticPolygon(fake,'d1',points,{...input,actualLengthMm:8000}).state,'blocked');
+ assert.equal(measureSyntheticPolygon(fake,'d1',points,{...input,verified:true}).blocker,'invalid_calibration');
+ assert.equal(Object.hasOwn(measure(points),'calibration'),false);
+});
