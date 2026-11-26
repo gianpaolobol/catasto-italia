@@ -19,6 +19,7 @@ const dossierScript=readFileSync(new URL('../../packages/workbench/diagnostic-do
 const geometryScript=readFileSync(new URL('../../packages/workbench/synthetic-geometry.mjs',import.meta.url));
 const inventoryScript=readFileSync(new URL('../../packages/workbench/diagnostic-inventory.mjs',import.meta.url));
 const floorScript=readFileSync(new URL('../../packages/workbench/synthetic-floor-plan.mjs',import.meta.url));
+const archiveReopenScript=readFileSync(new URL('../../packages/workbench/verified-archive-reopen.mjs',import.meta.url));
 const maxBytes=256*1024;
 const headers={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff',
   'Referrer-Policy':'no-referrer','Cross-Origin-Resource-Policy':'same-origin',
@@ -46,6 +47,7 @@ export function createWorkbenchServer(){
         if(req.url==='/synthetic-geometry.mjs')return send(res,200,geometryScript,'text/javascript; charset=utf-8');
         if(req.url==='/diagnostic-inventory.mjs')return send(res,200,inventoryScript,'text/javascript; charset=utf-8');
         if(req.url==='/synthetic-floor-plan.mjs')return send(res,200,floorScript,'text/javascript; charset=utf-8');
+        if(req.url==='/verified-archive-reopen.mjs')return send(res,200,archiveReopenScript,'text/javascript; charset=utf-8');
         if(req.url==='/fixtures.mjs')return send(res,200,fixtureScript,'text/javascript; charset=utf-8');
         const scenario=scenarios.find(s=>req.url==='/api/fixture/'+s);
         if(scenario)return json(res,200,syntheticCase(scenario));

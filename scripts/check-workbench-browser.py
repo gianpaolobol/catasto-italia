@@ -299,6 +299,18 @@ def run():
                                 extracted = Path(tmp) / "extracted-session.json"
                                 extracted.write_bytes(z.read("sessione-sintetica.json"))
                                 packed_html = z.read("dossier-sintetico.html")
+                            page.locator("#import-session").set_input_files(archive)
+                            expect(page.locator("#status")).to_contain_text("Archivio sintetico verificato e ripristinato")
+                            corrupt = Path(tmp) / "corrupt.zip"
+                            corrupt.write_bytes(archive.read_bytes() + b"extra")
+                            page.locator("#import-session").set_input_files(corrupt)
+                            expect(page.locator("#status")).to_contain_text("nessun ripristino eseguito")
+                            expect(page.locator("#download-dossier")).to_be_enabled()
+                            with page.expect_download() as event:
+                                page.locator("#download-dossier").click()
+                            unchanged = Path(tmp) / "unchanged-dossier.html"
+                            event.value.save_as(unchanged)
+                            check(unchanged.read_bytes() == packed_html, "invalid ZIP changed current work")
                             page.locator("#import-session").set_input_files(extracted)
                             expect(page.locator("#status")).to_contain_text("Sessione sintetica ripristinata")
                             with page.expect_download() as event:
