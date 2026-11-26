@@ -1,4 +1,5 @@
 // Copyright (c) 2026 Gian Paolo Franceschini. All rights reserved.
+import {readSyntheticDxf,syntheticDxfExample} from '/synthetic-dxf.mjs';
 import {reopenVerifiedArchive} from '/verified-archive-reopen.mjs';
 import {validPlacement,syntheticFloorPlans} from '/synthetic-floor-plan.mjs';
 import {diagnosticInventory,inventoryHeaders,inventoryCells} from '/diagnostic-inventory.mjs';
@@ -247,6 +248,7 @@ function resetScale(){
 }
 function resetGeometry(){
   byId('geometry-batch-status').textContent='Nessun import.';
+  byId('dxf-status').textContent='Nessun DXF acquisito.';
   resetScale();resetPlacement();
   geometries.clear();
   const option=el('option','Analizza il caso');option.value='';
@@ -318,8 +320,11 @@ function refreshGeometry(){
   byId('geometry-download').disabled=!enabled||!geometryReport;
   byId('geometry-batch-template').disabled=!enabled;
   byId('geometry-batch-file').disabled=!enabled;
+  const dxfEnabled=enabled&&!!byId('geometry-unit').value&&!geometries.has(byId('geometry-unit').value);
+  byId('dxf-unit').disabled=!dxfEnabled;byId('dxf-file').disabled=!dxfEnabled||!byId('dxf-unit').value;byId('dxf-example').disabled=busy;
 }
 byId('geometry-unit').addEventListener('change',()=>{
+  byId('dxf-status').textContent='Nessun DXF acquisito per questa selezione.';
   resetScale();
   geometryReport=geometries.get(byId('geometry-unit').value)??null;
   resetPlacement(geometryReport?.placement);
@@ -335,6 +340,28 @@ byId('geometry-unit').addEventListener('change',()=>{
   refreshGeometry();
 });
 byId('geometry-vertices').addEventListener('input',()=>{appliedScale=null;byId('scale-status').textContent='Vertici in mm modificati manualmente.';clearGeometryAnnex();refreshGeometry();});
+// [Codex] Local file only; successful topology check precedes any editor change.
+byId('dxf-example').addEventListener('click',()=>{if(!busy)saveFile(syntheticDxfExample(),'application/dxf','contorno-sintetico-mm.dxf');});
+byId('dxf-unit').addEventListener('change',refreshGeometry);
+byId('dxf-file').addEventListener('change',async event=>{
+  const file=event.target.files?.[0];event.target.value='';
+  const unitId=byId('geometry-unit').value,unit=byId('dxf-unit').value;
+  if(!file||busy||invalid.size||report?.state!=='research_candidate'||!unitId||geometries.has(unitId))return;
+  lock(true);
+  try{
+    if(file.size>65536)throw Error('dimensione non supportata');
+    const parsed=readSyntheticDxf(new TextDecoder('utf-8',{fatal:true}).decode(await file.arrayBuffer()),unit);
+    if(!parsed.ok)throw Error(parsed.error);
+    const retained=report.operations.some(o=>o.unitId===unitId&&o.operation==='unchanged');
+    const checked=measureSyntheticPolygon(report,unitId,parsed.vertices,null,retained);
+    if(checked.state!=='measured')throw Error(checked.blocker);
+    resetScale();resetPlacement();
+    byId('geometry-vertices').value=JSON.stringify(parsed.vertices,null,2);
+    clearGeometryAnnex();
+    byId('dxf-status').textContent='Contorni caricati: '+parsed.contourCount+'; origine locale traslata da '+parsed.originMm.join(', ')+' mm. Area di anteprima '+checked.areaM2+' m². Verifica i vertici, dichiara la posizione se necessaria e premi Misura contorno. Nessuna scala o provenienza ufficiale attestata.';
+  }catch(e){byId('dxf-status').textContent='DXF respinto: '+e.message+'. Nessuna misura modificata.';}
+  finally{lock(false);}
+});
 const canConvertScale=()=>!busy&&!invalid.size&&report?.state==='research_candidate'&&!!byId('geometry-unit').value;
 for(const id of ['scale-vertices','scale-drawing','scale-mm'])byId(id).addEventListener('input',()=>{byId('scale-status').textContent='Parametri modificati; nessuna nuova conversione applicata.';});
 byId('scale-example').addEventListener('click',()=>{

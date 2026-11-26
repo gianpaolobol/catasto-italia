@@ -292,3 +292,6 @@ PR #60 integrata squash 0c90ac34f7c63dac0e5dc3e25c7832fc2c63b9fe dopo CI 4583223
 
 ## Iterazione 064 — [Codex] — modalità C — 2026-11-26
 PR #61 integrata squash d3e39f8b8c7cf87402eb8fad15cee95f1566f1db; CI 45842099534 core 1313/1313, 108 pratiche e 108 cross-check nominativi PASS, Chromium 1280/360; Windows 45842099519 275/275, linee guida 45842099481. ID19/21/22/28: promemoria manuale DOCFA diagnostico JSON, lacune e controlli ufficiali aperti, nuova CI obbligatoria. Revisione sequenziale, nessuna compatibilità attestata. Dettagli docs/qa/ITERATION_064.md. Gate quantitativo sintetico soddisfatto, professionale ancora aperto.
+
+## Iterazione 065 — [Codex] — modalità C — 2026-11-26
+PR #62 integrata squash fafade3e634bfe9e5f8f4cfd34d924757bf48fd3 dopo CI 45852812945 core 1316/1316 e Chromium 1280/360, 45852809826 Windows 275/275, 45852810696 linee guida. Checkout 511780bd62ae6c766ae4d581c430a2ae83438664, head 341b07f1b73d6d1182d39f52b958f1c238797574 e base d3e39f8b8c7cf87402eb8fad15cee95f1566f1db verificati nei quattro log. ID15/16/28: import locale ristretto DXF ASCII, coordinate metriche esatte, origine traslata, controllo topologico e inserimento nell'editor senza misura automatica. Test predisposti, CI richiesta. Revisione sequenziale; dettagli docs/qa/ITERATION_065.md. Gate professionale aperto; nessun dato reale o regola ufficiale nuova.
