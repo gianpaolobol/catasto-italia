@@ -653,6 +653,8 @@ byId('manual-docfa-register-file').addEventListener('change',event=>{
 byId('download-archive').addEventListener('click',async()=>{
   if(busy||invalid.size||report?.state!=='research_candidate')return;
   lock(true);
+  // [Codex] Do not leave a previous operation's status visible while preparing the archive.
+  status.textContent='Preparazione archivio diagnostico in corso…';
   try{
     const session={version:'0.1.0',kind:'synthetic-practice-session',request:currentDeclarations()};
     guideFields(session.request.draft);
