@@ -124,7 +124,7 @@ def run():
                             doc.close()
                             panel = page.locator('details').filter(has=page.get_by_text('Misura geometrica sintetica', exact=True))
                             if not panel.evaluate('(e) => e.open'):
-                                panel.locator('summary').click()
+                                panel.locator(':scope > summary').click()
                             page.locator('#geometry-unit').select_option(index=1)
                             page.locator('#geometry-example').click()
                             page.locator('#geometry-measure').click()
@@ -153,9 +153,20 @@ def run():
                             after_edit = dossier.read_text(encoding="utf-8")
                             check("555.5551500" in after_edit and "Nessuna misura corrente inclusa." in after_edit and "8.000000" not in after_edit, "stale geometry included")
                             if scenario == "division":
-                                # Restore first unit and calculate second independently.
-                                page.locator('#geometry-example').click()
+                                # [Codex] Restore first unit via explicit declared drawing scale.
+                                page.get_by_text('Converti coordinate del disegno in millimetri', exact=True).click()
+                                page.locator('#scale-example').click()
+                                page.locator('#scale-convert').click()
+                                expect(page.locator('#scale-status')).to_contain_text('Scala non verificata')
                                 page.locator('#geometry-measure').click()
+                                expect(page.locator('#geometry-result')).to_contain_text('8.000000')
+                                page.locator('#scale-drawing').fill('3')
+                                page.locator('#scale-mm').fill('1')
+                                page.locator('#scale-convert').click()
+                                expect(page.locator('#scale-status')).to_contain_text('non_integral_millimetres')
+                                expect(page.locator('#geometry-result')).to_contain_text('8.000000')
+                                # A failed conversion leaves the previously applied vertices unchanged.
+
                                 page.locator('#geometry-unit').select_option(index=2)
                                 page.locator('#geometry-vertices').fill('[[0,0],[2000,0],[2000,1000],[0,1000]]')
                                 page.locator('#geometry-measure').click()

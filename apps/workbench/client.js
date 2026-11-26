@@ -1,5 +1,5 @@
 // Copyright (c) 2026 Gian Paolo Franceschini. All rights reserved.
-import {measureSyntheticPolygon} from '/synthetic-geometry.mjs';
+import {measureSyntheticPolygon,convertSyntheticPlanScale} from '/synthetic-geometry.mjs';
 import {guideFields,editGuidedDraft} from '/guided-draft.mjs';
 import {draftFromReviewedVisura,reviewedVisuraExample} from '/reviewed-visura.mjs';
 const byId=id=>document.getElementById(id);
@@ -218,7 +218,12 @@ byId('visura-check').addEventListener('click',()=>runVisura(false));
 function clearGeometryAnnex(){
   geometries.delete(byId('geometry-unit').value);geometryReport=null;byId('geometry-result').textContent='Nessuna misura corrente.';byId('geometry-download').disabled=true;
 }
+function resetScale(){
+  for(const id of ['scale-vertices','scale-drawing','scale-mm'])byId(id).value='';
+  byId('scale-status').textContent='Nessuna conversione.';
+}
 function resetGeometry(){
+  resetScale();
   geometries.clear();
   const option=el('option','Analizza il caso');option.value='';
   byId('geometry-unit').replaceChildren(option);byId('geometry-vertices').value='';clearGeometryAnnex();refreshGeometry();
@@ -235,18 +240,40 @@ function refreshGeometry(){
   byId('geometry-count').textContent='Unità con misura corrente: '+geometries.size;
   const enabled=!busy&&!invalid.size&&report?.state==='research_candidate';
   byId('geometry-unit').disabled=!enabled;
-  for(const id of ['geometry-example','geometry-vertices','geometry-measure'])byId(id).disabled=!enabled||!byId('geometry-unit').value;
+  for(const id of ['geometry-example','geometry-vertices','geometry-measure','scale-vertices','scale-drawing','scale-mm','scale-example','scale-convert'])byId(id).disabled=!enabled||!byId('geometry-unit').value;
   byId('geometry-download').disabled=!enabled||!geometryReport;
 }
 byId('geometry-unit').addEventListener('change',()=>{
+  resetScale();
   geometryReport=geometries.get(byId('geometry-unit').value)??null;
   byId('geometry-vertices').value=geometryReport?JSON.stringify(geometryReport.vertices,null,2):'';
   byId('geometry-result').textContent=geometryReport?'Area geometrica: '+geometryReport.areaM2+' m²; perimetro: '+geometryReport.perimeterMm+' mm. Non catastale.':'Nessuna misura corrente.';
   refreshGeometry();
 });
-byId('geometry-vertices').addEventListener('input',()=>{clearGeometryAnnex();refreshGeometry();});
+byId('geometry-vertices').addEventListener('input',()=>{byId('scale-status').textContent='Vertici in mm modificati manualmente.';clearGeometryAnnex();refreshGeometry();});
+const canConvertScale=()=>!busy&&!invalid.size&&report?.state==='research_candidate'&&!!byId('geometry-unit').value;
+for(const id of ['scale-vertices','scale-drawing','scale-mm'])byId(id).addEventListener('input',()=>{byId('scale-status').textContent='Parametri modificati; nessuna nuova conversione applicata.';});
+byId('scale-example').addEventListener('click',()=>{
+  if(!canConvertScale())return;
+  byId('scale-vertices').value=JSON.stringify([[-20,-10],[20,-10],[20,10],[-20,10]]);
+  byId('scale-drawing').value='40';byId('scale-mm').value='4000';
+  byId('scale-status').textContent='Esempio caricato; conversione non ancora applicata.';
+});
+byId('scale-convert').addEventListener('click',()=>{
+  if(!canConvertScale())return;
+  try{
+    const raw=byId('scale-vertices').value,a=byId('scale-drawing').value,b=byId('scale-mm').value;
+    if(raw.length>16384||!/^\d{1,8}$/.test(a)||!/^\d{1,8}$/.test(b))throw Error('invalid_input');
+    const converted=convertSyntheticPlanScale({vertices:JSON.parse(raw),drawingLength:Number(a),actualLengthMm:Number(b)});
+    if(!converted.ok){byId('scale-status').textContent='Conversione bloccata: '+converted.blocker;return;}
+    byId('geometry-vertices').value=JSON.stringify(converted.vertices,null,2);
+    clearGeometryAnnex();refreshGeometry();
+    byId('scale-status').textContent='Vertici in mm sostituiti; misura il nuovo contorno. Scala non verificata.';
+  }catch{byId('scale-status').textContent='Dati di conversione non validi.';}
+});
 byId('geometry-example').addEventListener('click',()=>{
   if(busy||invalid.size||!report||!byId('geometry-unit').value)return;
+  resetScale();
   byId('geometry-vertices').value=JSON.stringify([[0,0],[4000,0],[4000,1000],[2000,1000],[2000,3000],[0,3000]],null,2);
   clearGeometryAnnex();refreshGeometry();
 });
