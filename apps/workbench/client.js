@@ -1,4 +1,5 @@
 // Copyright (c) 2026 Gian Paolo Franceschini. All rights reserved.
+import {reopenVerifiedArchive} from '/verified-archive-reopen.mjs';
 import {validPlacement,syntheticFloorPlans} from '/synthetic-floor-plan.mjs';
 import {diagnosticInventory,inventoryHeaders,inventoryCells} from '/diagnostic-inventory.mjs';
 import {measureSyntheticPolygon,convertSyntheticPlanScale,syntheticPlanPreview} from '/synthetic-geometry.mjs';
@@ -511,7 +512,7 @@ byId('download-archive').addEventListener('click',async()=>{
     const bytes=await response.arrayBuffer();
     if(bytes.byteLength>8*1024*1024)throw Error('too_large');
     saveFile(bytes,'application/zip','catasto-pratica-sintetica-non-ufficiale.zip');
-    status.textContent='Archivio richiesto: dossier, sessione, rapporto, interscambi e manifest. Estrarre localmente.';
+    status.textContent='Archivio richiesto: dossier, sessione, rapporto, interscambi e manifest. Riapribile dal selettore sessione/ZIP.';
   }catch{status.textContent='Archivio non disponibile: controlla il caso e gli annessi.';}
   finally{lock(false);}
 });
@@ -533,8 +534,18 @@ byId('import-session').addEventListener('change',async event=>{
   if(!file||busy)return;
   lock(true);
   try{
-    if(file.size>256*1024)throw Error('too_large');
-    const session=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(await file.arrayBuffer()));
+    const archive=file.name.toLowerCase().endsWith('.zip');
+    if(file.size>(archive?8*1024*1024:256*1024))throw Error('too_large');
+    const bytes=new Uint8Array(await file.arrayBuffer());
+    const session=archive?await reopenVerifiedArchive(bytes,async candidate=>{
+      const body=JSON.stringify(candidate);
+      if(new TextEncoder().encode(body).length>256*1024)throw Error('too_large');
+      const response=await fetch('/api/archive',{method:'POST',headers:{'Content-Type':'application/json'},body});
+      if(!response.ok||!response.headers.get('content-type')?.startsWith('application/zip'))throw Error('blocked');
+      const regenerated=new Uint8Array(await response.arrayBuffer());
+      if(regenerated.length>8*1024*1024)throw Error('too_large');
+      return regenerated;
+    }):JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));
     const result=await replaySession(session);
     // Validate editor compatibility before replacing the current work.
     guideFields(session.request.draft);
@@ -547,7 +558,7 @@ byId('import-session').addEventListener('change',async event=>{
     for(const [id,items] of [['geometry-unit',geometries],['income-unit',incomes]]){
       if(items.size){byId(id).value=items.keys().next().value;byId(id).dispatchEvent(new Event('change'));}
     }
-    status.textContent='Sessione sintetica ripristinata; caso e annessi ricalcolati. Nessuna approvazione.';
-  }catch{status.textContent='Sessione non valida: nessun ripristino eseguito.';}
+    status.textContent=archive?'Archivio sintetico verificato e ripristinato; tutti i byte coincidono con il ricalcolo. Nessuna autenticità o approvazione.':'Sessione sintetica ripristinata; caso e annessi ricalcolati. Nessuna approvazione.';
+  }catch{status.textContent='Sessione non valida: nessun ripristino eseguito. Per ZIP, serve un archivio integro della versione corrente.';}
   finally{lock(false);}
 });

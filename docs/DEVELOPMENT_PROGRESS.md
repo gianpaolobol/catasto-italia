@@ -277,3 +277,6 @@ ID16/18/20/28: geometria di contesto per unità conservate con posizione comune 
 
 ## Iterazione 059 — [Codex] — modalità C — 2026-11-26
 PR #56 integrata a b94446a9010b75b14a8dff00b9a6c13e6f0f8630 dopo CI 45795202423, 45795202417, 45795202422. #57 riallineata conservando entrambi i blocchi funzionali, aggiunti test browser ZIP → riapertura → dossier identico e test contesto conservato/handoff. Nuova CI obbligatoria. Dettagli docs/qa/ITERATION_059.md. Gate 100+100 e prove ufficiali aperti.
+
+## Iterazione 060 — [Codex] — modalità C — 2026-11-26
+PR #57 integrata squash 88b70742329cbc4fdf34a6c0728651f010606868; CI 45804099327 core 1082 pass e Chromium 1280/360, Windows 45804099667 264/264, linee guida 45804099188. Checkout a90bf573c5ece6014dd9234be0b0ca63afda6e04, head 99616c803e12e8e794c4e570e44043c2ba84d740, base b94446a9010b75b14a8dff00b9a6c13e6f0f8630. Riapertura diretta del pacchetto diagnostico ZIP senza estrazione: sessione limitata a 256 KiB, ZIP 8 MiB, rigenerazione server e uguaglianza completa prima di sostituire il lavoro. Test Node e Chromium predisposti, nuova CI obbligatoria. Revisione sequenziale, nessuna autenticità, dato reale o formato DOCFA. Dettagli docs/qa/ITERATION_060.md. Gate 100+100 aperto.

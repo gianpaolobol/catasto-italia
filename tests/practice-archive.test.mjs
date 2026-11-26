@@ -6,6 +6,7 @@ import {createHash} from 'node:crypto';
 import {once} from 'node:events';
 import {reviewedVisuraExample,draftFromReviewedVisura} from '../packages/workbench/reviewed-visura.mjs';
 import {buildPracticeReport} from '../packages/workbench/index.mjs';
+import {reopenVerifiedArchive} from '../packages/workbench/verified-archive-reopen.mjs';
 import {buildPracticeArchive} from '../packages/workbench/practice-archive.mjs';
 import {replayPracticeSession} from '../packages/workbench/integrated-dossier.mjs';
 import {verifySyntheticHandoff} from '../packages/workbench/synthetic-handoff.mjs';
@@ -82,4 +83,19 @@ test('retained unit survives ZIP replay without becoming a handoff operation',()
     const h=get('interscambio-'+target+'.json');assert.ok(!h.operations.some(o=>o.unitId===other.unitId));assert.equal(verifySyntheticHandoff(s.request.draft,target,h),true);
   }
   delete s.request.geometry.at(-1).placement;assert.equal(buildPracticeArchive(s).ok,false);
+});
+
+test('canonical archive reopen across six scenarios and rejection of tampering',async()=>{
+  const regenerate=async s=>{const r=buildPracticeArchive(s);if(!r.ok)throw Error('blocked');return r.bytes;};
+  for(const [scenario] of scenarios){
+    const original=session(scenario),bytes=await regenerate(original);
+    assert.deepEqual(await reopenVerifiedArchive(bytes,regenerate),original);
+    for(const index of [0,6,8,18,26,30,bytes.length-1,Math.floor(bytes.length/2)]){
+      const altered=Buffer.from(bytes);altered[index]^=1;
+      await assert.rejects(()=>reopenVerifiedArchive(altered,regenerate));
+    }
+    await assert.rejects(()=>reopenVerifiedArchive(Buffer.concat([bytes,Buffer.from('extra')]),regenerate));
+    await assert.rejects(()=>reopenVerifiedArchive(bytes.subarray(0,bytes.length-1),regenerate));
+  }
+  await assert.rejects(()=>reopenVerifiedArchive(new Uint8Array(8*1024*1024+1),regenerate));
 });

@@ -35,3 +35,6 @@ Dopo l’analisi, è possibile misurare un contorno e calcolare un prodotto esti
 
 ### Avvio locale su Windows (prototipo sintetico)
 Con Node.js 22 o successivo già installato, fare doppio clic su `Avvia-Catasto-Italia.cmd` nella cartella del repository estratto. Il browser apre l'indirizzo locale indicato nella console; se non si apre, copiarlo manualmente. La porta è assegnata dal sistema, non esposta in rete. Lasciare la finestra aperta durante l'uso; Ctrl+C arresta il server. Alternativa: `node apps/workbench/launch-local.mjs --no-browser`. Nessun installer, DOCFA o invio ufficiale. Usare esclusivamente fixture sintetiche; il collaudo Windows è da verificare.
+
+### Archivio completo e riapertura verificata [Codex]
+Il pulsante ZIP crea dossier, sessione, rapporto, tre handoff diagnostici e manifest. Selezionare il file ZIP nel campo di riapertura: vengono letti solo i byte della sessione JSON, il server locale rigenera l'intero ZIP e l'app confronta tutti i byte prima di sostituire il lavoro corrente. Solo archivi canonici della versione corrente; non è un lettore ZIP generico e non autentica chi lo ha prodotto. La sessione JSON separata rimane un percorso di recupero. Non inserire dati reali. PR #57: CI Chromium e Windows verificate sul commit integrato; riapertura diretta ZIP in nuova PR, CI da verificare.
