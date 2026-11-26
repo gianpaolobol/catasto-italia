@@ -1,21 +1,21 @@
 // Copyright (c) 2026 Gian Paolo Franceschini. All rights reserved.
-import {measureSyntheticPolygon,convertSyntheticPlanScale} from '/synthetic-geometry.mjs';
+import {measureSyntheticPolygon,convertSyntheticPlanScale,syntheticPlanPreview} from '/synthetic-geometry.mjs';
 import {guideFields,editGuidedDraft} from '/guided-draft.mjs';
 import {draftFromReviewedVisura,reviewedVisuraExample} from '/reviewed-visura.mjs';
 const byId=id=>document.getElementById(id);
 const field=byId('case'),status=byId('status'),download=byId('download'),load=byId('load'),analyze=byId('analyze'),guide=byId('guide');
-let report=null,busy=false,draft=null,geometryReport=null,incomeReport=null;
+let report=null,busy=false,draft=null,geometryReport=null,incomeReport=null,appliedScale=null;
 const invalid=new Set();
 const geometries=new Map(),incomes=new Map();
 const incomeFields=['category','class','zone','consistency','tariff'];
 const el=(tag,text)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;return e;};
 function clear(){
   byId('visura-result').textContent='Nessun confronto corrente.';
-  report=null;byId('handoff-status').textContent='Analizza un caso sintetico.';resetGeometry();resetIncome();download.disabled=true;byId('download-dossier').disabled=true;byId('summary').textContent='Nessun rapporto corrente.';
+  report=null;byId('handoff-status').textContent='Analizza un caso sintetico.';resetGeometry();resetIncome();download.disabled=true;byId('save-session').disabled=true;byId('download-dossier').disabled=true;byId('summary').textContent='Nessun rapporto corrente.';
   byId('relation').textContent='—';byId('details').textContent='—';byId('operations').replaceChildren();
 }
-function refresh(){refreshGeometry();refreshIncome();const handoffEnabled=!busy&&!invalid.size&&report?.state==='research_candidate';byId('handoff-target').disabled=!handoffEnabled;byId('handoff-download').disabled=!handoffEnabled;byId('download-dossier').disabled=busy||!report||report.diagnosticReportExportable!==true;for(const id of ['visura-check','visura-example','visura-claim','visura-file','visura-text'])byId(id).disabled=busy||invalid.size>0;analyze.disabled=busy||invalid.size>0;byId('save-draft').disabled=busy||invalid.size>0;for(const e of guide.querySelectorAll('input,select'))e.disabled=busy;}
-function lock(value){busy=value;byId('import-draft').disabled=value;byId('reviewed-import').disabled=value;byId('reviewed-example').disabled=value;byId('reviewed-template').disabled=value;load.disabled=value;field.readOnly=value;byId('scenario').disabled=value;byId('open-guide').disabled=value;refresh();}
+function refresh(){refreshGeometry();refreshIncome();byId('save-session').disabled=busy||invalid.size>0||report?.state!=='research_candidate';const handoffEnabled=!busy&&!invalid.size&&report?.state==='research_candidate';byId('handoff-target').disabled=!handoffEnabled;byId('handoff-download').disabled=!handoffEnabled;byId('download-dossier').disabled=busy||!report||report.diagnosticReportExportable!==true;for(const id of ['visura-check','visura-example','visura-claim','visura-file','visura-text'])byId(id).disabled=busy||invalid.size>0;analyze.disabled=busy||invalid.size>0;byId('save-draft').disabled=busy||invalid.size>0;for(const e of guide.querySelectorAll('input,select'))e.disabled=busy;}
+function lock(value){busy=value;byId('import-session').disabled=value;byId('import-draft').disabled=value;byId('reviewed-import').disabled=value;byId('reviewed-example').disabled=value;byId('reviewed-template').disabled=value;load.disabled=value;field.readOnly=value;byId('scenario').disabled=value;byId('open-guide').disabled=value;refresh();}
 function resetGuide(){draft=null;invalid.clear();guide.replaceChildren();const option=el('option','Carica un caso nell’editor guidato');option.value='';byId('visura-claim').replaceChildren(option);byId('visura-text').value='';clearVisura();refresh();}
 function showGuide(input){
   resetGuide();
@@ -129,16 +129,20 @@ function showOperations(operations){
   }
   table.append(body);if(operations.length)byId('operations').append(table);
 }
+function showCurrentReport(){
+    byId('summary').textContent=report.state==='research_candidate'?'Ipotesi di ricerca: '+report.candidate.cause:'Bloccato — nessuna ipotesi disponibile.';
+    byId('relation').textContent=report.relation??'Nessuna relazione di proposta.';
+    showOperations(report.operations);populateGeometryUnits();populateIncomeUnits();
+    byId('details').textContent=JSON.stringify({warning:report.warning,operations:report.operations,evidence:report.evidence,source:report.source,blockers:report.blockers},null,2);
+  download.disabled=report.diagnosticReportExportable!==true;
+}
 analyze.addEventListener('click',async()=>{
   if(busy||invalid.size)return;clear();lock(true);
   try{
     if(new TextEncoder().encode(field.value).length>256*1024)throw Error('Input troppo grande.');
     const input=JSON.parse(field.value);
     report=await request('/api/report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)});
-    byId('summary').textContent=report.state==='research_candidate'?'Ipotesi di ricerca: '+report.candidate.cause:'Bloccato — nessuna ipotesi disponibile.';
-    byId('relation').textContent=report.relation??'Nessuna relazione di proposta.';
-    showOperations(report.operations);populateGeometryUnits();populateIncomeUnits();
-    byId('details').textContent=JSON.stringify({warning:report.warning,operations:report.operations,evidence:report.evidence,source:report.source,blockers:report.blockers},null,2);
+    showCurrentReport();
     status.textContent='Analisi diagnostica completata; nessuna approvazione.';
     download.disabled=report.diagnosticReportExportable!==true;
   }catch{clear();status.textContent='Analisi non riuscita. Controlla i dati e riprova.';}finally{lock(false);}
@@ -164,9 +168,7 @@ byId('download-dossier').addEventListener('click',async()=>{
   if(!report||busy||invalid.size||report.diagnosticReportExportable!==true)return;
   lock(true);
   try{
-    const payload={draft:JSON.parse(field.value),expectedState:report.state,expectedDigest:report.caseDigest,
-      geometry:[...geometries.values()].map(a=>({unitId:a.unitId,vertices:a.vertices})),
-      income:[...incomes.values()].map(a=>({unitId:a.unitId,declared:a.declared}))};
+    const payload=currentDeclarations();
     if(new TextEncoder().encode(JSON.stringify(payload)).length>256*1024)throw Error('too_large');
     const result=await request('/api/dossier',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!result.ok||typeof result.html!=='string')throw Error('blocked');
@@ -219,6 +221,7 @@ function clearGeometryAnnex(){
   geometries.delete(byId('geometry-unit').value);geometryReport=null;byId('geometry-result').textContent='Nessuna misura corrente.';byId('geometry-download').disabled=true;
 }
 function resetScale(){
+  appliedScale=null;
   for(const id of ['scale-vertices','scale-drawing','scale-mm'])byId(id).value='';
   byId('scale-status').textContent='Nessuna conversione.';
 }
@@ -236,21 +239,42 @@ function populateGeometryUnits(){
   }
   refreshGeometry();
 }
+function refreshPlanPreview(){
+  const box=byId('geometry-preview');box.replaceChildren();
+  const p=!invalid.size&&geometryReport?syntheticPlanPreview(report,geometryReport):null;
+  if(!p){box.textContent='Nessun contorno misurato da mostrare.';return;}
+  const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');
+  for(const [k,v] of Object.entries({viewBox:p.viewBox,width:'100%',height:'220',preserveAspectRatio:'xMidYMid meet',role:'img','aria-label':'Contorno geometrico sintetico non in scala di stampa'}))svg.setAttribute(k,v);
+  for(const points of p.polygons??[p.points]){
+    const polygon=document.createElementNS(ns,'polygon');
+    for(const [k,v] of Object.entries({points,fill:'#e2eee9',stroke:'#245e4b','stroke-width':'2','vector-effect':'non-scaling-stroke'}))polygon.setAttribute(k,v);
+    svg.append(polygon);
+  }
+  box.append(svg,el('p','Ingombro: '+p.widthMm+' × '+p.heightMm+' mm. Schema proporzionale; asse Y verso l’alto. Scala di stampa non verificata.'));
+}
 function refreshGeometry(){
+  refreshPlanPreview();
   byId('geometry-count').textContent='Unità con misura corrente: '+geometries.size;
   const enabled=!busy&&!invalid.size&&report?.state==='research_candidate';
   byId('geometry-unit').disabled=!enabled;
-  for(const id of ['geometry-example','geometry-vertices','geometry-measure','scale-vertices','scale-drawing','scale-mm','scale-example','scale-convert'])byId(id).disabled=!enabled||!byId('geometry-unit').value;
+  for(const id of ['geometry-example','geometry-multi-example','geometry-vertices','geometry-measure','scale-vertices','scale-drawing','scale-mm','scale-example','scale-convert'])byId(id).disabled=!enabled||!byId('geometry-unit').value;
   byId('geometry-download').disabled=!enabled||!geometryReport;
 }
 byId('geometry-unit').addEventListener('change',()=>{
   resetScale();
   geometryReport=geometries.get(byId('geometry-unit').value)??null;
+  if(geometryReport?.calibration){
+    appliedScale=geometryReport.calibration;
+    byId('scale-vertices').value=JSON.stringify(appliedScale.vertices);
+    byId('scale-drawing').value=String(appliedScale.drawingLength);
+    byId('scale-mm').value=String(appliedScale.actualLengthMm);
+    byId('scale-status').textContent='Conversione dichiarata ripristinata. Scala non verificata.';
+  }
   byId('geometry-vertices').value=geometryReport?JSON.stringify(geometryReport.vertices,null,2):'';
   byId('geometry-result').textContent=geometryReport?'Area geometrica: '+geometryReport.areaM2+' m²; perimetro: '+geometryReport.perimeterMm+' mm. Non catastale.':'Nessuna misura corrente.';
   refreshGeometry();
 });
-byId('geometry-vertices').addEventListener('input',()=>{byId('scale-status').textContent='Vertici in mm modificati manualmente.';clearGeometryAnnex();refreshGeometry();});
+byId('geometry-vertices').addEventListener('input',()=>{appliedScale=null;byId('scale-status').textContent='Vertici in mm modificati manualmente.';clearGeometryAnnex();refreshGeometry();});
 const canConvertScale=()=>!busy&&!invalid.size&&report?.state==='research_candidate'&&!!byId('geometry-unit').value;
 for(const id of ['scale-vertices','scale-drawing','scale-mm'])byId(id).addEventListener('input',()=>{byId('scale-status').textContent='Parametri modificati; nessuna nuova conversione applicata.';});
 byId('scale-example').addEventListener('click',()=>{
@@ -264,8 +288,10 @@ byId('scale-convert').addEventListener('click',()=>{
   try{
     const raw=byId('scale-vertices').value,a=byId('scale-drawing').value,b=byId('scale-mm').value;
     if(raw.length>16384||!/^\d{1,8}$/.test(a)||!/^\d{1,8}$/.test(b))throw Error('invalid_input');
-    const converted=convertSyntheticPlanScale({vertices:JSON.parse(raw),drawingLength:Number(a),actualLengthMm:Number(b)});
+    const declaration={vertices:JSON.parse(raw),drawingLength:Number(a),actualLengthMm:Number(b)};
+    const converted=convertSyntheticPlanScale(declaration);
     if(!converted.ok){byId('scale-status').textContent='Conversione bloccata: '+converted.blocker;return;}
+    appliedScale=declaration;
     byId('geometry-vertices').value=JSON.stringify(converted.vertices,null,2);
     clearGeometryAnnex();refreshGeometry();
     byId('scale-status').textContent='Vertici in mm sostituiti; misura il nuovo contorno. Scala non verificata.';
@@ -277,13 +303,19 @@ byId('geometry-example').addEventListener('click',()=>{
   byId('geometry-vertices').value=JSON.stringify([[0,0],[4000,0],[4000,1000],[2000,1000],[2000,3000],[0,3000]],null,2);
   clearGeometryAnnex();refreshGeometry();
 });
+byId('geometry-multi-example').addEventListener('click',()=>{
+  if(busy||invalid.size||!report||!byId('geometry-unit').value)return;
+  resetScale();
+  byId('geometry-vertices').value=JSON.stringify([[[0,0],[4000,0],[4000,2000],[0,2000]],[[5000,0],[7000,0],[7000,1000],[5000,1000]]],null,2);
+  clearGeometryAnnex();refreshGeometry();
+});
 byId('geometry-measure').addEventListener('click',()=>{
   if(busy||invalid.size||!report||!byId('geometry-unit').value)return;
   clearGeometryAnnex();
   try{
     const raw=byId('geometry-vertices').value;
     if(raw.length>16384)throw Error('too_large');
-    const measured=measureSyntheticPolygon(report,byId('geometry-unit').value,JSON.parse(raw));
+    const measured=measureSyntheticPolygon(report,byId('geometry-unit').value,JSON.parse(raw),appliedScale);
     if(measured.state==='measured'){
       geometryReport=measured;geometries.set(measured.unitId,measured);
       byId('geometry-result').textContent='Area geometrica: '+measured.areaM2+' m²; perimetro: '+measured.perimeterMm+' mm. Non catastale.';
@@ -369,4 +401,53 @@ byId('income-calculate').addEventListener('click',async()=>{
 byId('income-download').addEventListener('click',()=>{
   if(busy||invalid.size||!incomeReport||incomeReport.caseDigest!==report?.caseDigest||incomeReport.unitId!==byId('income-unit').value)return;
   saveJson(incomeReport,'catasto-annesso-estimativo-sintetico.json');
+});
+
+function currentDeclarations(){
+  return {draft:JSON.parse(field.value),expectedState:report.state,expectedDigest:report.caseDigest,
+    geometry:[...geometries.values()].map(a=>({unitId:a.unitId,vertices:a.vertices,...(a.calibration?{calibration:a.calibration}:{})})),
+    income:[...incomes.values()].map(a=>({unitId:a.unitId,declared:a.declared}))};
+}
+async function replaySession(session){
+  const body=JSON.stringify(session);
+  if(new TextEncoder().encode(body).length>256*1024)throw Error('too_large');
+  const result=await request('/api/session',{method:'POST',headers:{'Content-Type':'application/json'},body});
+  if(!result.ok||result.report?.state!=='research_candidate'||!Array.isArray(result.geometry)||!Array.isArray(result.income))throw Error('blocked');
+  return result;
+}
+byId('save-session').addEventListener('click',async()=>{
+  if(busy||invalid.size||report?.state!=='research_candidate')return;
+  lock(true);
+  try{
+    const session={version:'0.1.0',kind:'synthetic-practice-session',request:currentDeclarations()};
+    guideFields(session.request.draft);
+    await replaySession(session);
+    // Compact representation keeps the saved file within the server byte limit.
+    saveFile(JSON.stringify(session),'application/json','catasto-sessione-sintetica.json');
+    status.textContent='Download sessione richiesto: caso e annessi correnti, nessun risultato accettato senza ricalcolo.';
+  }catch{status.textContent='Sessione non esportabile: controlla il caso e gli annessi.';}
+  finally{lock(false);}
+});
+byId('import-session').addEventListener('change',async event=>{
+  const file=event.target.files?.[0];event.target.value='';
+  if(!file||busy)return;
+  lock(true);
+  try{
+    if(file.size>256*1024)throw Error('too_large');
+    const session=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(await file.arrayBuffer()));
+    const result=await replaySession(session);
+    // Validate editor compatibility before replacing the current work.
+    guideFields(session.request.draft);
+    clear();showGuide(session.request.draft);
+    field.value=JSON.stringify(session.request.draft);
+    byId('scenario').value=session.request.draft.input.scenario;
+    report=result.report;showCurrentReport();
+    for(const a of result.geometry)geometries.set(a.unitId,a);
+    for(const a of result.income)incomes.set(a.unitId,a);
+    for(const [id,items] of [['geometry-unit',geometries],['income-unit',incomes]]){
+      if(items.size){byId(id).value=items.keys().next().value;byId(id).dispatchEvent(new Event('change'));}
+    }
+    status.textContent='Sessione sintetica ripristinata; caso e annessi ricalcolati. Nessuna approvazione.';
+  }catch{status.textContent='Sessione non valida: nessun ripristino eseguito.';}
+  finally{lock(false);}
 });

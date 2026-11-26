@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {once} from 'node:events';
 import {syntheticCase,scenarios} from '../packages/workbench/fixtures.mjs';
 import {buildPracticeReport} from '../packages/workbench/index.mjs';
-import {buildIntegratedDossier} from '../packages/workbench/integrated-dossier.mjs';
+import {buildIntegratedDossier,replayPracticeSession} from '../packages/workbench/integrated-dossier.mjs';
 import {createWorkbenchServer} from '../apps/workbench/server.mjs';
 const make=(scenario='fusion')=>{
   const draft=syntheticCase(scenario),r=buildPracticeReport(draft);
@@ -15,7 +15,7 @@ const make=(scenario='fusion')=>{
 };
 for(const scenario of scenarios)test('integrated dossier '+scenario,()=>{
   const q=make(scenario),before=JSON.stringify(q),r=buildIntegratedDossier(q);
-  assert.equal(r.ok,true);assert.match(r.html,/8\.000000/);assert.match(r.html,/14000/);
+  assert.equal(r.ok,true);assert.match(r.html,/8\.000000/);assert.match(r.html,/14000/);assert.match(r.html,/<svg[^>]+viewBox="-200 -200 4400 3400"/);assert.match(r.html,/points="0,3000 4000,3000 4000,2000 2000,2000 2000,0 0,0"/);assert.match(r.html,/scala di stampa non verificata/i);
   assert.match(r.html,/555\.5551500/);assert.ok(r.html.includes(q.expectedDigest));
   assert.match(r.html,/NON UFFICIALE/);assert.match(r.html,/default-src 'none'/);
   assert.doesNotMatch(r.html,/<(?:script|iframe|form)\b/);assert.equal(JSON.stringify(q),before);
@@ -63,6 +63,7 @@ test('division dossier includes both units and exact separate measurements',()=>
  const q=multi(),before=JSON.stringify(q),r=buildIntegratedDossier(q);
  assert.equal(r.ok,true);
  for(const value of ['8.000000','2.000000','555.5551500','200.0000000','Copertura degli annessi'])assert.ok(r.html.includes(value),value);
+ assert.equal((r.html.match(/<figure class="plan-preview">/g)||[]).length,2);
  assert.equal(JSON.stringify(q),before);
 });
 test('partial annex coverage is explicit by unit',()=>{
@@ -81,4 +82,58 @@ for(const [label,edit] of [
  ['null array element',q=>q.income.push(null)]
 ])test('multi annex rejects '+label,()=>{
  const q=multi();edit(q);const r=buildIntegratedDossier(q);assert.equal(r.ok,false);assert.equal(r.html,null);
+});
+
+// [Codex] Declared conversion provenance is replayed, never treated as scale certification.
+test('dossier distinguishes replayed calibration from manual coordinates per unit',()=>{
+ const q=multi();q.geometry[0].vertices=[[0,0],[4000,0],[4000,2000],[0,2000]];
+ q.geometry[0].calibration={vertices:[[-20,-10],[20,-10],[20,10],[-20,10]],drawingLength:40,actualLengthMm:4000};
+ const r=buildIntegratedDossier(q);assert.equal(r.ok,true);assert.match(r.html,/Provenienza della scala/);assert.match(r.html,/Conversione dichiarata, scala non verificata/);assert.match(r.html,/Millimetri dichiarati manualmente/);assert.match(r.html,/<td>40<\/td><td>4000<\/td>/);
+ q.geometry[0].calibration.actualLengthMm=8000;assert.equal(buildIntegratedDossier(q).ok,false);
+});
+test('dossier rejects forged calibration fields',()=>{
+ const q=make();q.geometry.calibration={vertices:q.geometry.vertices,drawingLength:1,actualLengthMm:1,verified:true};
+ assert.equal(buildIntegratedDossier(q).ok,false);
+});
+
+test('one resulting unit may contain multiple disjoint contours; dossier replays all or rejects',()=>{
+ const q=make();
+ q.geometry.vertices=[[[0,0],[4000,0],[4000,2000],[0,2000]],[[5000,0],[7000,0],[7000,1000],[5000,1000]]];
+ const r=buildIntegratedDossier(q);assert.equal(r.ok,true);assert.match(r.html,/10\.000000/);
+ assert.match(r.html,/18000/);assert.equal((r.html.match(/<polygon points=/g)||[]).length,2);
+ assert.match(r.html,/7000 × 2000 mm/);
+ q.geometry.vertices[1]=[[4000,0],[5000,0],[5000,1000],[4000,1000]];
+ assert.equal(buildIntegratedDossier(q).html,null);
+});
+
+const session=()=>({version:'0.1.0',kind:'synthetic-practice-session',request:multi()});
+test('portable session replays both units and produces identical dossier',()=>{
+ const s=session(),before=JSON.stringify(s),r=replayPracticeSession(s);
+ assert.equal(r.ok,true);assert.equal(r.report.caseDigest,s.request.expectedDigest);
+ assert.deepEqual(r.geometry.map(a=>a.areaM2),['8.000000','2.000000']);
+ assert.deepEqual(r.income.map(a=>a.exactProductEur),['555.5551500','200.0000000']);
+ assert.equal(r.report.operative,false);assert.equal(JSON.stringify(s),before);
+ assert.equal(buildIntegratedDossier(s.request).ok,true);
+});
+for(const [label,change] of [
+ ['version',s=>s.version='9'],['injected result',s=>s.report={}],
+ ['stale digest',s=>s.request.expectedDigest='0'.repeat(64)],
+ ['non-array annex',s=>s.request.geometry=s.request.geometry[0]],
+ ['fake area',s=>s.request.geometry[0].areaMm2='1'],
+ ['invalid unit',s=>s.request.income[1].unitId='other'],
+ ['blocked state',s=>s.request.expectedState='blocked'],
+ ['invalid evidence',s=>s.request.draft.assertions.pop()]
+])test('session rejects '+label,()=>{
+ const s=session();change(s);const r=replayPracticeSession(s);
+ assert.equal(r.ok,false);assert.deepEqual(Object.keys(r).sort(),['error','ok']);
+});
+test('local session API rejects wrong origin and recomputes on reopen',async t=>{
+ const server=createWorkbenchServer();server.listen(0,'127.0.0.1');await once(server,'listening');
+ t.after(()=>new Promise(resolve=>{server.close(resolve);server.closeAllConnections();}));
+ const base='http://127.0.0.1:'+server.address().port,s=session();
+ const opts={method:'POST',headers:{Origin:base,'Content-Type':'application/json'},body:JSON.stringify(s)};
+ const r=await fetch(base+'/api/session',opts);assert.equal(r.status,200);
+ assert.equal((await r.json()).geometry.length,2);
+ assert.equal((await fetch(base+'/api/session',{...opts,headers:{...opts.headers,Origin:'https://example.invalid'}})).status,403);
+ s.request.geometry[0].vertices=[];assert.equal((await fetch(base+'/api/session',{...opts,body:JSON.stringify(s)})).status,400);
 });
