@@ -137,3 +137,48 @@ test('local session API rejects wrong origin and recomputes on reopen',async t=>
  assert.equal((await fetch(base+'/api/session',{...opts,headers:{...opts.headers,Origin:'https://example.invalid'}})).status,403);
  s.request.geometry[0].vertices=[];assert.equal((await fetch(base+'/api/session',{...opts,body:JSON.stringify(s)})).status,400);
 });
+
+ // [Codex] Batch declarations exercise the same end-to-end replay as the workbench.
+import {importGeometryBatch} from '../packages/workbench/geometry-batch.mjs';
+const batchSetup=()=>{
+ const q=multi();q.geometry=q.geometry.slice(0,1);
+ const session={version:'0.1.0',kind:'synthetic-practice-session',request:q};
+ const batch={version:'0.1.0',kind:'synthetic-geometry-declarations',caseDigest:q.expectedDigest,geometry:[
+  {unitId:'d2',vertices:[[0,0],[2000,0],[2000,1000],[0,1000]],placement:{floor:'P0',xMm:4000,yMm:0}},
+  {unitId:'other',vertices:[[0,0],[1000,0],[1000,1000],[0,1000]],placement:{floor:'P0',xMm:6000,yMm:0}}
+ ]};return {session,batch};
+};
+test('batch geometry adds result and retained context, preserves income and existing measures',()=>{
+ const q=batchSetup(),before=JSON.stringify(q),r=importGeometryBatch(q);
+ assert.equal(r.ok,true);assert.equal(r.added,2);assert.equal(r.geometry.length,3);
+ assert.equal(r.geometry[0].areaMm2,'8000000');assert.equal(r.geometry[1].areaMm2,'2000000');
+ assert.equal(r.geometry[2].operation,'unchanged');assert.equal(r.income.length,2);
+ assert.equal(JSON.stringify(q),before);
+ const next=structuredClone(q.session);next.request.geometry.push(...q.batch.geometry);
+ assert.deepEqual(r.geometry,replayPracticeSession(next).geometry);
+ assert.match(buildIntegratedDossier(next.request).html,/Conservata/);
+});
+for(const [name,edit] of [
+ ['stale digest',q=>q.batch.caseDigest='0'.repeat(64)],
+ ['existing measure',q=>q.batch.geometry[0].unitId=q.session.request.geometry[0].unitId],
+ ['duplicate',q=>q.batch.geometry.push(q.batch.geometry[0])],
+ ['unknown unit',q=>q.batch.geometry[0].unitId='invented'],
+ ['invalid second contour',q=>q.batch.geometry[1].vertices=[]],
+ ['missing retained position',q=>delete q.batch.geometry[1].placement],
+ ['forged area',q=>q.batch.geometry[0].areaMm2='1'],
+ ['empty batch',q=>q.batch.geometry=[]],
+ ['extra key',q=>q.batch.official=true]
+])test('batch geometry rejects atomically: '+name,()=>{
+ const q=batchSetup();edit(q);const before=JSON.stringify(q);
+ const r=importGeometryBatch(q);assert.equal(r.ok,false);assert.equal(r.geometry,undefined);
+ assert.equal(JSON.stringify(q),before);
+});
+test('batch geometry API rejects foreign origin and invalid batch',async t=>{
+ const server=createWorkbenchServer();server.listen(0,'127.0.0.1');await once(server,'listening');
+ t.after(()=>new Promise(resolve=>{server.close(resolve);server.closeAllConnections();}));
+ const base='http://127.0.0.1:'+server.address().port,q=batchSetup();
+ const opts={method:'POST',headers:{Origin:base,'Content-Type':'application/json'},body:JSON.stringify(q)};
+ const response=await fetch(base+'/api/geometry-batch',opts);assert.equal(response.status,200);assert.equal((await response.json()).added,2);
+ assert.equal((await fetch(base+'/api/geometry-batch',{...opts,headers:{...opts.headers,Origin:'https://example.invalid'}})).status,403);
+ q.batch.geometry[1].vertices=[];assert.equal((await fetch(base+'/api/geometry-batch',{...opts,body:JSON.stringify(q)})).status,400);
+});
