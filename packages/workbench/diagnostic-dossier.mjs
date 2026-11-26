@@ -1,5 +1,6 @@
 // Copyright (c) 2026 Gian Paolo Franceschini. All rights reserved.
 // Presentation only. Input is the current server-generated diagnostic report.
+import {diagnosticInventory,inventoryHeaders,inventoryCells} from './diagnostic-inventory.mjs';
 import {syntheticPlanPreview} from './synthetic-geometry.mjs';
 const esc=x=>String(x??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const table=(headers,rows)=>'<table><thead><tr>'+headers.map(x=>'<th scope="col">'+esc(x)+'</th>').join('')+'</tr></thead><tbody>'+rows.map(row=>'<tr>'+row.map(x=>'<td>'+esc(x)+'</td>').join('')+'</tr>').join('')+'</tbody></table>';
@@ -16,6 +17,13 @@ export function renderDiagnosticDossier(r,{geometry=null,income=null}={}){
       op.identifiers.some(row=>row.identifier?.municipalityCode!=='SYNTH'))throw Error('unsupported_operation');
     return [labels[op.operation],op.unitId,op.identifiers.map(row=>[row.identifier.municipalityCode,row.identifier.section??'—',row.identifier.sheet,row.identifier.parcel,row.identifier.subaltern??'—'].join('/')).join('; ')];
   });
+  const inventory=diagnosticInventory(r);
+  if(r.state==='research_candidate'&&!inventory)throw Error('invalid_diagnostic_inventory');
+  const inventoryHtml='<h2>Inventario diagnostico ante e post</h2>'+
+    (inventory?['before','after'].map(key=>'<h3>'+(key==='before'?'Ante — identificativi osservati':'Post — identificativi ipotizzati')+'</h3><p>'+
+      esc(inventory.counts[key].units)+' unità / '+esc(inventory.counts[key].identifiers)+' identificativi</p>'+
+      table(inventoryHeaders,inventory[key].map(inventoryCells))).join(''):'<p>Nessun inventario diagnostico disponibile.</p>')+
+    '<p>Proiezione delle operazioni dichiarate; non è un elenco subalterni ufficiale né un file DAT. Non attesta disponibilità.</p>';
   const resulting=a=>r.state==='research_candidate'&&a.caseDigest===r.caseDigest&&r.operations.some(o=>o.unitId===a.unitId&&['C','V'].includes(o.operation));
   const gs=geometry===null?[]:Array.isArray(geometry)?geometry:[geometry];
   const ins=income===null?[]:Array.isArray(income)?income:[income];
@@ -43,7 +51,7 @@ export function renderDiagnosticDossier(r,{geometry=null,income=null}={}){
     '<p>Impronta del caso dichiarato: <code>'+esc(r.caseDigest)+'</code>. Non costituisce firma o prova di autenticità.</p>'+
     '<h2>Relazione di ricerca</h2><p>'+esc(r.relation??'Nessuna relazione di proposta.')+'</p>'+
     '<h2>Operazioni diagnostiche</h2>'+(ops.length?table(['Operazione','Unità','Identificativi dichiarati'],ops):'<p>Nessuna operazione.</p>')+
-    '<h2>Evidenze dichiarate</h2>'+(r.evidence.length?table(['Fatto','Fonte','Valore','Locatore'],r.evidence.map(e=>[e.fact,e.sourceId,e.value,JSON.stringify(e.locator??null)])):'<p>Nessuna evidenza restituita.</p>')+
+    inventoryHtml+'<h2>Evidenze dichiarate</h2>'+(r.evidence.length?table(['Fatto','Fonte','Valore','Locatore'],r.evidence.map(e=>[e.fact,e.sourceId,e.value,JSON.stringify(e.locator??null)])):'<p>Nessuna evidenza restituita.</p>')+
     '<h2>Riferimento di ricerca</h2><p>'+esc(r.source?.title)+' — '+esc(r.source?.id)+' — revisione '+esc(r.source?.revision)+'</p><p>'+esc(r.source?.url)+'</p><p>Applicabilità operativa non attestata dal dossier.</p>'+
     '<h2>Blocchi e verifiche ancora necessarie</h2>'+(r.blockers.length?'<ul>'+r.blockers.map(b=>'<li>'+esc(b)+'</li>').join('')+'</ul>':'<p>Nessun blocco diagnostico restituito; ciò non equivale a validazione.</p>')+
     annexes+'<p>Verifica professionale, fonti vigenti e controllo con strumenti ufficiali ancora necessari.</p></body></html>';

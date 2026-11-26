@@ -1,4 +1,5 @@
 // Copyright (c) 2026 Gian Paolo Franceschini. All rights reserved.
+import {diagnosticInventory,inventoryHeaders,inventoryCells} from '/diagnostic-inventory.mjs';
 import {measureSyntheticPolygon,convertSyntheticPlanScale,syntheticPlanPreview} from '/synthetic-geometry.mjs';
 import {guideFields,editGuidedDraft} from '/guided-draft.mjs';
 import {draftFromReviewedVisura,reviewedVisuraExample} from '/reviewed-visura.mjs';
@@ -14,7 +15,7 @@ const el=(tag,text)=>{const e=document.createElement(tag);if(text!==undefined)e.
 function clear(){
   byId('visura-result').textContent='Nessun confronto corrente.';
   report=null;byId('handoff-status').textContent='Analizza un caso sintetico.';resetGeometry();resetIncome();download.disabled=true;byId('save-session').disabled=true;byId('download-dossier').disabled=true;byId('summary').textContent='Nessun rapporto corrente.';
-  byId('relation').textContent='—';byId('details').textContent='—';byId('operations').replaceChildren();
+  byId('relation').textContent='—';byId('details').textContent='—';byId('operations').replaceChildren();byId('inventory').replaceChildren();
 }
 function refresh(){refreshGeometry();refreshIncome();byId('save-session').disabled=busy||invalid.size>0||report?.state!=='research_candidate';const handoffEnabled=!busy&&!invalid.size&&report?.state==='research_candidate';byId('handoff-target').disabled=!handoffEnabled;byId('handoff-download').disabled=!handoffEnabled;byId('download-dossier').disabled=busy||!report||report.diagnosticReportExportable!==true;for(const id of ['visura-check','visura-example','visura-claim','visura-file','visura-text'])byId(id).disabled=busy||invalid.size>0;analyze.disabled=busy||invalid.size>0;byId('save-draft').disabled=busy||invalid.size>0;for(const e of guide.querySelectorAll('input,select'))e.disabled=busy;}
 function lock(value){busy=value;byId('import-session').disabled=value;byId('import-draft').disabled=value;byId('reviewed-import').disabled=value;byId('reviewed-example').disabled=value;byId('reviewed-template').disabled=value;load.disabled=value;field.readOnly=value;byId('scenario').disabled=value;byId('open-guide').disabled=value;refresh();}
@@ -131,10 +132,25 @@ function showOperations(operations){
   }
   table.append(body);if(operations.length)byId('operations').append(table);
 }
+// [Codex] The same before/after projection is used by the offline dossier.
+function showInventory(){
+  const target=byId('inventory');target.replaceChildren();
+  const inventory=diagnosticInventory(report);
+  if(!inventory){target.append(el('p','Nessun inventario diagnostico disponibile.'));return;}
+  for(const [key,label] of [['before','Ante — identificativi osservati'],['after','Post — identificativi ipotizzati']]){
+    const c=inventory.counts[key];target.append(el('h4',label),el('p',c.units+' unità / '+c.identifiers+' identificativi'));
+    const table=el('table'),head=el('thead'),tr=el('tr');
+    for(const label of inventoryHeaders){const th=el('th',label);th.scope='col';tr.append(th);}
+    head.append(tr);table.append(head);const body=el('tbody');
+    for(const row of inventory[key]){const line=el('tr');for(const value of inventoryCells(row))line.append(el('td',value));body.append(line);}
+    table.append(body);table.dataset.phase=key;
+    const wrapper=el('div');wrapper.style.overflowX='auto';table.style.minWidth='760px';wrapper.append(table);target.append(wrapper);
+  }
+}
 function showCurrentReport(){
     byId('summary').textContent=report.state==='research_candidate'?'Ipotesi di ricerca: '+report.candidate.cause:'Bloccato — nessuna ipotesi disponibile.';
     byId('relation').textContent=report.relation??'Nessuna relazione di proposta.';
-    showOperations(report.operations);populateGeometryUnits();populateIncomeUnits();
+    showOperations(report.operations);showInventory();populateGeometryUnits();populateIncomeUnits();
     byId('details').textContent=JSON.stringify({warning:report.warning,operations:report.operations,evidence:report.evidence,source:report.source,blockers:report.blockers},null,2);
   download.disabled=report.diagnosticReportExportable!==true;
 }
