@@ -8,3 +8,6 @@ Criteri e test predisposti: CLI Python reale, geometria misurata e mancante, has
 
 ## Fonti e gate
 Ricerca 26/11/2026: pagina storica https://agenziaentrate.gov.it/portale/web/guest/schede/fabbricatiterreni/aggiornamento-catasto-fabbricati-docfa/docfa-versioni-precedenti/software-docfa-4003 conferma la natura degli archivi provinciali; non attesta quelli vigenti. Il servizio ArCom https://arcom.agenziaentrate.gov.it/CitizenArCom/ concerne competenza e allineamento, non tariffari. Nessuna nuova regola normativa codificata. Nessuna firma, invio o test ufficiale. Soglia 108+108 sintetica già superata; V1.0 non validata. Backup esistenti controllati e non modificati. Licenza invariata.
+
+## Aggiornamento CI ricevente
+La CI dedicata MPE ha concluso failure per Ubuntu e cancelled per Windows, senza step restituiti; download log Ubuntu 404 BlobNotFound anche al secondo tentativo. Causa non accertata; nessun test ricevente conteggiato e nessun merge MPE. Necessario recuperare diagnostica CI prima di integrare.
