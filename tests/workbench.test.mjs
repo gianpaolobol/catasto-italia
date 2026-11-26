@@ -51,7 +51,7 @@ test('actual loopback HTTP workflow and security boundaries',async t=>{
   assert.equal(page.headers.get('cache-control'),'no-store');
   const js=await fetch(base+'/client.js');assert.equal(js.status,200);assert.match(await js.text(),/textContent/);
   const guide=await fetch(base+'/guided-draft.mjs');assert.equal(guide.status,200);assert.match(guide.headers.get('content-type'),/javascript/);assert.match(await guide.text(),/export function editGuidedDraft/);
-  for(const asset of ['/reviewed-visura.mjs','/fixtures.mjs','/diagnostic-dossier.mjs']){const response=await fetch(base+asset);assert.equal(response.status,200);assert.match(response.headers.get('content-type'),/javascript/);}
+  for(const asset of ['/reviewed-visura.mjs','/fixtures.mjs','/diagnostic-dossier.mjs','/synthetic-dxf.mjs']){const response=await fetch(base+asset);assert.equal(response.status,200);assert.match(response.headers.get('content-type'),/javascript/);}
   const fixture=await (await fetch(base+'/api/fixture/division')).json();
   const options={method:'POST',headers:{Origin:base,'Content-Type':'application/json'},body:JSON.stringify(fixture)};
   const response=await fetch(base+'/api/report',options);assert.equal(response.status,200);

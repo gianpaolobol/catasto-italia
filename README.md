@@ -47,3 +47,6 @@ Nel pannello geometrico scaricare il modello JSON delle unità senza misura, com
 
 ### Promemoria per verifica manuale DOCFA [Codex]
 Dopo l'analisi scaricare il promemoria JSON: operazioni, identificativi, evidenze, relazione, misure e simulazioni ricalcolate, lacune geometriche/estimative e possibili sovrapposizioni degli ingombri. Anche con tutti gli annessi presenti, i controlli ufficiali restano aperti. Non è un tracciato o un modello importabile in DOCFA; non usare dati reali. PR #61: 108 pratiche sintetiche integrali e 108 cross-check superati in CI, non validazione professionale. Nuovo promemoria in attesa di CI.
+
+### Contorni DXF ASCII isolati [Codex]
+Selezionare un'unità priva di misura, dichiarare mm o m e caricare un DXF sintetico contenente esclusivamente una sezione ENTITIES con LWPOLYLINE chiuse 2D ortogonali; esempio scaricabile. Il file resta nel browser; la conversione in millimetri è esatta e l'origine locale traslata. Verificare i vertici e misurare esplicitamente; dichiarare la posizione per unità conservate. Nel dossier si conservano le dichiarazioni geometriche risultanti, non i byte o la provenienza del DXF. Non è un lettore CAD generale o un adattatore DOCFA. PR #62 integrata dopo CI positiva; nuova CI richiesta.

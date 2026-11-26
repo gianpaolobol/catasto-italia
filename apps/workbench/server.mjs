@@ -19,6 +19,7 @@ const guideScript=readFileSync(new URL('../../packages/workbench/guided-draft.mj
 const reviewedScript=readFileSync(new URL('../../packages/workbench/reviewed-visura.mjs',import.meta.url));
 const fixtureScript=readFileSync(new URL('../../packages/workbench/fixtures.mjs',import.meta.url));
 const dossierScript=readFileSync(new URL('../../packages/workbench/diagnostic-dossier.mjs',import.meta.url));
+const dxfScript=readFileSync(new URL('../../packages/workbench/synthetic-dxf.mjs',import.meta.url));
 const geometryScript=readFileSync(new URL('../../packages/workbench/synthetic-geometry.mjs',import.meta.url));
 const inventoryScript=readFileSync(new URL('../../packages/workbench/diagnostic-inventory.mjs',import.meta.url));
 const floorScript=readFileSync(new URL('../../packages/workbench/synthetic-floor-plan.mjs',import.meta.url));
@@ -47,6 +48,7 @@ export function createWorkbenchServer(){
         if(req.url==='/guided-draft.mjs')return send(res,200,guideScript,'text/javascript; charset=utf-8');
         if(req.url==='/reviewed-visura.mjs')return send(res,200,reviewedScript,'text/javascript; charset=utf-8');
         if(req.url==='/diagnostic-dossier.mjs')return send(res,200,dossierScript,'text/javascript; charset=utf-8');
+        if(req.url==='/synthetic-dxf.mjs')return send(res,200,dxfScript,'text/javascript; charset=utf-8');
         if(req.url==='/synthetic-geometry.mjs')return send(res,200,geometryScript,'text/javascript; charset=utf-8');
         if(req.url==='/diagnostic-inventory.mjs')return send(res,200,inventoryScript,'text/javascript; charset=utf-8');
         if(req.url==='/synthetic-floor-plan.mjs')return send(res,200,floorScript,'text/javascript; charset=utf-8');

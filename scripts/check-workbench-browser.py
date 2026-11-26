@@ -138,6 +138,22 @@ def run():
                             if not panel.evaluate('(e) => e.open'):
                                 panel.locator(':scope > summary').click()
                             page.locator('#geometry-unit').select_option(index=1)
+                            if not page.locator('#dxf-file').evaluate("(e) => e.closest('details').open"):
+                                page.get_by_text('Carica contorni da DXF ASCII sintetico', exact=True).click()
+                            with page.expect_download() as dxf_event:
+                                page.locator('#dxf-example').click()
+                            dxf = Path(tmp) / 'contorno-sintetico-mm.dxf'
+                            dxf_event.value.save_as(dxf)
+                            page.locator('#dxf-unit').select_option('mm')
+                            page.locator('#dxf-file').set_input_files(dxf)
+                            expect(page.locator('#dxf-status')).to_contain_text('8.000000 m²')
+                            expect(page.locator('#geometry-count')).to_contain_text('0')
+                            dxf.write_text('not a DXF', encoding='ascii')
+                            page.locator('#dxf-file').set_input_files(dxf)
+                            expect(page.locator('#dxf-status')).to_contain_text('DXF respinto')
+                            page.locator('#geometry-measure').click()
+                            expect(page.locator('#geometry-result')).to_contain_text('8.000000 m²')
+                            expect(page.locator('#dxf-file')).to_be_disabled()
                             page.locator('#geometry-example').click()
                             page.locator('#geometry-measure').click()
                             expect(page.locator('#geometry-result')).to_contain_text('8.000000 m²')
