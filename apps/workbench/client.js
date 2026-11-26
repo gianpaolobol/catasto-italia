@@ -19,7 +19,7 @@ function clear(){
   report=null;byId('handoff-status').textContent='Analizza un caso sintetico.';resetGeometry();resetIncome();download.disabled=true;byId('save-session').disabled=true;byId('download-archive').disabled=true;byId('download-dossier').disabled=true;byId('summary').textContent='Nessun rapporto corrente.';
   byId('relation').textContent='—';byId('details').textContent='—';byId('operations').replaceChildren();byId('inventory').replaceChildren();
 }
-function refresh(){refreshGeometry();refreshIncome();byId('save-session').disabled=busy||invalid.size>0||report?.state!=='research_candidate';byId('download-archive').disabled=byId('save-session').disabled;const handoffEnabled=!busy&&!invalid.size&&report?.state==='research_candidate';byId('handoff-target').disabled=!handoffEnabled;byId('handoff-download').disabled=!handoffEnabled;byId('download-dossier').disabled=busy||!report||report.diagnosticReportExportable!==true;for(const id of ['visura-check','visura-example','visura-claim','visura-file','visura-text'])byId(id).disabled=busy||invalid.size>0;analyze.disabled=busy||invalid.size>0;byId('save-draft').disabled=busy||invalid.size>0;for(const e of guide.querySelectorAll('input,select'))e.disabled=busy;}
+function refresh(){refreshGeometry();refreshIncome();byId('save-session').disabled=busy||invalid.size>0||report?.state!=='research_candidate';byId('download-archive').disabled=byId('save-session').disabled;const handoffEnabled=!busy&&!invalid.size&&report?.state==='research_candidate';byId('handoff-target').disabled=!handoffEnabled;byId('handoff-download').disabled=!handoffEnabled;byId('geometry-handoff-download').disabled=!handoffEnabled;byId('download-dossier').disabled=busy||!report||report.diagnosticReportExportable!==true;for(const id of ['visura-check','visura-example','visura-claim','visura-file','visura-text'])byId(id).disabled=busy||invalid.size>0;analyze.disabled=busy||invalid.size>0;byId('save-draft').disabled=busy||invalid.size>0;for(const e of guide.querySelectorAll('input,select'))e.disabled=busy;}
 function lock(value){busy=value;byId('import-session').disabled=value;byId('import-draft').disabled=value;byId('reviewed-import').disabled=value;byId('reviewed-example').disabled=value;byId('reviewed-template').disabled=value;load.disabled=value;field.readOnly=value;byId('scenario').disabled=value;byId('open-guide').disabled=value;refresh();}
 function resetGuide(){draft=null;invalid.clear();guide.replaceChildren();const option=el('option','Carica un caso nell’editor guidato');option.value='';byId('visura-claim').replaceChildren(option);byId('visura-text').value='';clearVisura();refresh();}
 function showGuide(input){
@@ -491,6 +491,22 @@ function currentDeclarations(){
     geometry:[...geometries.values()].map(a=>({unitId:a.unitId,vertices:a.vertices,...(a.calibration?{calibration:a.calibration}:{}),...(a.placement?{placement:a.placement}:{})})),
     income:[...incomes.values()].map(a=>({unitId:a.unitId,declared:a.declared}))};
 }
+// [Codex] Separate versioned handoff; does not change existing ZIP bytes.
+byId('geometry-handoff-download').addEventListener('click',async()=>{
+  if(busy||invalid.size||report?.state!=='research_candidate')return;
+  const target=byId('handoff-target').value,digest=report.caseDigest;
+  lock(true);
+  try{
+    const session={version:'0.1.0',kind:'synthetic-practice-session',request:currentDeclarations()};
+    const body=JSON.stringify({target,session});
+    if(new TextEncoder().encode(body).length>256*1024)throw Error('too_large');
+    const result=await request('/api/geometry-handoff',{method:'POST',headers:{'Content-Type':'application/json'},body});
+    if(!result.ok||result.handoff?.caseDigest!==digest||result.handoff?.target!==target||result.handoff?.version!=='0.2.0')throw Error('blocked');
+    saveJson(result.handoff,'catasto-geometria-'+target+'-sintetica.json');
+    byId('handoff-status').textContent='Download geometrico richiesto: solo unità risultanti, importatore non validato.';
+  }catch{byId('handoff-status').textContent='Interscambio geometrico bloccato: nessun file generato.';}
+  finally{lock(false);}
+});
 async function replaySession(session){
   const body=JSON.stringify(session);
   if(new TextEncoder().encode(body).length>256*1024)throw Error('too_large');

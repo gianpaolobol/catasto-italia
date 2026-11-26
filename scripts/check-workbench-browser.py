@@ -283,6 +283,16 @@ def run():
                                     page.locator('#download-dossier').click()
                                 event.value.save_as(dossier)
                                 check('Conservata — contesto' in dossier.read_text(encoding='utf-8'), 'retained context missing in dossier')
+                                page.get_by_text('Interscambio Building Core sintetico', exact=True).click()
+                                page.locator('#handoff-target').select_option('pianta-libera')
+                                with page.expect_download() as event:
+                                    page.locator('#geometry-handoff-download').click()
+                                geo_exchange = Path(tmp) / 'geometry-handoff.json'
+                                event.value.save_as(geo_exchange)
+                                geo_handoff = json.loads(geo_exchange.read_text(encoding='utf-8'))
+                                check(geo_handoff['version'] == '0.2.0', 'geometry handoff version')
+                                check({g['unitId']: g['state'] for g in geo_handoff['geometry']} == {'d1': 'missing', 'd2': 'measured'}, 'geometry handoff scope or coverage')
+                                check(next(g for g in geo_handoff['geometry'] if g['unitId']=='d2')['placement']['xMm'] == 4000, 'geometry handoff placement')
                             with page.expect_download() as event:
                                 page.locator("#download-archive").click()
                             archive = Path(tmp) / "diagnostic.zip"

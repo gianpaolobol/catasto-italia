@@ -8,6 +8,7 @@ import {reviewedVisuraExample,draftFromReviewedVisura} from '../packages/workben
 import {buildPracticeReport} from '../packages/workbench/index.mjs';
 import {reopenVerifiedArchive} from '../packages/workbench/verified-archive-reopen.mjs';
 import {buildPracticeArchive} from '../packages/workbench/practice-archive.mjs';
+import {buildGeometryHandoff} from '../packages/workbench/geometry-handoff.mjs';
 import {replayPracticeSession} from '../packages/workbench/integrated-dossier.mjs';
 import {verifySyntheticHandoff} from '../packages/workbench/synthetic-handoff.mjs';
 import {createWorkbenchServer} from '../apps/workbench/server.mjs';
@@ -98,4 +99,43 @@ test('canonical archive reopen across six scenarios and rejection of tampering',
     await assert.rejects(()=>reopenVerifiedArchive(bytes.subarray(0,bytes.length-1),regenerate));
   }
   await assert.rejects(()=>reopenVerifiedArchive(new Uint8Array(8*1024*1024+1),regenerate));
+});
+
+test('geometry handoff projects only replayed result units for all targets and scenarios',()=>{
+  for(const [scenario] of scenarios){
+    const s=session(scenario),before=JSON.stringify(s),replay=replayPracticeSession(s);
+    for(const target of ['pianta-libera','mpe','ape-italia']){
+      const result=buildGeometryHandoff(s,target);assert.equal(result.ok,true,result.error);
+      const h=result.handoff,{contentDigest,...payload}=h;
+      assert.equal(h.version,'0.2.0');assert.equal(h.target,target);
+      assert.equal(contentDigest,createHash('sha256').update(JSON.stringify(payload)).digest('hex'));
+      assert.deepEqual(h.geometry.map(g=>g.unitId),h.operations.map(o=>o.unitId));
+      assert.ok(h.geometry.every(g=>g.state==='measured'&&g.areaMm2==='8000000'&&g.coordinateUnit==='mm'));
+      assert.deepEqual(h.geometry.map(g=>g.placement),replay.geometry.map(g=>g.placement));
+      assert.ok(Object.values(h.assertions).every(v=>v===false));
+      assert.equal(h.geometrySemantics.scaleVerified,false);
+      assert.equal(Object.hasOwn(h,'income'),false);
+    }
+    assert.equal(JSON.stringify(s),before);
+  }
+});
+test('geometry handoff marks missing and unplaced units and omits retained context',()=>{
+  const s=session('division');
+  s.request.geometry.pop();delete s.request.geometry[0].placement;
+  s.request.geometry.push({unitId:'other',vertices:[[0,0],[1000,0],[1000,1000],[0,1000]],placement:{floor:'P0',xMm:8000,yMm:0}});
+  const r=buildGeometryHandoff(s,'pianta-libera');assert.equal(r.ok,true,r.error);
+  assert.equal(r.handoff.geometry[0].placement,null);
+  assert.deepEqual(r.handoff.geometry[1],{unitId:'d2',state:'missing'});
+  assert.ok(!r.handoff.geometry.some(g=>g.unitId==='other'));
+  s.request.geometry[0].areaMm2='999';assert.equal(buildGeometryHandoff(s,'pianta-libera').ok,false);
+  assert.equal(buildGeometryHandoff(session('fusion'),'invalid').ok,false);
+});
+test('geometry handoff loopback route and origin guard',async t=>{
+  const server=createWorkbenchServer();server.listen(0,'127.0.0.1');await once(server,'listening');
+  t.after(()=>new Promise(resolve=>{server.close(resolve);server.closeAllConnections();}));
+  const base='http://127.0.0.1:'+server.address().port;
+  const options={method:'POST',headers:{Origin:base,'Content-Type':'application/json'},body:JSON.stringify({target:'mpe',session:session('fusion')})};
+  const r=await fetch(base+'/api/geometry-handoff',options);assert.equal(r.status,200);assert.equal((await r.json()).handoff.geometry.length,1);
+  assert.equal((await fetch(base+'/api/geometry-handoff',{...options,headers:{...options.headers,Origin:'https://example.invalid'}})).status,403);
+  assert.equal((await fetch(base+'/api/geometry-handoff',{...options,body:'{}'})).status,400);
 });
