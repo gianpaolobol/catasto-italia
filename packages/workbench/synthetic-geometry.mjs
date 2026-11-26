@@ -55,3 +55,18 @@ export function convertSyntheticPlanScale(input){
   }
   return {ok:true,blocker:null,vertices:converted};
 }
+
+// [Codex] A proportional diagnostic drawing, not a plan at a certified print scale.
+// Recompute from the current report so stale or forged measurement fields cannot
+// determine the displayed area or the drawing. All SVG attributes are numeric.
+export function syntheticPlanPreview(report,annex){
+  if(!annex||annex.caseDigest!==report?.caseDigest||annex.state!=='measured')return null;
+  const m=measureSyntheticPolygon(report,annex.unitId,annex.vertices);
+  if(m.state!=='measured'||m.areaMm2!==annex.areaMm2||m.areaM2!==annex.areaM2||
+     m.perimeterMm!==annex.perimeterMm||m.operation!==annex.operation)return null;
+  const xs=m.vertices.map(p=>p[0]),ys=m.vertices.map(p=>p[1]);
+  const minX=Math.min(...xs),minY=Math.min(...ys),maxX=Math.max(...xs),maxY=Math.max(...ys);
+  const widthMm=maxX-minX,heightMm=maxY-minY,pad=Math.max(1,Math.ceil(Math.max(widthMm,heightMm)/20));
+  return {widthMm,heightMm,viewBox:[-pad,-pad,widthMm+2*pad,heightMm+2*pad].join(' '),
+    points:m.vertices.map(([x,y])=>[x-minX,maxY-y].join(',')).join(' ')};
+}

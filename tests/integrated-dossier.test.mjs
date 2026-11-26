@@ -15,7 +15,7 @@ const make=(scenario='fusion')=>{
 };
 for(const scenario of scenarios)test('integrated dossier '+scenario,()=>{
   const q=make(scenario),before=JSON.stringify(q),r=buildIntegratedDossier(q);
-  assert.equal(r.ok,true);assert.match(r.html,/8\.000000/);assert.match(r.html,/14000/);
+  assert.equal(r.ok,true);assert.match(r.html,/8\.000000/);assert.match(r.html,/14000/);assert.match(r.html,/<svg[^>]+viewBox="-200 -200 4400 3400"/);assert.match(r.html,/points="0,3000 4000,3000 4000,2000 2000,2000 2000,0 0,0"/);assert.match(r.html,/scala di stampa non verificata/i);
   assert.match(r.html,/555\.5551500/);assert.ok(r.html.includes(q.expectedDigest));
   assert.match(r.html,/NON UFFICIALE/);assert.match(r.html,/default-src 'none'/);
   assert.doesNotMatch(r.html,/<(?:script|iframe|form)\b/);assert.equal(JSON.stringify(q),before);
@@ -63,6 +63,7 @@ test('division dossier includes both units and exact separate measurements',()=>
  const q=multi(),before=JSON.stringify(q),r=buildIntegratedDossier(q);
  assert.equal(r.ok,true);
  for(const value of ['8.000000','2.000000','555.5551500','200.0000000','Copertura degli annessi'])assert.ok(r.html.includes(value),value);
+ assert.equal((r.html.match(/<figure class="plan-preview">/g)||[]).length,2);
  assert.equal(JSON.stringify(q),before);
 });
 test('partial annex coverage is explicit by unit',()=>{

@@ -1,5 +1,5 @@
 // Copyright (c) 2026 Gian Paolo Franceschini. All rights reserved.
-import {measureSyntheticPolygon,convertSyntheticPlanScale} from '/synthetic-geometry.mjs';
+import {measureSyntheticPolygon,convertSyntheticPlanScale,syntheticPlanPreview} from '/synthetic-geometry.mjs';
 import {guideFields,editGuidedDraft} from '/guided-draft.mjs';
 import {draftFromReviewedVisura,reviewedVisuraExample} from '/reviewed-visura.mjs';
 const byId=id=>document.getElementById(id);
@@ -236,7 +236,17 @@ function populateGeometryUnits(){
   }
   refreshGeometry();
 }
+function refreshPlanPreview(){
+  const box=byId('geometry-preview');box.replaceChildren();
+  const p=!invalid.size&&geometryReport?syntheticPlanPreview(report,geometryReport):null;
+  if(!p){box.textContent='Nessun contorno misurato da mostrare.';return;}
+  const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg'),polygon=document.createElementNS(ns,'polygon');
+  for(const [k,v] of Object.entries({viewBox:p.viewBox,width:'100%',height:'220',preserveAspectRatio:'xMidYMid meet',role:'img','aria-label':'Contorno geometrico sintetico non in scala di stampa'}))svg.setAttribute(k,v);
+  for(const [k,v] of Object.entries({points:p.points,fill:'#e2eee9',stroke:'#245e4b','stroke-width':'2','vector-effect':'non-scaling-stroke'}))polygon.setAttribute(k,v);
+  svg.append(polygon);box.append(svg,el('p','Ingombro: '+p.widthMm+' × '+p.heightMm+' mm. Schema proporzionale; asse Y verso l’alto. Scala di stampa non verificata.'));
+}
 function refreshGeometry(){
+  refreshPlanPreview();
   byId('geometry-count').textContent='Unità con misura corrente: '+geometries.size;
   const enabled=!busy&&!invalid.size&&report?.state==='research_candidate';
   byId('geometry-unit').disabled=!enabled;
