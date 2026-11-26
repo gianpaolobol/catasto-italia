@@ -55,3 +55,5 @@ Segue la versione **1.1.0** (`LINEE_GUIDA.md`).
 - 2026-11-26 [Codex] PR #64 integrata dopo quattro job positivi; registro locale dei riscontri vincolato alla sessione e agli annessi implementato, nuova CI richiesta. V1.0 professionale ancora aperta.
 
 - 2026-11-26 [Codex] PR #65 integrata dopo quattro job CI positivi; validatore ricevente Building Core v0.2 e CLI offline per i tre destinatari implementati, nuova CI richiesta. Integrazione nelle app e V1.0 professionale ancora aperte.
+
+- 2026-11-26 [Codex] PR #66 integrata con quattro job positivi; ricevente MPE effettivo proposto nel repository destinatario, CI da verificare. Integrazione e V1.0 professionale ancora aperte.
