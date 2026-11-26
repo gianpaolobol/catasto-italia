@@ -257,3 +257,64 @@ test('manual register API accepts local declarations and rejects null, stale or 
  s.request.income[0].declared.consistency='5';
  assert.equal((await post('/api/manual-docfa-register-check',{session:s,observations:obs})).status,400);
 });
+
+ // [Codex] Reference recipient consumes only the v0.2 wire artifact, without the source session.
+import {inspectGeometryHandoff} from '../packages/workbench/geometry-handoff-consumer.mjs';
+import {buildGeometryHandoff as producerGeometryHandoff} from '../packages/workbench/geometry-handoff.mjs';
+import {createHash as recipientHash} from 'node:crypto';
+import {spawnSync as recipientSpawn} from 'node:child_process';
+import {fileURLToPath as recipientPath} from 'node:url';
+const recipientWire=(s,target='pianta-libera')=>producerGeometryHandoff(s,target).handoff;
+const reseal=x=>{
+  const {contentDigest,...payload}=x;
+  return {...payload,contentDigest:recipientHash('sha256').update(JSON.stringify(payload),'utf8').digest('hex')};
+};
+for(const target of ['pianta-libera','mpe','ape-italia'])test('reference recipient round trip '+target,()=>{
+  for(const scenario of scenarios){
+    const q=make(scenario);
+    const s={version:'0.1.0',kind:'synthetic-practice-session',request:{...q,geometry:[q.geometry],income:[q.income]}};
+    const wire=recipientWire(s,target);
+    assert.ok(wire);
+    const result=inspectGeometryHandoff(JSON.stringify(wire,null,2),target);
+    assert.equal(result.ok,true,JSON.stringify(result));
+    assert.equal(result.preview.measuredCount,1);
+    assert.equal(result.preview.units.length,wire.operations.length);
+    assert.equal(result.preview.missingCount,wire.operations.length-1);
+    assert.equal(result.preview.units.find(u=>u.state==='measured').areaMm2,'8000000');
+    for(const flag of ['authenticated','sourceCaseReplayed','official','buildingCompliance','energyCertification','scaleVerified','cadastralArea'])assert.equal(result.preview[flag],false);
+  }
+});
+test('reference recipient refuses wrong destination, malformed and oversized input',()=>{
+  const wire=recipientWire(session());
+  assert.equal(inspectGeometryHandoff(JSON.stringify(wire),'mpe').ok,false);
+  assert.equal(inspectGeometryHandoff('{','pianta-libera').ok,false);
+  assert.equal(inspectGeometryHandoff(' '.repeat(512*1024+1),'pianta-libera').ok,false);
+  assert.equal(inspectGeometryHandoff(JSON.stringify(wire),'other').ok,false);
+  wire.geometry[0].areaMm2='1';
+  assert.equal(inspectGeometryHandoff(JSON.stringify(wire),'pianta-libera').error,'digest_mismatch');
+});
+for(const [name,edit] of [
+ ['forged area',x=>x.geometry[0].areaMm2='1'],
+ ['forged perimeter',x=>x.geometry[0].perimeterMm='1'],
+ ['invalid contour',x=>x.geometry[0].contours=[[[0,0],[10,10],[20,0],[0,10]]]],
+ ['invalid placement',x=>x.geometry[0].placement={floor:'X',xMm:0,yMm:0}],
+ ['official assertion',x=>x.assertions.official=true],
+ ['verified scale',x=>x.geometrySemantics.scaleVerified=true],
+ ['wrong operation',x=>x.operations[0].operation='S'],
+ ['missing geometry',x=>x.geometry.pop()],
+ ['foreign geometry',x=>x.geometry[0].unitId='unknown'],
+ ['duplicate operation',x=>x.operations.push(x.operations[0])],
+ ['extra payload',x=>x.income=[]]
+])test('reference recipient rejects resealed '+name,()=>{
+  const wire=recipientWire(session());edit(wire);
+  assert.equal(inspectGeometryHandoff(JSON.stringify(reseal(wire)),'pianta-libera').ok,false);
+});
+test('reference recipient CLI reads stdin and emits only diagnostic preview',()=>{
+  const path=recipientPath(new URL('../scripts/inspect-geometry-handoff.mjs',import.meta.url));
+  const input=JSON.stringify(recipientWire(session(),'mpe'));
+  const good=recipientSpawn(process.execPath,[path,'mpe'],{input,encoding:'utf8',timeout:10000});
+  assert.equal(good.status,0,good.stderr);
+  assert.equal(JSON.parse(good.stdout).official,false);
+  const bad=recipientSpawn(process.execPath,[path,'ape-italia'],{input,encoding:'utf8',timeout:10000});
+  assert.equal(bad.status,1);assert.equal(bad.stdout,'');
+});
