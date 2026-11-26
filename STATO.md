@@ -49,3 +49,5 @@ Segue la versione **1.1.0** (`LINEE_GUIDA.md`).
 - 2026-11-26 [Codex] PR #61 integrata, corpus sintetico 108+108 superato in CI; promemoria manuale DOCFA implementato, CI da verificare. Nessuna V1.0 professionale validata.
 
 - 2026-11-26 [Codex] PR #62 integrata dopo quattro job CI positivi; acquisizione locale di contorni DXF ASCII isolati implementata, nuova CI da verificare. V1.0 non validata.
+
+- 2026-11-26 [Codex] PR #63 integrata dopo quattro job CI positivi; scheda di confronto DOCFA stampabile con dati ricalcolati e spazi per evidenze manuali implementata, nuova CI da verificare. 108+108 sintetici già superati; prove ufficiali ancora aperte.
