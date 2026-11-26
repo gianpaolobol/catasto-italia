@@ -1,4 +1,5 @@
 // Copyright (c) 2026 Gian Paolo Franceschini. All rights reserved.
+import {validPlacement,syntheticFloorPlans} from '/synthetic-floor-plan.mjs';
 import {diagnosticInventory,inventoryHeaders,inventoryCells} from '/diagnostic-inventory.mjs';
 import {measureSyntheticPolygon,convertSyntheticPlanScale,syntheticPlanPreview} from '/synthetic-geometry.mjs';
 import {guideFields,editGuidedDraft} from '/guided-draft.mjs';
@@ -244,7 +245,7 @@ function resetScale(){
   byId('scale-status').textContent='Nessuna conversione.';
 }
 function resetGeometry(){
-  resetScale();
+  resetScale();resetPlacement();
   geometries.clear();
   const option=el('option','Analizza il caso');option.value='';
   byId('geometry-unit').replaceChildren(option);byId('geometry-vertices').value='';clearGeometryAnnex();refreshGeometry();
@@ -270,17 +271,53 @@ function refreshPlanPreview(){
   }
   box.append(svg,el('p','Ingombro: '+p.widthMm+' × '+p.heightMm+' mm. Schema proporzionale; asse Y verso l’alto. Scala di stampa non verificata.'));
 }
+const placementIds=['placement-floor','placement-x','placement-y'];
+function resetPlacement(p=null){
+  [p?.floor,p?.xMm,p?.yMm].forEach((v,i)=>byId(placementIds[i]).value=v??'');
+}
+function readPlacement(){
+  const [floor,x,y]=placementIds.map(id=>byId(id).value.trim());
+  if(!floor&&!x&&!y)return null;
+  if(!/^-?\d{1,8}$/.test(x)||!/^-?\d{1,8}$/.test(y))throw Error('invalid_placement');
+  const p={floor,xMm:Number(x),yMm:Number(y)};
+  if(!validPlacement(p))throw Error('invalid_placement');
+  return p;
+}
+function refreshFloorPreview(){
+  const box=byId('floor-preview');box.replaceChildren();
+  const plans=syntheticFloorPlans(report,[...geometries.values()]);
+  if(!plans||!plans.floors.length){box.textContent='Nessuna posizione comune dichiarata.';return;}
+  const ns='http://www.w3.org/2000/svg';
+  for(const f of plans.floors){
+    const svg=document.createElementNS(ns,'svg');
+    for(const [k,v] of Object.entries({viewBox:f.viewBox,width:'100%',height:'220',role:'img','aria-label':'Schema sintetico per piano '+f.floor}))svg.setAttribute(k,v);
+    box.append(el('h5','Piano '+f.floor+' — '+f.widthMm+' × '+f.heightMm+' mm'),svg);
+    for(const u of f.units){
+      for(const points of u.polygons){
+        const polygon=document.createElementNS(ns,'polygon');
+        for(const [k,v] of Object.entries({points,fill:u.color,'fill-opacity':'.65',stroke:'#245e4b','stroke-width':'2','vector-effect':'non-scaling-stroke'}))polygon.setAttribute(k,v);
+        svg.append(polygon);
+      }
+      const legend=el('p',u.unitId+' — X '+u.placement.xMm+' mm, Y '+u.placement.yMm+' mm');
+      legend.style.borderLeft='12px solid '+u.color;legend.style.paddingLeft='6px';box.append(legend);
+    }
+    box.append(el('p',f.potentialOverlaps.length?'Possibili sovrapposizioni degli ingombri: '+f.potentialOverlaps.map(p=>p.join(' / ')).join('; '):'Nessuna intersezione positiva degli ingombri rilevata; non è verifica topologica.'));
+  }
+  box.append(el('p','Unità misurate senza posizione: '+(plans.unplaced.join(', ')||'nessuna')+'. Unità non misurate, soppresse e conservate non rappresentate.'));
+}
+for(const id of placementIds)byId(id).addEventListener('input',()=>{clearGeometryAnnex();refreshGeometry();});
 function refreshGeometry(){
-  refreshPlanPreview();
+  refreshPlanPreview();refreshFloorPreview();
   byId('geometry-count').textContent='Unità con misura corrente: '+geometries.size;
   const enabled=!busy&&!invalid.size&&report?.state==='research_candidate';
   byId('geometry-unit').disabled=!enabled;
-  for(const id of ['geometry-example','geometry-multi-example','geometry-vertices','geometry-measure','scale-vertices','scale-drawing','scale-mm','scale-example','scale-convert'])byId(id).disabled=!enabled||!byId('geometry-unit').value;
+  for(const id of ['geometry-example','geometry-multi-example','geometry-vertices','geometry-measure','scale-vertices','scale-drawing','scale-mm','scale-example','scale-convert',...placementIds])byId(id).disabled=!enabled||!byId('geometry-unit').value;
   byId('geometry-download').disabled=!enabled||!geometryReport;
 }
 byId('geometry-unit').addEventListener('change',()=>{
   resetScale();
   geometryReport=geometries.get(byId('geometry-unit').value)??null;
+  resetPlacement(geometryReport?.placement);
   if(geometryReport?.calibration){
     appliedScale=geometryReport.calibration;
     byId('scale-vertices').value=JSON.stringify(appliedScale.vertices);
@@ -333,12 +370,14 @@ byId('geometry-measure').addEventListener('click',()=>{
   try{
     const raw=byId('geometry-vertices').value;
     if(raw.length>16384)throw Error('too_large');
+    const placement=readPlacement();
     const measured=measureSyntheticPolygon(report,byId('geometry-unit').value,JSON.parse(raw),appliedScale);
     if(measured.state==='measured'){
+      if(placement)measured.placement=placement;
       geometryReport=measured;geometries.set(measured.unitId,measured);
       byId('geometry-result').textContent='Area geometrica: '+measured.areaM2+' m²; perimetro: '+measured.perimeterMm+' mm. Non catastale.';
     }else byId('geometry-result').textContent='Contorno bloccato: '+measured.blocker;
-  }catch{byId('geometry-result').textContent='Contorno JSON non valido.';}
+  }catch{byId('geometry-result').textContent='Contorno JSON o posizione comune non validi.';}
   refreshGeometry();
 });
 byId('geometry-download').addEventListener('click',()=>{
@@ -447,7 +486,7 @@ byId('income-download').addEventListener('click',()=>{
 
 function currentDeclarations(){
   return {draft:JSON.parse(field.value),expectedState:report.state,expectedDigest:report.caseDigest,
-    geometry:[...geometries.values()].map(a=>({unitId:a.unitId,vertices:a.vertices,...(a.calibration?{calibration:a.calibration}:{})})),
+    geometry:[...geometries.values()].map(a=>({unitId:a.unitId,vertices:a.vertices,...(a.calibration?{calibration:a.calibration}:{}),...(a.placement?{placement:a.placement}:{})})),
     income:[...incomes.values()].map(a=>({unitId:a.unitId,declared:a.declared}))};
 }
 async function replaySession(session){
