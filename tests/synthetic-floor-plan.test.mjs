@@ -34,3 +34,24 @@ test('malformed placement and forged measurements rejected',()=>{
  q.geometry[0].placement={floor:'S1',xMm:-2000,yMm:0};const r=replay(q);assert.equal(r.ok,true);
  r.geometry[0].areaM2='1';assert.equal(syntheticFloorPlans(r.report,r.geometry),null);
 });
+
+// [Codex] Context never becomes a cadastral operation or a classamento worksheet.
+test('retained unit geometry requires explicit placement and is labelled as context',()=>{
+ const q=make(),report=buildPracticeReport(q.draft),other=report.operations.find(o=>o.operation==='unchanged');
+ assert.ok(other);
+ const decl={unitId:other.unitId,vertices:[[0,0],[1000,0],[1000,1000],[0,1000]]};
+ q.geometry.push(decl);assert.equal(replay(q).ok,false);
+ decl.placement={floor:'P0',xMm:8000,yMm:0};
+ const r=replay(q);assert.equal(r.ok,true);assert.equal(r.geometry[2].operation,'unchanged');
+ assert.deepEqual(r.report.operations,report.operations);
+ const plan=syntheticFloorPlans(r.report,r.geometry);
+ assert.equal(plan.floors[0].widthMm,9000);assert.equal(plan.floors[0].units[2].operation,'unchanged');
+ assert.equal(plan.floors[0].units[2].color,'#cbd5e1');
+ assert.deepEqual(plan.missing,[]);assert.deepEqual(plan.floors[0].potentialOverlaps,[]);
+ const html=buildIntegratedDossier(q).html;
+ assert.match(html,/Conservata — contesto/);assert.match(html,/Unità post senza geometria: nessuna/);
+ assert.match(html,/9000 × 2000 mm/);
+ q.geometry.pop();const partial=replay(q);assert.deepEqual(syntheticFloorPlans(partial.report,partial.geometry).missing,[{unitId:other.unitId,operation:'unchanged'}]);
+ q.geometry.push({...decl,unitId:report.operations.find(o=>o.operation==='S').unitId});
+ assert.equal(replay(q).ok,false);
+});
