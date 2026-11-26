@@ -191,6 +191,8 @@ def run():
                                 multi_html = dossier.read_text(encoding='utf-8')
                                 check(all(v in multi_html for v in ('8.000000','2.000000','555.5551500','200.0000000','Copertura degli annessi')), 'multi-unit dossier missing values')
                                 check(multi_html.count('<figure class="plan-preview">') == 2, 'multi-unit plan previews missing')
+                                check('Conversione dichiarata, scala non verificata' in multi_html and 'Millimetri dichiarati manualmente' in multi_html and '<td>40</td><td>4000</td>' in multi_html, 'calibration provenance missing or overwritten')
+                                expect(page.locator('#scale-status')).to_contain_text('Conversione dichiarata ripristinata')
                                 page.locator('#geometry-vertices').fill('[]')
                                 expect(page.locator('#geometry-count')).to_contain_text('1')
                                 expect(page.locator('#income-count')).to_contain_text('2')
