@@ -379,7 +379,11 @@ byId('income-unit').addEventListener('change',()=>{
   refreshIncome();
 });
 for(const k of incomeFields)byId('income-'+k).addEventListener('input',()=>{
-  if(k!=='consistency')setTariffSource();
+  // A changed lookup key must never silently reuse a catalog-derived price as manual input.
+  if(k!=='consistency'){
+    if(k!=='tariff'&&tariffSource==='synthetic-catalog-v1')byId('income-tariff').value='';
+    setTariffSource();
+  }
   clearIncome();refreshIncome();
 });
 byId('income-lookup').addEventListener('click',async()=>{
