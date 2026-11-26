@@ -156,6 +156,20 @@ def run():
                             after_edit = dossier.read_text(encoding="utf-8")
                             check("555.5551500" in after_edit and "Nessuna misura corrente inclusa." in after_edit and "8.000000" not in after_edit, "stale geometry included")
                             if scenario == "division":
+                                # One unit, two contours on a common declared plane.
+                                page.locator('#geometry-multi-example').click()
+                                page.locator('#geometry-measure').click()
+                                expect(page.locator('#geometry-result')).to_contain_text('10.000000')
+                                expect(page.locator('#geometry-preview polygon')).to_have_count(2)
+                                with page.expect_download() as event:
+                                    page.locator('#download-dossier').click()
+                                event.value.save_as(dossier)
+                                contour_html = dossier.read_text(encoding='utf-8')
+                                check(contour_html.count('<polygon points=') == 2 and '10.000000' in contour_html, 'multi-contour dossier missing')
+                                page.locator('#geometry-vertices').fill('[[[0,0],[4000,0],[4000,2000],[0,2000]],[[4000,0],[5000,0],[5000,1000],[4000,1000]]]')
+                                page.locator('#geometry-measure').click()
+                                expect(page.locator('#geometry-result')).to_contain_text('contours_not_disjoint')
+                                expect(page.locator('#geometry-preview polygon')).to_have_count(0)
                                 # [Codex] Restore first unit via explicit declared drawing scale.
                                 page.get_by_text('Converti coordinate del disegno in millimetri', exact=True).click()
                                 page.locator('#scale-example').click()
