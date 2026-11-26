@@ -59,3 +59,5 @@ Segue la versione **1.1.0** (`LINEE_GUIDA.md`).
 - 2026-11-26 [Codex] PR #66 integrata con quattro job positivi; ricevente MPE effettivo proposto nel repository destinatario, CI da verificare. Integrazione e V1.0 professionale ancora aperte.
 
 - 2026-11-26 [Codex] PR #67 integrata con CI positiva; ricevente locale APE Italia proposto, CI da verificare; MPE non integrato per CI fallita senza diagnostica disponibile. V1.0 professionale aperta.
+
+- 2026-11-26 [Codex] PR #68 integrata dopo quattro job CI positivi; aggiunto export DXF diagnostico per CAD/Pianta Libera, CI da verificare. CI generale APE #101 positiva; nessun import nella pratica energetica validato. Gate professionale aperto.

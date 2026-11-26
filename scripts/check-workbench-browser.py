@@ -159,6 +159,12 @@ def run():
                             expect(page.locator('#geometry-result')).to_contain_text('8.000000 m²')
                             expect(page.locator('#geometry-preview polygon')).to_have_count(1)
                             expect(page.locator('#geometry-preview')).to_contain_text('4000 × 3000 mm')
+                            with page.expect_download() as cad_event:
+                                page.locator('#cad-contour-download').click()
+                            cad_file = Path(tmp) / 'cad-local-mm.dxf'
+                            cad_event.value.save_as(cad_file)
+                            cad_text = cad_file.read_text(encoding='ascii')
+                            check('LWPOLYLINE' in cad_text and 'SYNTH_CONTOUR_MM' in cad_text and report['caseDigest'] not in cad_text, 'CAD contour missing or metadata leaked')
                             with page.expect_download() as event:
                                 page.locator('#geometry-download').click()
                             annex = Path(tmp) / 'geometry.json'
@@ -173,6 +179,7 @@ def run():
                             page.locator('#geometry-vertices').fill('[]')
                             expect(page.locator('#geometry-preview polygon')).to_have_count(0)
                             expect(page.locator('#geometry-download')).to_be_disabled()
+                            expect(page.locator('#cad-contour-download')).to_be_disabled()
                             # Separate annexes: editing geometry does not change the case or the income declaration.
                             expect(page.locator('#income-download')).to_be_enabled()
                             expect(page.locator('#income-unit')).to_be_enabled()

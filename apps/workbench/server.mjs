@@ -11,6 +11,7 @@ import {buildIntegratedDossier,replayPracticeSession} from '../../packages/workb
 import {buildPracticeArchive} from '../../packages/workbench/practice-archive.mjs';
 import {buildSyntheticHandoff} from '../../packages/workbench/synthetic-handoff.mjs';
 import {buildGeometryHandoff} from '../../packages/workbench/geometry-handoff.mjs';
+import {exportCadContour} from '../../packages/workbench/cad-contour-export.mjs';
 import {buildManualDocfaWorklist,buildManualDocfaWorksheet} from '../../packages/workbench/manual-docfa-worklist.mjs';
 import {manualReviewRegister} from '../../packages/workbench/manual-review-register.mjs';
 import {importGeometryBatch} from '../../packages/workbench/geometry-batch.mjs';
@@ -59,7 +60,7 @@ export function createWorkbenchServer(){
         if(scenario)return json(res,200,syntheticCase(scenario));
         return reject(res,404,'not_found');
       }
-      if(req.method!=='POST'||!['/api/report','/api/visura-check','/api/visura-example','/api/handoff','/api/geometry-handoff','/api/geometry-batch','/api/income','/api/tariff-lookup','/api/dossier','/api/session','/api/archive','/api/manual-docfa-worklist','/api/manual-docfa-worksheet','/api/manual-docfa-register-template','/api/manual-docfa-register-check'].includes(req.url))return reject(res,404,'not_found');
+      if(req.method!=='POST'||!['/api/report','/api/visura-check','/api/visura-example','/api/handoff','/api/geometry-handoff','/api/cad-contour','/api/geometry-batch','/api/income','/api/tariff-lookup','/api/dossier','/api/session','/api/archive','/api/manual-docfa-worklist','/api/manual-docfa-worksheet','/api/manual-docfa-register-template','/api/manual-docfa-register-check'].includes(req.url))return reject(res,404,'not_found');
       if(req.headers.origin!=='http://'+authority||req.headers['content-type']!=='application/json')
         return reject(res,403,'same_origin_json_required');
       if(req.headers['content-encoding']!==undefined)return reject(res,415,'encoding_not_supported');
@@ -97,6 +98,7 @@ export function createWorkbenchServer(){
       if(req.url==='/api/tariff-lookup')return json(res,200,lookupSyntheticTariff(envelope));
       if(req.url==='/api/income')return json(res,200,syntheticIncomeWorksheet(envelope));
       if(req.url==='/api/geometry-batch'){const result=importGeometryBatch(envelope);return json(res,result.ok?200:400,result);}
+      if(req.url==='/api/cad-contour'){const result=exportCadContour(envelope);return json(res,result.ok?200:400,result);}
       if(req.url==='/api/geometry-handoff'){
         if(!envelope||typeof envelope!=='object'||Array.isArray(envelope)||Object.keys(envelope).length!==2||!Object.hasOwn(envelope,'target')||!Object.hasOwn(envelope,'session'))return reject(res,400,'invalid_geometry_handoff_request');
         const result=buildGeometryHandoff(envelope.session,envelope.target);

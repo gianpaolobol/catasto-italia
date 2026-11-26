@@ -318,6 +318,7 @@ function refreshGeometry(){
   byId('geometry-unit').disabled=!enabled;
   for(const id of ['geometry-example','geometry-multi-example','geometry-vertices','geometry-measure','scale-vertices','scale-drawing','scale-mm','scale-example','scale-convert',...placementIds])byId(id).disabled=!enabled||!byId('geometry-unit').value;
   byId('geometry-download').disabled=!enabled||!geometryReport;
+  byId('cad-contour-download').disabled=!enabled||!geometryReport||!['C','V'].includes(geometryReport.operation);
   byId('geometry-batch-template').disabled=!enabled;
   byId('geometry-batch-file').disabled=!enabled;
   const dxfEnabled=enabled&&!!byId('geometry-unit').value&&!geometries.has(byId('geometry-unit').value);
@@ -418,6 +419,22 @@ byId('geometry-download').addEventListener('click',()=>{
   catch{status.textContent='Download non riuscito.';}
 });
 
+// [Codex] Replayed local DXF; no identifiers or inferred placement in the drawing.
+byId('cad-contour-download').addEventListener('click',async()=>{
+  if(busy||invalid.size||!geometryReport||!['C','V'].includes(geometryReport.operation))return;
+  const unitId=geometryReport.unitId,digest=report?.caseDigest;
+  lock(true);
+  try{
+    const session={version:'0.1.0',kind:'synthetic-practice-session',request:currentDeclarations()};
+    const body=JSON.stringify({session,unitId});
+    if(new TextEncoder().encode(body).length>256*1024)throw Error('too_large');
+    const result=await request('/api/cad-contour',{method:'POST',headers:{'Content-Type':'application/json'},body});
+    if(!result.ok||result.caseDigest!==digest||result.unitId!==unitId||result.official!==false||result.coordinateUnit!=='mm'||typeof result.dxf!=='string')throw Error('blocked');
+    saveFile(result.dxf,'application/dxf','catasto-contorno-locale-mm-non-ufficiale.dxf');
+    status.textContent='Download DXF richiesto: contorno locale in mm, nessuna posizione o scala verificata.';
+  }catch{status.textContent='DXF non disponibile: verifica la misura corrente.';}
+  finally{lock(false);}
+});
 byId('handoff-target').addEventListener('change',()=>{byId('handoff-status').textContent='Destinatario selezionato.';});
 byId('handoff-download').addEventListener('click',async()=>{
   if(busy||invalid.size||report?.state!=='research_candidate')return;
