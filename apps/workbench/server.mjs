@@ -11,6 +11,7 @@ import {buildIntegratedDossier,replayPracticeSession} from '../../packages/workb
 import {buildPracticeArchive} from '../../packages/workbench/practice-archive.mjs';
 import {buildSyntheticHandoff} from '../../packages/workbench/synthetic-handoff.mjs';
 import {buildGeometryHandoff} from '../../packages/workbench/geometry-handoff.mjs';
+import {importGeometryBatch} from '../../packages/workbench/geometry-batch.mjs';
 const page=readFileSync(new URL('./index.html',import.meta.url));
 const script=readFileSync(new URL('./client.js',import.meta.url));
 const guideScript=readFileSync(new URL('../../packages/workbench/guided-draft.mjs',import.meta.url));
@@ -54,7 +55,7 @@ export function createWorkbenchServer(){
         if(scenario)return json(res,200,syntheticCase(scenario));
         return reject(res,404,'not_found');
       }
-      if(req.method!=='POST'||!['/api/report','/api/visura-check','/api/visura-example','/api/handoff','/api/geometry-handoff','/api/income','/api/tariff-lookup','/api/dossier','/api/session','/api/archive'].includes(req.url))return reject(res,404,'not_found');
+      if(req.method!=='POST'||!['/api/report','/api/visura-check','/api/visura-example','/api/handoff','/api/geometry-handoff','/api/geometry-batch','/api/income','/api/tariff-lookup','/api/dossier','/api/session','/api/archive'].includes(req.url))return reject(res,404,'not_found');
       if(req.headers.origin!=='http://'+authority||req.headers['content-type']!=='application/json')
         return reject(res,403,'same_origin_json_required');
       if(req.headers['content-encoding']!==undefined)return reject(res,415,'encoding_not_supported');
@@ -80,6 +81,7 @@ export function createWorkbenchServer(){
       if(req.url==='/api/dossier'){const result=buildIntegratedDossier(envelope);return json(res,result.ok?200:400,result);}
       if(req.url==='/api/tariff-lookup')return json(res,200,lookupSyntheticTariff(envelope));
       if(req.url==='/api/income')return json(res,200,syntheticIncomeWorksheet(envelope));
+      if(req.url==='/api/geometry-batch'){const result=importGeometryBatch(envelope);return json(res,result.ok?200:400,result);}
       if(req.url==='/api/geometry-handoff'){
         if(!envelope||typeof envelope!=='object'||Array.isArray(envelope)||Object.keys(envelope).length!==2||!Object.hasOwn(envelope,'target')||!Object.hasOwn(envelope,'session'))return reject(res,400,'invalid_geometry_handoff_request');
         const result=buildGeometryHandoff(envelope.session,envelope.target);

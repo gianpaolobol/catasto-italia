@@ -246,6 +246,7 @@ function resetScale(){
   byId('scale-status').textContent='Nessuna conversione.';
 }
 function resetGeometry(){
+  byId('geometry-batch-status').textContent='Nessun import.';
   resetScale();resetPlacement();
   geometries.clear();
   const option=el('option','Analizza il caso');option.value='';
@@ -315,6 +316,8 @@ function refreshGeometry(){
   byId('geometry-unit').disabled=!enabled;
   for(const id of ['geometry-example','geometry-multi-example','geometry-vertices','geometry-measure','scale-vertices','scale-drawing','scale-mm','scale-example','scale-convert',...placementIds])byId(id).disabled=!enabled||!byId('geometry-unit').value;
   byId('geometry-download').disabled=!enabled||!geometryReport;
+  byId('geometry-batch-template').disabled=!enabled;
+  byId('geometry-batch-file').disabled=!enabled;
 }
 byId('geometry-unit').addEventListener('change',()=>{
   resetScale();
@@ -491,6 +494,42 @@ function currentDeclarations(){
     geometry:[...geometries.values()].map(a=>({unitId:a.unitId,vertices:a.vertices,...(a.calibration?{calibration:a.calibration}:{}),...(a.placement?{placement:a.placement}:{})})),
     income:[...incomes.values()].map(a=>({unitId:a.unitId,declared:a.declared}))};
 }
+// [Codex] Import a batch of declarations for the current case, without overwriting existing measures.
+byId('geometry-batch-template').addEventListener('click',()=>{
+  if(busy||invalid.size||report?.state!=='research_candidate')return;
+  const geometry=report.operations.filter(o=>['C','V','unchanged'].includes(o.operation)&&!geometries.has(o.unitId)).map(o=>({
+    unitId:o.unitId,vertices:[],...(o.operation==='unchanged'?{placement:{floor:'',xMm:null,yMm:null}}:{})
+  }));
+  if(!geometry.length){byId('geometry-batch-status').textContent='Tutte le unità hanno una misura corrente.';return;}
+  saveJson({version:'0.1.0',kind:'synthetic-geometry-declarations',caseDigest:report.caseDigest,geometry},'catasto-geometrie-da-compilare.json');
+  byId('geometry-batch-status').textContent='Modello richiesto: compilare vertici e posizioni; rimuovere le righe vuote.';
+});
+byId('geometry-batch-file').addEventListener('change',async event=>{
+  const file=event.target.files?.[0];event.target.value='';
+  if(!file||busy||invalid.size||report?.state!=='research_candidate')return;
+  lock(true);
+  try{
+    if(file.size>256*1024)throw Error('too_large');
+    const batch=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(await file.arrayBuffer()));
+    const session={version:'0.1.0',kind:'synthetic-practice-session',request:currentDeclarations()};
+    const body=JSON.stringify({session,batch});
+    if(new TextEncoder().encode(body).length>256*1024)throw Error('too_large');
+    const result=await request('/api/geometry-batch',{method:'POST',headers:{'Content-Type':'application/json'},body});
+    if(!result.ok||result.report?.caseDigest!==report.caseDigest||!Array.isArray(result.geometry)||!Number.isSafeInteger(result.added)||result.added<1||result.geometry.length!==geometries.size+result.added)throw Error('blocked');
+    const newMeasures=result.geometry.filter(a=>!geometries.has(a.unitId));
+    if(newMeasures.length!==result.added)throw Error('blocked');
+    for(const a of newMeasures)geometries.set(a.unitId,a);
+    // Keep a currently selected editor (including any unmeasured work) untouched
+    // unless this import added its measurement or there is no selection.
+    const selected=byId('geometry-unit').value;
+    if(!selected||newMeasures.some(a=>a.unitId===selected)){
+      byId('geometry-unit').value=selected||newMeasures[0].unitId;
+      byId('geometry-unit').dispatchEvent(new Event('change'));
+    }
+    byId('geometry-batch-status').textContent='Import completato: '+result.added+' nuove misure ricalcolate. Nessuna approvazione.';
+  }catch{byId('geometry-batch-status').textContent='Import bloccato: nessuna misura aggiunta. Verifica digest, unità, vertici e posizioni.';}
+  finally{lock(false);}
+});
 // [Codex] Separate versioned handoff; does not change existing ZIP bytes.
 byId('geometry-handoff-download').addEventListener('click',async()=>{
   if(busy||invalid.size||report?.state!=='research_candidate')return;

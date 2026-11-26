@@ -293,6 +293,23 @@ def run():
                                 check(geo_handoff['version'] == '0.2.0', 'geometry handoff version')
                                 check({g['unitId']: g['state'] for g in geo_handoff['geometry']} == {'d1': 'missing', 'd2': 'measured'}, 'geometry handoff scope or coverage')
                                 check(next(g for g in geo_handoff['geometry'] if g['unitId']=='d2')['placement']['xMm'] == 4000, 'geometry handoff placement')
+                                # Add missing d1 in one import; repeated import must not overwrite.
+                                with page.expect_download() as event:
+                                    page.locator('#geometry-batch-template').click()
+                                batch_file = Path(tmp) / 'geometry-batch.json'
+                                event.value.save_as(batch_file)
+                                batch = json.loads(batch_file.read_text(encoding='utf-8'))
+                                check([g['unitId'] for g in batch['geometry']] == ['d1'], 'batch template coverage')
+                                batch['geometry'][0]['vertices'] = [[0,0],[3000,0],[3000,2000],[0,2000]]
+                                batch['geometry'][0]['placement'] = {'floor':'P0','xMm':0,'yMm':0}
+                                batch_file.write_text(json.dumps(batch), encoding='utf-8')
+                                page.locator('#geometry-batch-file').set_input_files(batch_file)
+                                expect(page.locator('#geometry-batch-status')).to_contain_text('Import completato: 1')
+                                expect(page.locator('#geometry-count')).to_contain_text('3')
+                                expect(page.locator('#income-count')).to_contain_text('2')
+                                page.locator('#geometry-batch-file').set_input_files(batch_file)
+                                expect(page.locator('#geometry-batch-status')).to_contain_text('Import bloccato')
+                                expect(page.locator('#geometry-count')).to_contain_text('3')
                             with page.expect_download() as event:
                                 page.locator("#download-archive").click()
                             archive = Path(tmp) / "diagnostic.zip"

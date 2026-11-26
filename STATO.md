@@ -41,3 +41,5 @@ Segue la versione **1.1.0** (`LINEE_GUIDA.md`).
 - 2026-11-26 [Codex] PR #57 integrata dopo CI core/Chromium/Windows/linee guida; esportazione ZIP completa. Riapertura diretta verificata byte-per-byte implementata su ramo dedicato, CI da verificare. V1.0 non validata.
 
 - 2026-11-26 [Codex] PR #58 integrata dopo CI core/Chromium/Windows/linee guida. Interscambio geometrico v0.2 separato, CI da verificare. V1.0 non validata.
+
+- 2026-11-26 [Codex] PR #59 integrata dopo CI core/Chromium/Windows/linee guida; import geometrico multiplo add-only implementato, nuova CI da verificare. V1.0 non validata.
