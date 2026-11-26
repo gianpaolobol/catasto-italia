@@ -17,10 +17,10 @@ function setTariffSource(source='synthetic-tariff'){tariffSource=source;byId('in
 const el=(tag,text)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;return e;};
 function clear(){
   byId('visura-result').textContent='Nessun confronto corrente.';
-  report=null;byId('manual-docfa-download').disabled=true;byId('manual-docfa-worksheet').disabled=true;byId('manual-docfa-status').textContent='Nessuna verifica ufficiale effettuata.';byId('handoff-status').textContent='Analizza un caso sintetico.';resetGeometry();resetIncome();download.disabled=true;byId('save-session').disabled=true;byId('download-archive').disabled=true;byId('download-dossier').disabled=true;byId('summary').textContent='Nessun rapporto corrente.';
+  report=null;byId('manual-docfa-download').disabled=true;byId('manual-docfa-worksheet').disabled=true;byId('manual-docfa-register-template').disabled=true;byId('manual-docfa-register-file').disabled=true;byId('manual-docfa-status').textContent='Nessuna verifica ufficiale effettuata.';byId('handoff-status').textContent='Analizza un caso sintetico.';resetGeometry();resetIncome();download.disabled=true;byId('save-session').disabled=true;byId('download-archive').disabled=true;byId('download-dossier').disabled=true;byId('summary').textContent='Nessun rapporto corrente.';
   byId('relation').textContent='—';byId('details').textContent='—';byId('operations').replaceChildren();byId('inventory').replaceChildren();
 }
-function refresh(){refreshGeometry();refreshIncome();byId('save-session').disabled=busy||invalid.size>0||report?.state!=='research_candidate';byId('download-archive').disabled=byId('save-session').disabled;byId('manual-docfa-download').disabled=byId('save-session').disabled;byId('manual-docfa-worksheet').disabled=byId('save-session').disabled;const handoffEnabled=!busy&&!invalid.size&&report?.state==='research_candidate';byId('handoff-target').disabled=!handoffEnabled;byId('handoff-download').disabled=!handoffEnabled;byId('geometry-handoff-download').disabled=!handoffEnabled;byId('download-dossier').disabled=busy||!report||report.diagnosticReportExportable!==true;for(const id of ['visura-check','visura-example','visura-claim','visura-file','visura-text'])byId(id).disabled=busy||invalid.size>0;analyze.disabled=busy||invalid.size>0;byId('save-draft').disabled=busy||invalid.size>0;for(const e of guide.querySelectorAll('input,select'))e.disabled=busy;}
+function refresh(){refreshGeometry();refreshIncome();byId('save-session').disabled=busy||invalid.size>0||report?.state!=='research_candidate';byId('download-archive').disabled=byId('save-session').disabled;byId('manual-docfa-download').disabled=byId('save-session').disabled;byId('manual-docfa-worksheet').disabled=byId('save-session').disabled;byId('manual-docfa-register-template').disabled=byId('save-session').disabled;byId('manual-docfa-register-file').disabled=byId('save-session').disabled;const handoffEnabled=!busy&&!invalid.size&&report?.state==='research_candidate';byId('handoff-target').disabled=!handoffEnabled;byId('handoff-download').disabled=!handoffEnabled;byId('geometry-handoff-download').disabled=!handoffEnabled;byId('download-dossier').disabled=busy||!report||report.diagnosticReportExportable!==true;for(const id of ['visura-check','visura-example','visura-claim','visura-file','visura-text'])byId(id).disabled=busy||invalid.size>0;analyze.disabled=busy||invalid.size>0;byId('save-draft').disabled=busy||invalid.size>0;for(const e of guide.querySelectorAll('input,select'))e.disabled=busy;}
 function lock(value){busy=value;byId('import-session').disabled=value;byId('import-draft').disabled=value;byId('reviewed-import').disabled=value;byId('reviewed-example').disabled=value;byId('reviewed-template').disabled=value;load.disabled=value;field.readOnly=value;byId('scenario').disabled=value;byId('open-guide').disabled=value;refresh();}
 function resetGuide(){draft=null;invalid.clear();guide.replaceChildren();const option=el('option','Carica un caso nell’editor guidato');option.value='';byId('visura-claim').replaceChildren(option);byId('visura-text').value='';clearVisura();refresh();}
 function showGuide(input){
@@ -600,6 +600,39 @@ async function downloadManualReview(printable=false){
 }
 byId('manual-docfa-download').addEventListener('click',()=>downloadManualReview(false));
 byId('manual-docfa-worksheet').addEventListener('click',()=>downloadManualReview(true));
+// [Codex] Review observations are exported separately; they never mutate the practice.
+async function reviewRegister(file=null){
+  if(busy||invalid.size||report?.state!=='research_candidate')return;
+  lock(true);
+  try{
+    const session={version:'0.1.0',kind:'synthetic-practice-session',request:currentDeclarations()};
+    let payload=session;
+    if(file){
+      if(file.size>32*1024)throw Error('too_large');
+      const observations=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(await file.arrayBuffer()));
+      payload={session,observations};
+    }
+    const body=JSON.stringify(payload);
+    if(new TextEncoder().encode(body).length>256*1024)throw Error('too_large');
+    const result=await request(file?'/api/manual-docfa-register-check':'/api/manual-docfa-register-template',{method:'POST',headers:{'Content-Type':'application/json'},body});
+    if(!result.ok)throw Error('blocked');
+    if(file){
+      const r=result.record;
+      if(r?.caseDigest!==report.caseDigest||r.officialValidation!==false||r.officialExport!==false||r.signature!==false||r.submission!==false)throw Error('blocked');
+      saveJson(r,'catasto-registro-riscontri-non-ufficiale.json');
+      byId('manual-docfa-status').textContent='Registro controllato e scaricato: '+r.counts.unrecorded+' riscontri non registrati, '+r.counts.difference_declared+' difformità dichiarate. Nessuna verifica ufficiale attestata.';
+    }else{
+      if(result.template?.caseDigest!==report.caseDigest||typeof result.template.snapshotDigest!=='string')throw Error('blocked');
+      saveJson(result.template,'catasto-riscontri-da-compilare.json');
+      byId('manual-docfa-status').textContent='Modello scaricato. Conserva la sessione corrente e compila soltanto riscontri sintetici.';
+    }
+  }catch{byId('manual-docfa-status').textContent='Registro non accettato: formato, evidenze o sessione/annessi non corrispondenti. Pratica invariata.';}
+  finally{lock(false);}
+}
+byId('manual-docfa-register-template').addEventListener('click',()=>reviewRegister());
+byId('manual-docfa-register-file').addEventListener('change',event=>{
+  const file=event.target.files?.[0];event.target.value='';if(file)reviewRegister(file);
+});
 byId('download-archive').addEventListener('click',async()=>{
   if(busy||invalid.size||report?.state!=='research_candidate')return;
   lock(true);
