@@ -138,7 +138,8 @@ def run():
                             if not panel.evaluate('(e) => e.open'):
                                 panel.locator(':scope > summary').click()
                             page.locator('#geometry-unit').select_option(index=1)
-                            page.get_by_text('Carica contorni da DXF ASCII sintetico', exact=True).click()
+                            if not page.locator('#dxf-file').evaluate("(e) => e.closest('details').open"):
+                                page.get_by_text('Carica contorni da DXF ASCII sintetico', exact=True).click()
                             with page.expect_download() as dxf_event:
                                 page.locator('#dxf-example').click()
                             dxf = Path(tmp) / 'contorno-sintetico-mm.dxf'
