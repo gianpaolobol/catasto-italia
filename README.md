@@ -41,3 +41,6 @@ Il pulsante ZIP crea dossier, sessione, rapporto, tre handoff diagnostici e mani
 
 ### Interscambio geometrico v0.2 [Codex]
 Nel pannello Building Core, selezionare il destinatario e scaricare l'interscambio con geometrie correnti. Il server ricalcola la sessione, trasferisce esclusivamente unità C/V, contorni in mm, posizione dichiarata o nulla, provenienza della calibrazione e misure geometriche; unità senza misura esplicite. Nessun dato estimativo o unità conservata, nessuna superficie catastale o scala verificata. Formato diagnostico separato dal precedente JSON e dallo ZIP canonico, importatori destinatari non validati. PR #58 integrata dopo CI positive.
+
+### Importazione geometrica multipla [Codex]
+Nel pannello geometrico scaricare il modello JSON delle unità senza misura, compilare i vertici in mm e le eventuali posizioni (obbligatorie per le conservate), eliminare le righe vuote e importare il file. Il digest vincola il modello alla pratica corrente; l'import aggiunge soltanto nuove misure, tutte ricalcolate dal server, e non modifica quelle già presenti. Un errore blocca l'intero gruppo. Solo dichiarazioni sintetiche, non import CAD/IFC/DOCFA. PR #59 integrata dopo CI positive, nuovo import da collaudare.
