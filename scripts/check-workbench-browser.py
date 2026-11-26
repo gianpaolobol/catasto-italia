@@ -372,8 +372,21 @@ def run():
                             template_file.write_text(json.dumps(register), encoding="utf-8")
                             page.locator("#manual-docfa-register-file").set_input_files(str(template_file))
                             expect(page.locator("#manual-docfa-status")).to_contain_text("Pratica invariata")
-                            with page.expect_download() as event:
-                                page.locator("#download-archive").click()
+                            # [Codex] Keep the real download gate; distinguish API failure from
+                            # browser download failure and wait explicitly for the preceding import.
+                            expect(page.locator("#manual-docfa-register-file")).to_be_enabled()
+                            expect(page.locator("#download-archive")).to_be_enabled()
+                            archive_http = None
+                            try:
+                                with page.expect_download() as event:
+                                    with page.expect_response(lambda response: response.url == base + "/api/archive" and response.request.method == "POST") as archive_response:
+                                        page.locator("#download-archive").click()
+                                    archive_http = archive_response.value.status
+                                    check(archive_http == 200, f"archive API returned {archive_http}")
+                                    check(archive_response.value.headers.get("content-type", "").startswith("application/zip"), "archive response not ZIP")
+                                expect(page.locator("#status")).to_contain_text("Archivio richiesto")
+                            except Exception as exc:
+                                raise RuntimeError(f"archive download failed: scenario={scenario}, viewport={width}, HTTP={archive_http}, status={page.locator('#status').text_content()}, review={page.locator('#manual-docfa-status').text_content()}, pageErrors={errors}") from exc
                             archive = Path(tmp) / "diagnostic.zip"
                             event.value.save_as(archive)
                             with zipfile.ZipFile(archive) as z:
