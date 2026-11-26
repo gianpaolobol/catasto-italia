@@ -193,9 +193,18 @@ def run():
                                 expect(page.locator('#scale-status')).to_contain_text('non_integral_millimetres')
                                 expect(page.locator('#geometry-result')).to_contain_text('8.000000')
                                 # A failed conversion leaves the previously applied vertices unchanged.
+                                # [Codex] Both local origins are explicit; never infer relative placement.
+                                page.locator('#placement-floor').fill('P0')
+                                page.locator('#placement-x').fill('0')
+                                page.locator('#placement-y').fill('0')
+                                page.locator('#geometry-measure').click()
+                                expect(page.locator('#floor-preview polygon')).to_have_count(1)
 
                                 page.locator('#geometry-unit').select_option(index=2)
                                 page.locator('#geometry-vertices').fill('[[0,0],[2000,0],[2000,1000],[0,1000]]')
+                                page.locator('#placement-floor').fill('P0')
+                                page.locator('#placement-x').fill('4000')
+                                page.locator('#placement-y').fill('0')
                                 page.locator('#geometry-measure').click()
                                 expect(page.locator('#geometry-count')).to_contain_text('2')
                                 page.locator('#income-unit').select_option(index=2)
@@ -215,6 +224,9 @@ def run():
                                 multi_html = dossier.read_text(encoding='utf-8')
                                 check(all(v in multi_html for v in ('8.000000','2.000000','555.5551500','200.0000000','Copertura degli annessi')), 'multi-unit dossier missing values')
                                 check(multi_html.count('<figure class="plan-preview">') == 2, 'multi-unit plan previews missing')
+                                check('Schema diagnostico per piano' in multi_html and '6000 × 2000 mm' in multi_html, 'common plan missing')
+                                expect(page.locator('#floor-preview polygon')).to_have_count(2)
+                                expect(page.locator('#floor-preview')).to_contain_text('6000 × 2000 mm')
                                 check('Conversione dichiarata, scala non verificata' in multi_html and 'Millimetri dichiarati manualmente' in multi_html and '<td>40</td><td>4000</td>' in multi_html, 'calibration provenance missing or overwritten')
                                 expect(page.locator('#scale-status')).to_contain_text('Conversione dichiarata ripristinata')
                                 with page.expect_download() as event:
@@ -223,6 +235,7 @@ def run():
                                 event.value.save_as(session_file)
                                 portable = json.loads(session_file.read_text(encoding='utf-8'))
                                 check(portable['kind'] == 'synthetic-practice-session' and len(portable['request']['geometry']) == 2, 'portable session missing units')
+                                check([a['placement']['xMm'] for a in portable['request']['geometry']] == [0, 4000], 'placement declarations missing')
                                 # Invalid file must not overwrite the current work.
                                 bad_file = Path(tmp) / 'bad-session.json'
                                 bad_file.write_text('{"version":"999"}', encoding='utf-8')
@@ -242,6 +255,8 @@ def run():
                                     page.locator('#download-dossier').click()
                                 event.value.save_as(dossier)
                                 check(dossier.read_text(encoding='utf-8') == multi_html, 'reopened dossier differs')
+                                expect(page.locator('#floor-preview polygon')).to_have_count(2)
+                                expect(page.locator('#placement-floor')).to_have_value('P0')
                                 page.locator('#geometry-vertices').fill('[]')
                                 expect(page.locator('#geometry-count')).to_contain_text('1')
                                 expect(page.locator('#income-count')).to_contain_text('2')

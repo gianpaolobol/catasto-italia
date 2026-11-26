@@ -3,6 +3,7 @@
 import {buildPracticeReport} from './index.mjs';
 import {guideFields} from './guided-draft.mjs';
 import {measureSyntheticPolygon} from './synthetic-geometry.mjs';
+import {validPlacement} from './synthetic-floor-plan.mjs';
 import {syntheticIncomeWorksheet} from './synthetic-income.mjs';
 import {renderDiagnosticDossier} from './diagnostic-dossier.mjs';
 const shape=(x,keys)=>x!==null&&typeof x==='object'&&!Array.isArray(x)&&Object.keys(x).length===keys.length&&keys.every(k=>Object.hasOwn(x,k));
@@ -19,10 +20,14 @@ export function buildIntegratedDossier(request,{replay=false}={}){
     if(report.state!=='research_candidate'&&(geometries.length||incomes.length))return block('blocked_case_annex');
     const geometry=[],income=[],gIds=new Set(),iIds=new Set();
     for(const item of geometries){
-      if(!(shape(item,['unitId','vertices'])||shape(item,['unitId','vertices','calibration']))||typeof item.unitId!=='string'||gIds.has(item.unitId))return block('invalid_geometry_request');
+      if(!(['unitId,vertices','unitId,vertices,calibration','unitId,vertices,placement','unitId,vertices,calibration,placement'].some(k=>shape(item,k.split(','))))||typeof item.unitId!=='string'||gIds.has(item.unitId))return block('invalid_geometry_request');
       gIds.add(item.unitId);
       const measured=measureSyntheticPolygon(report,item.unitId,item.vertices,item.calibration??null);
       if(measured.state!=='measured')return block('geometry_blocked');
+      if(Object.hasOwn(item,'placement')){
+        if(!validPlacement(item.placement))return block('invalid_geometry_placement');
+        measured.placement={...item.placement};
+      }
       geometry.push(measured);
     }
     for(const item of incomes){
