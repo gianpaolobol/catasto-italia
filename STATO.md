@@ -3,7 +3,7 @@
 > Formato fisso: `gianpaolobol/registro-delle-idee` → `PROTOCOLLO_AI.md`, sezione 4. Massimo una pagina: i dettagli restano in `README.md`, `docs/`.
 
 ## Cos'è
-Banco di lavoro per variazioni catastali e lettura delle visure (solo dati sintetici).
+Banco di lavoro locale per sei scenari catastali sintetici, dossier multi-unità, misure e anteprime geometriche, simulazioni estimative e handoff Building Core non validato presso i destinatari.
 
 ## Fase
 in sviluppo
@@ -12,10 +12,13 @@ in sviluppo
 non pubblicata
 
 ## Prossimi passi
-1. Da definire [Gian/Codex]
+1. Conservare la provenienza della calibrazione geometrica nel dossier.
+2. Acquisire tariffari ufficiali vigenti e tracciati.
+3. Completare elaborati e adattatori DOCFA verificati.
+4. Validare 100 pratiche integrali e 100 verifiche incrociate.
 
 ## Blocchi
-- Nessuno noto
+- Solo dimostrazione sintetica: mancano fonti vigenti, prove DOCFA/SISTER e collaudo professionale.
 
 ## Componenti condivisi
 - Usa da altri repository: —
@@ -26,3 +29,5 @@ Segue la versione **1.1.0** (`LINEE_GUIDA.md`).
 
 ## Registro aggiornamenti
 - 2026-11-26 [Claude] Prima compilazione dai contenuti del repository; le voci "da confermare" vanno verificate.
+
+- 2026-11-26 [Codex] PR #49 integrata dopo CI core 1042/1042, Chromium 1280/360 e Windows 251/251; nessuna V1.0 validata.
