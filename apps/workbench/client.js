@@ -498,7 +498,7 @@ function currentDeclarations(){
 byId('geometry-batch-template').addEventListener('click',()=>{
   if(busy||invalid.size||report?.state!=='research_candidate')return;
   const geometry=report.operations.filter(o=>['C','V','unchanged'].includes(o.operation)&&!geometries.has(o.unitId)).map(o=>({
-    unitId:o.unitId,vertices:[],...(o.operation==='unchanged'?{placement:{floor:'P0',xMm:0,yMm:0}}:{})
+    unitId:o.unitId,vertices:[],...(o.operation==='unchanged'?{placement:{floor:'',xMm:null,yMm:null}}:{})
   }));
   if(!geometry.length){byId('geometry-batch-status').textContent='Tutte le unità hanno una misura corrente.';return;}
   saveJson({version:'0.1.0',kind:'synthetic-geometry-declarations',caseDigest:report.caseDigest,geometry},'catasto-geometrie-da-compilare.json');
