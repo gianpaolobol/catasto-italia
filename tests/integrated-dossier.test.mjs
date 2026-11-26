@@ -83,3 +83,15 @@ for(const [label,edit] of [
 ])test('multi annex rejects '+label,()=>{
  const q=multi();edit(q);const r=buildIntegratedDossier(q);assert.equal(r.ok,false);assert.equal(r.html,null);
 });
+
+// [Codex] Declared conversion provenance is replayed, never treated as scale certification.
+test('dossier distinguishes replayed calibration from manual coordinates per unit',()=>{
+ const q=multi();q.geometry[0].vertices=[[0,0],[4000,0],[4000,2000],[0,2000]];
+ q.geometry[0].calibration={vertices:[[-20,-10],[20,-10],[20,10],[-20,10]],drawingLength:40,actualLengthMm:4000};
+ const r=buildIntegratedDossier(q);assert.equal(r.ok,true);assert.match(r.html,/Provenienza della scala/);assert.match(r.html,/Conversione dichiarata, scala non verificata/);assert.match(r.html,/Millimetri dichiarati manualmente/);assert.match(r.html,/<td>40<\/td><td>4000<\/td>/);
+ q.geometry[0].calibration.actualLengthMm=8000;assert.equal(buildIntegratedDossier(q).ok,false);
+});
+test('dossier rejects forged calibration fields',()=>{
+ const q=make();q.geometry.calibration={vertices:q.geometry.vertices,drawingLength:1,actualLengthMm:1,verified:true};
+ assert.equal(buildIntegratedDossier(q).ok,false);
+});

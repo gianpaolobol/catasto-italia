@@ -4,7 +4,7 @@ import {guideFields,editGuidedDraft} from '/guided-draft.mjs';
 import {draftFromReviewedVisura,reviewedVisuraExample} from '/reviewed-visura.mjs';
 const byId=id=>document.getElementById(id);
 const field=byId('case'),status=byId('status'),download=byId('download'),load=byId('load'),analyze=byId('analyze'),guide=byId('guide');
-let report=null,busy=false,draft=null,geometryReport=null,incomeReport=null;
+let report=null,busy=false,draft=null,geometryReport=null,incomeReport=null,appliedScale=null;
 const invalid=new Set();
 const geometries=new Map(),incomes=new Map();
 const incomeFields=['category','class','zone','consistency','tariff'];
@@ -165,7 +165,7 @@ byId('download-dossier').addEventListener('click',async()=>{
   lock(true);
   try{
     const payload={draft:JSON.parse(field.value),expectedState:report.state,expectedDigest:report.caseDigest,
-      geometry:[...geometries.values()].map(a=>({unitId:a.unitId,vertices:a.vertices})),
+      geometry:[...geometries.values()].map(a=>({unitId:a.unitId,vertices:a.vertices,...(a.calibration?{calibration:a.calibration}:{})})),
       income:[...incomes.values()].map(a=>({unitId:a.unitId,declared:a.declared}))};
     if(new TextEncoder().encode(JSON.stringify(payload)).length>256*1024)throw Error('too_large');
     const result=await request('/api/dossier',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
@@ -219,6 +219,7 @@ function clearGeometryAnnex(){
   geometries.delete(byId('geometry-unit').value);geometryReport=null;byId('geometry-result').textContent='Nessuna misura corrente.';byId('geometry-download').disabled=true;
 }
 function resetScale(){
+  appliedScale=null;
   for(const id of ['scale-vertices','scale-drawing','scale-mm'])byId(id).value='';
   byId('scale-status').textContent='Nessuna conversione.';
 }
@@ -256,11 +257,18 @@ function refreshGeometry(){
 byId('geometry-unit').addEventListener('change',()=>{
   resetScale();
   geometryReport=geometries.get(byId('geometry-unit').value)??null;
+  if(geometryReport?.calibration){
+    appliedScale=geometryReport.calibration;
+    byId('scale-vertices').value=JSON.stringify(appliedScale.vertices);
+    byId('scale-drawing').value=String(appliedScale.drawingLength);
+    byId('scale-mm').value=String(appliedScale.actualLengthMm);
+    byId('scale-status').textContent='Conversione dichiarata ripristinata. Scala non verificata.';
+  }
   byId('geometry-vertices').value=geometryReport?JSON.stringify(geometryReport.vertices,null,2):'';
   byId('geometry-result').textContent=geometryReport?'Area geometrica: '+geometryReport.areaM2+' m²; perimetro: '+geometryReport.perimeterMm+' mm. Non catastale.':'Nessuna misura corrente.';
   refreshGeometry();
 });
-byId('geometry-vertices').addEventListener('input',()=>{byId('scale-status').textContent='Vertici in mm modificati manualmente.';clearGeometryAnnex();refreshGeometry();});
+byId('geometry-vertices').addEventListener('input',()=>{appliedScale=null;byId('scale-status').textContent='Vertici in mm modificati manualmente.';clearGeometryAnnex();refreshGeometry();});
 const canConvertScale=()=>!busy&&!invalid.size&&report?.state==='research_candidate'&&!!byId('geometry-unit').value;
 for(const id of ['scale-vertices','scale-drawing','scale-mm'])byId(id).addEventListener('input',()=>{byId('scale-status').textContent='Parametri modificati; nessuna nuova conversione applicata.';});
 byId('scale-example').addEventListener('click',()=>{
@@ -274,8 +282,10 @@ byId('scale-convert').addEventListener('click',()=>{
   try{
     const raw=byId('scale-vertices').value,a=byId('scale-drawing').value,b=byId('scale-mm').value;
     if(raw.length>16384||!/^\d{1,8}$/.test(a)||!/^\d{1,8}$/.test(b))throw Error('invalid_input');
-    const converted=convertSyntheticPlanScale({vertices:JSON.parse(raw),drawingLength:Number(a),actualLengthMm:Number(b)});
+    const declaration={vertices:JSON.parse(raw),drawingLength:Number(a),actualLengthMm:Number(b)};
+    const converted=convertSyntheticPlanScale(declaration);
     if(!converted.ok){byId('scale-status').textContent='Conversione bloccata: '+converted.blocker;return;}
+    appliedScale=declaration;
     byId('geometry-vertices').value=JSON.stringify(converted.vertices,null,2);
     clearGeometryAnnex();refreshGeometry();
     byId('scale-status').textContent='Vertici in mm sostituiti; misura il nuovo contorno. Scala non verificata.';
@@ -293,7 +303,7 @@ byId('geometry-measure').addEventListener('click',()=>{
   try{
     const raw=byId('geometry-vertices').value;
     if(raw.length>16384)throw Error('too_large');
-    const measured=measureSyntheticPolygon(report,byId('geometry-unit').value,JSON.parse(raw));
+    const measured=measureSyntheticPolygon(report,byId('geometry-unit').value,JSON.parse(raw),appliedScale);
     if(measured.state==='measured'){
       geometryReport=measured;geometries.set(measured.unitId,measured);
       byId('geometry-result').textContent='Area geometrica: '+measured.areaM2+' m²; perimetro: '+measured.perimeterMm+' mm. Non catastale.';

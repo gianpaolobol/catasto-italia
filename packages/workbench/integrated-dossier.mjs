@@ -18,9 +18,9 @@ export function buildIntegratedDossier(request){
     if(report.state!=='research_candidate'&&(geometries.length||incomes.length))return block('blocked_case_annex');
     const geometry=[],income=[],gIds=new Set(),iIds=new Set();
     for(const item of geometries){
-      if(!shape(item,['unitId','vertices'])||typeof item.unitId!=='string'||gIds.has(item.unitId))return block('invalid_geometry_request');
+      if(!(shape(item,['unitId','vertices'])||shape(item,['unitId','vertices','calibration']))||typeof item.unitId!=='string'||gIds.has(item.unitId))return block('invalid_geometry_request');
       gIds.add(item.unitId);
-      const measured=measureSyntheticPolygon(report,item.unitId,item.vertices);
+      const measured=measureSyntheticPolygon(report,item.unitId,item.vertices,item.calibration??null);
       if(measured.state!=='measured')return block('geometry_blocked');
       geometry.push(measured);
     }
