@@ -50,3 +50,6 @@ Dopo l'analisi scaricare il promemoria JSON: operazioni, identificativi, evidenz
 
 ### Contorni DXF ASCII isolati [Codex]
 Selezionare un'unità priva di misura, dichiarare mm o m e caricare un DXF sintetico contenente esclusivamente una sezione ENTITIES con LWPOLYLINE chiuse 2D ortogonali; esempio scaricabile. Il file resta nel browser; la conversione in millimetri è esatta e l'origine locale traslata. Verificare i vertici e misurare esplicitamente; dichiarare la posizione per unità conservate. Nel dossier si conservano le dichiarazioni geometriche risultanti, non i byte o la provenienza del DXF. Non è un lettore CAD generale o un adattatore DOCFA. PR #62 integrata dopo CI positiva; nuova CI richiesta.
+
+### Scheda stampabile per confronto manuale con DOCFA [Codex]
+Dopo l'analisi, scaricare la scheda HTML dal pannello verifica manuale. Contiene valori ricalcolati, identificativi, lacune, evidenze e sei controlli tutti non verificati, con spazi per versione DOCFA, archivio tariffario, tracciato, esiti e riferimenti delle prove locali. Si apre offline e si stampa dal browser; non è modulistica ufficiale né registra esiti nell'app. Conservare insieme la sessione JSON corrente. Non inserire dati reali nel repository, non firmare o trasmettere. PR #63 integrata dopo CI positiva; nuova CI richiesta.

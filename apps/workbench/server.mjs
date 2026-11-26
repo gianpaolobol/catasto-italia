@@ -11,7 +11,7 @@ import {buildIntegratedDossier,replayPracticeSession} from '../../packages/workb
 import {buildPracticeArchive} from '../../packages/workbench/practice-archive.mjs';
 import {buildSyntheticHandoff} from '../../packages/workbench/synthetic-handoff.mjs';
 import {buildGeometryHandoff} from '../../packages/workbench/geometry-handoff.mjs';
-import {buildManualDocfaWorklist} from '../../packages/workbench/manual-docfa-worklist.mjs';
+import {buildManualDocfaWorklist,buildManualDocfaWorksheet} from '../../packages/workbench/manual-docfa-worklist.mjs';
 import {importGeometryBatch} from '../../packages/workbench/geometry-batch.mjs';
 const page=readFileSync(new URL('./index.html',import.meta.url));
 const script=readFileSync(new URL('./client.js',import.meta.url));
@@ -58,7 +58,7 @@ export function createWorkbenchServer(){
         if(scenario)return json(res,200,syntheticCase(scenario));
         return reject(res,404,'not_found');
       }
-      if(req.method!=='POST'||!['/api/report','/api/visura-check','/api/visura-example','/api/handoff','/api/geometry-handoff','/api/geometry-batch','/api/income','/api/tariff-lookup','/api/dossier','/api/session','/api/archive','/api/manual-docfa-worklist'].includes(req.url))return reject(res,404,'not_found');
+      if(req.method!=='POST'||!['/api/report','/api/visura-check','/api/visura-example','/api/handoff','/api/geometry-handoff','/api/geometry-batch','/api/income','/api/tariff-lookup','/api/dossier','/api/session','/api/archive','/api/manual-docfa-worklist','/api/manual-docfa-worksheet'].includes(req.url))return reject(res,404,'not_found');
       if(req.headers.origin!=='http://'+authority||req.headers['content-type']!=='application/json')
         return reject(res,403,'same_origin_json_required');
       if(req.headers['content-encoding']!==undefined)return reject(res,415,'encoding_not_supported');
@@ -79,6 +79,7 @@ export function createWorkbenchServer(){
         try{return json(res,200,syntheticVisuraExample(envelope.draft,envelope.claimId));}
         catch{return reject(res,400,'invalid_example');}
       }
+      if(req.url==='/api/manual-docfa-worksheet'){const result=buildManualDocfaWorksheet(envelope);return json(res,result.ok?200:400,result);}
       if(req.url==='/api/manual-docfa-worklist'){const result=buildManualDocfaWorklist(envelope);return json(res,result.ok?200:400,result);}
       if(req.url==='/api/archive'){const result=buildPracticeArchive(envelope);return result.ok?send(res,200,result.bytes,'application/zip'):reject(res,400,result.error);}
       if(req.url==='/api/session'){const result=replayPracticeSession(envelope);return json(res,result.ok?200:400,result);}

@@ -335,6 +335,13 @@ def run():
                             check(all(c["state"] == "unverified" for c in worklist["checks"]), "worklist falsely verified")
                             check(len(worklist["rows"]) > 0, "worklist missing operations")
                             expect(page.locator("#manual-docfa-status")).to_contain_text("Verifiche ufficiali tutte aperte")
+                            with page.expect_download() as sheet_event:
+                                page.locator("#manual-docfa-worksheet").click()
+                            sheet_file = Path(tmp) / "manual-comparison.html"
+                            sheet_event.value.save_as(sheet_file)
+                            sheet = sheet_file.read_text(encoding="utf-8")
+                            check(worklist["caseDigest"] in sheet and sheet.count("NON VERIFICATO") == 6, "worksheet digest or checks")
+                            check("Versione DOCFA" in sheet and "NON UFFICIALE" in sheet and "<script" not in sheet, "unsafe or incomplete worksheet")
                             with page.expect_download() as event:
                                 page.locator("#download-archive").click()
                             archive = Path(tmp) / "diagnostic.zip"
@@ -379,6 +386,7 @@ def run():
                             expect(page.locator("#download-dossier")).to_be_disabled()
                             expect(page.locator("#download-archive")).to_be_disabled()
                             expect(page.locator("#manual-docfa-download")).to_be_disabled()
+                            expect(page.locator("#manual-docfa-worksheet")).to_be_disabled()
                             expect(page.locator("#handoff-download")).to_be_disabled()
                             expect(page.locator('#geometry-unit')).to_be_disabled()
                             expect(page.locator('#geometry-download')).to_be_disabled()
