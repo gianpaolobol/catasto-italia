@@ -8,6 +8,8 @@ let report=null,busy=false,draft=null,geometryReport=null,incomeReport=null,appl
 const invalid=new Set();
 const geometries=new Map(),incomes=new Map();
 const incomeFields=['category','class','zone','consistency','tariff'];
+let tariffSource='synthetic-tariff';
+function setTariffSource(source='synthetic-tariff'){tariffSource=source;byId('income-source').textContent=source==='synthetic-catalog-v1'?'Catalogo di prova v1 (non ufficiale)':'Tariffa inventata dichiarata manualmente';}
 const el=(tag,text)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;return e;};
 function clear(){
   byId('visura-result').textContent='Nessun confronto corrente.';
@@ -347,7 +349,7 @@ byId('handoff-download').addEventListener('click',async()=>{
 
 function clearIncome(){incomes.delete(byId('income-unit').value);incomeReport=null;byId('income-result').textContent='Nessun calcolo corrente.';}
 function resetIncome(){
-  incomes.clear();
+  incomes.clear();setTariffSource();
   const option=el('option','Analizza il caso');option.value='';
   byId('income-unit').replaceChildren(option);
   for(const k of incomeFields)byId('income-'+k).value='';
@@ -365,19 +367,39 @@ function refreshIncome(){
   byId('income-count').textContent='Unità con calcolo corrente: '+incomes.size;
   const enabled=!busy&&!invalid.size&&report?.state==='research_candidate';
   byId('income-unit').disabled=!enabled;
-  for(const k of [...incomeFields,'example','calculate'])byId('income-'+k).disabled=!enabled||!byId('income-unit').value;
+  for(const k of [...incomeFields,'example','calculate','lookup'])byId('income-'+k).disabled=!enabled||!byId('income-unit').value;
   byId('income-download').disabled=!enabled||!incomeReport;
 }
 byId('income-unit').addEventListener('change',()=>{
   incomeReport=incomes.get(byId('income-unit').value)??null;
   const d=incomeReport?.declared;
+  setTariffSource(d?.sourceId);
   [d?.category,d?.classNumber,d?.zone,d?.consistency,d?.tariff].forEach((v,i)=>byId('income-'+incomeFields[i]).value=v??'');
   byId('income-result').textContent=incomeReport?'Prodotto esatto: € '+incomeReport.exactProductEur+' (simulazione, non rendita ufficiale).':'Nessun calcolo corrente.';
   refreshIncome();
 });
-for(const k of incomeFields)byId('income-'+k).addEventListener('input',()=>{clearIncome();refreshIncome();});
+for(const k of incomeFields)byId('income-'+k).addEventListener('input',()=>{
+  if(k!=='consistency')setTariffSource();
+  clearIncome();refreshIncome();
+});
+byId('income-lookup').addEventListener('click',async()=>{
+  if(busy||invalid.size||report?.state!=='research_candidate'||!byId('income-unit').value)return;
+  const unitId=byId('income-unit').value,digest=report.caseDigest;
+  const [category,classNumber,zone]=incomeFields.slice(0,3).map(k=>byId('income-'+k).value.trim());
+  clearIncome();setTariffSource();byId('income-tariff').value='';
+  lock(true);
+  try{
+    const payload={draft:JSON.parse(field.value),unitId,zone,category,classNumber};
+    const result=await request('/api/tariff-lookup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(!result.ok||result.caseDigest!==digest||result.unitId!==unitId||result.row?.sourceId!=='synthetic-catalog-v1')throw Error('blocked');
+    byId('income-tariff').value=result.row.tariff;setTariffSource(result.row.sourceId);
+    byId('income-result').textContent='Tariffa di prova trovata. Dichiara la consistenza e calcola.';
+  }catch{byId('income-result').textContent='Nessuna tariffa di prova univoca per la chiave dichiarata.';}
+  finally{lock(false);}
+});
 byId('income-example').addEventListener('click',()=>{
   if(busy||invalid.size||report?.state!=='research_candidate'||!byId('income-unit').value)return;
+  setTariffSource();
   ['A/2','2','SYNTH-1','4.5','123.4567'].forEach((v,i)=>byId('income-'+incomeFields[i]).value=v);
   clearIncome();refreshIncome();
 });
@@ -389,7 +411,7 @@ byId('income-calculate').addEventListener('click',async()=>{
   const unit={A:'vani',B:'m3',C:'m2'}[category[0]];
   lock(true);
   try{
-    const payload={draft:JSON.parse(field.value),unitId,declared:{category,classNumber,zone,consistency,tariff,unit,sourceId:'synthetic-tariff'}};
+    const payload={draft:JSON.parse(field.value),unitId,declared:{category,classNumber,zone,consistency,tariff,unit,sourceId:tariffSource}};
     if(new TextEncoder().encode(JSON.stringify(payload)).length>256*1024)throw Error('too_large');
     const result=await request('/api/income',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!result.ok||result.worksheet?.caseDigest!==digest||result.worksheet?.unitId!==unitId)throw Error('blocked');

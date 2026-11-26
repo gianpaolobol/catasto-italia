@@ -90,6 +90,9 @@ def run():
                                 income.locator('summary').click()
                             page.locator('#income-unit').select_option(index=1)
                             page.locator('#income-example').click()
+                            page.locator('#income-lookup').click()
+                            expect(page.locator('#income-source')).to_contain_text('Catalogo di prova v1')
+                            expect(page.locator('#income-tariff')).to_have_value('123.4567')
                             page.locator('#income-calculate').click()
                             expect(page.locator('#income-result')).to_contain_text('555.5551500')
                             with page.expect_download() as event:
@@ -98,6 +101,7 @@ def run():
                             event.value.save_as(income_file)
                             worksheet = json.loads(income_file.read_text(encoding='utf-8'))
                             check(worksheet['caseDigest'] == report['caseDigest'] and worksheet['exactProductEur'] == '555.5551500', 'income mismatch')
+                            check(worksheet['declared']['sourceId'] == 'synthetic-catalog-v1', 'catalog provenance missing')
                             check(worksheet['officialTariffVerified'] is False and worksheet['operative'] is False, 'unexpected income approval')
                             page.locator('#income-tariff').fill('0')
                             expect(page.locator('#income-download')).to_be_disabled()
