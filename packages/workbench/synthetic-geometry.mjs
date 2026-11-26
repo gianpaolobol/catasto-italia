@@ -1,12 +1,20 @@
 // Copyright (c) 2026 Gian Paolo Franceschini. All rights reserved.
 // Pure Euclidean diagnostic; not cadastral area, no classification or official coefficients.
-export function measureSyntheticPolygon(report, unitId, vertices) {
+export function measureSyntheticPolygon(report, unitId, vertices, calibration = null) {
   const out={version:'0.1.0',kind:'synthetic-geometry-annex',warning:'SIMULAZIONE SINTETICA — NON UFFICIALE. Misura geometrica non catastale; nessun coefficiente, superficie catastale o conformità attestata.',state:'blocked',caseDigest:null,unitId:null,operation:null,coordinateUnit:'mm',areaMm2:null,areaM2:null,perimeterMm:null,vertices:null,blocker:null};
   const stop=code=>({...out,blocker:code});
   if(!report||report.kind!=='synthetic-diagnostic-report'||report.state!=='research_candidate'||report.operative!==false||report.canExport!==false||typeof report.caseDigest!=='string'||!/^[a-f0-9]{64}$/.test(report.caseDigest)||!Array.isArray(report.operations)||typeof unitId!=='string')return stop('current_research_report_required');
   const matching=report.operations.filter(o=>o&&o.unitId===unitId);
   if(matching.length!==1||!['C','V'].includes(matching[0].operation))return stop('result_unit_required');
   if(!Array.isArray(vertices)||vertices.length<4||vertices.length>128||!Array.from(vertices).every(p=>Array.isArray(p)&&p.length===2&&Array.from(p).every(n=>Number.isSafeInteger(n)&&n>=0&&n<=10000000)))return stop('invalid_vertices');
+  // [Codex] Preserve only replayable declared conversions; never attest actual drawing scale.
+  let provenance=null;
+  if(calibration!==null){
+    const converted=convertSyntheticPlanScale(calibration);
+    if(!converted.ok)return stop('invalid_calibration');
+    if(converted.vertices.length!==vertices.length||converted.vertices.some((p,i)=>p[0]!==vertices[i][0]||p[1]!==vertices[i][1]))return stop('calibration_vertices_mismatch');
+    provenance={vertices:calibration.vertices.map(p=>[...p]),drawingLength:calibration.drawingLength,actualLengthMm:calibration.actualLengthMm};
+  }
   const n=vertices.length,keys=new Set(vertices.map(p=>p.join(',')));
   if(keys.size!==n)return stop('repeated_vertex');
   const edges=vertices.map((a,i)=>({a,b:vertices[(i+1)%n]}));
@@ -27,7 +35,7 @@ export function measureSyntheticPolygon(report, unitId, vertices) {
   if(twice<0n)twice=-twice;
   if(twice===0n||twice%2n!==0n)return stop('invalid_area');
   const area=twice/2n;
-  return {...out,state:'measured',caseDigest:report.caseDigest,unitId,operation:matching[0].operation,areaMm2:area.toString(),areaM2:(area/1000000n).toString()+'.'+(area%1000000n).toString().padStart(6,'0'),perimeterMm:perimeter.toString(),vertices:vertices.map(p=>[...p])};
+  return {...out,state:'measured',caseDigest:report.caseDigest,unitId,operation:matching[0].operation,areaMm2:area.toString(),areaM2:(area/1000000n).toString()+'.'+(area%1000000n).toString().padStart(6,'0'),perimeterMm:perimeter.toString(),vertices:vertices.map(p=>[...p]),...(provenance?{calibration:provenance}:{})};
 }
 
 // [Codex] Declared uniform conversion of synthetic drawing coordinates.
@@ -61,7 +69,7 @@ export function convertSyntheticPlanScale(input){
 // determine the displayed area or the drawing. All SVG attributes are numeric.
 export function syntheticPlanPreview(report,annex){
   if(!annex||annex.caseDigest!==report?.caseDigest||annex.state!=='measured')return null;
-  const m=measureSyntheticPolygon(report,annex.unitId,annex.vertices);
+  const m=measureSyntheticPolygon(report,annex.unitId,annex.vertices,annex.calibration??null);
   if(m.state!=='measured'||m.areaMm2!==annex.areaMm2||m.areaM2!==annex.areaM2||
      m.perimeterMm!==annex.perimeterMm||m.operation!==annex.operation)return null;
   const xs=m.vertices.map(p=>p[0]),ys=m.vertices.map(p=>p[1]);
