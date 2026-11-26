@@ -265,6 +265,22 @@ def run():
                                 event.value.save_as(dossier)
                                 partial = dossier.read_text(encoding='utf-8')
                                 check('8.000000' not in partial and '2.000000' in partial and '555.5551500' in partial, 'unit-scoped invalidation failed')
+                                # Conserved units are context only and must be explicitly positioned.
+                                page.locator('#geometry-unit').select_option(value='other')
+                                page.locator('#geometry-vertices').fill('[[0,0],[1000,0],[1000,1000],[0,1000]]')
+                                page.locator('#geometry-measure').click()
+                                expect(page.locator('#geometry-count')).to_contain_text('1')
+                                page.locator('#placement-floor').fill('P0')
+                                page.locator('#placement-x').fill('6000')
+                                page.locator('#placement-y').fill('0')
+                                page.locator('#geometry-measure').click()
+                                expect(page.locator('#geometry-count')).to_contain_text('2')
+                                expect(page.locator('#floor-preview')).to_contain_text('other (conservata, solo contesto)')
+                                expect(page.locator('#income-count')).to_contain_text('2')
+                                with page.expect_download() as event:
+                                    page.locator('#download-dossier').click()
+                                event.value.save_as(dossier)
+                                check('Conservata — contesto' in dossier.read_text(encoding='utf-8'), 'retained context missing in dossier')
                             with page.expect_download() as event:
                                 page.locator("#save-draft").click()
                             draft = Path(tmp) / "draft.json"
