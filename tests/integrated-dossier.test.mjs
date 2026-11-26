@@ -207,3 +207,53 @@ test('printable worksheet loopback API fails closed for foreign origin and tampe
  assert.equal((await fetch(base+'/api/manual-docfa-worksheet',{...opts,headers:{...opts.headers,Origin:'https://example.invalid'}})).status,403);
  s.request.geometry[0].vertices=[];assert.equal((await fetch(base+'/api/manual-docfa-worksheet',{...opts,body:JSON.stringify(s)})).status,400);
 });
+
+ // [Codex] Human observations remain declarations even when all six are recorded.
+import {manualReviewRegister} from '../packages/workbench/manual-review-register.mjs';
+const filledRegister=s=>{
+ const t=manualReviewRegister(s).template;
+ t.environment={date:'2026-11-26',docfaVersion:'SYNTH-TEST',province:'SYNTH',archiveSha256:'a'.repeat(64),specificationReference:'SYNTH-SPEC',localRunReference:'SYNTH-RUN'};
+ t.observations=t.observations.map((o,i)=>({...o,state:i===1?'difference_declared':'match_declared',evidenceReference:'SYNTH-EVIDENCE-'+i,note:'Synthetic test only'}));
+ return t;
+};
+test('manual register is bound to all current declarations, never an official outcome',()=>{
+ const s=session(),before=JSON.stringify(s),blank=manualReviewRegister(s).template,t=filledRegister(s);
+ assert.equal(blank.observations.length,6);assert.ok(blank.observations.every(o=>o.state==='unrecorded'));
+ assert.equal(manualReviewRegister(s,blank).record.counts.unrecorded,6);
+ const x=manualReviewRegister(s,t);assert.equal(x.ok,true);assert.equal(x.record.counts.difference_declared,1);
+ assert.equal(x.record.counts.match_declared,5);assert.ok(x.record.checks.every(c=>c.state==='unverified'));
+ for(const flag of ['officialValidation','officialExport','signature','submission'])assert.equal(x.record[flag],false);
+ assert.equal(JSON.stringify(s),before);
+ const reordered={request:s.request,kind:s.kind,version:s.version};
+ assert.equal(manualReviewRegister(reordered,t).ok,true);
+ s.request.geometry[0].vertices=[[0,0],[4000,0],[4000,2000],[0,2000]];
+ assert.equal(manualReviewRegister(s,t).error,'review_snapshot_mismatch');
+});
+for(const [label,edit] of [
+ ['missing proof',t=>t.observations[0].evidenceReference=''],
+ ['duplicate control',t=>t.observations[1].id=t.observations[0].id],
+ ['unknown control',t=>t.observations[0].id='fake'],
+ ['injected approval',t=>t.officialValidation=true],
+ ['fake state',t=>t.observations[0].state='verified'],
+ ['bad hash',t=>t.environment.archiveSha256='bad'],
+ ['missing environment',t=>t.environment.docfaVersion=''],
+ ['impossible date',t=>t.environment.date='2026-02-30'],
+ ['oversize note',t=>t.observations[0].note='x'.repeat(1001)],
+ ['hidden note',t=>{t.observations[0].state='unrecorded';}]
+])test('manual register rejects '+label,()=>{
+ const s=session(),t=filledRegister(s);edit(t);assert.equal(manualReviewRegister(s,t).ok,false);
+});
+test('manual register API accepts local declarations and rejects null, stale or foreign requests',async t=>{
+ const server=createWorkbenchServer();server.listen(0,'127.0.0.1');await once(server,'listening');
+ t.after(()=>new Promise(resolve=>{server.close(resolve);server.closeAllConnections();}));
+ const base='http://127.0.0.1:'+server.address().port,s=session(),obs=filledRegister(s);
+ const post=(path,body,origin=base)=>fetch(base+path,{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify(body)});
+ const template=await post('/api/manual-docfa-register-template',s);assert.equal(template.status,200);
+ assert.equal((await template.json()).template.snapshotDigest,obs.snapshotDigest);
+ const checked=await post('/api/manual-docfa-register-check',{session:s,observations:obs});assert.equal(checked.status,200);
+ assert.equal((await checked.json()).record.officialValidation,false);
+ assert.equal((await post('/api/manual-docfa-register-check',{session:s,observations:null})).status,400);
+ assert.equal((await post('/api/manual-docfa-register-check',{session:s,observations:obs},'https://example.invalid')).status,403);
+ s.request.income[0].declared.consistency='5';
+ assert.equal((await post('/api/manual-docfa-register-check',{session:s,observations:obs})).status,400);
+});
