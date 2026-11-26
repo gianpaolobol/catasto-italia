@@ -124,7 +124,7 @@ def run():
                             doc.close()
                             panel = page.locator('details').filter(has=page.get_by_text('Misura geometrica sintetica', exact=True))
                             if not panel.evaluate('(e) => e.open'):
-                                panel.locator('summary').click()
+                                panel.locator(':scope > summary').click()
                             page.locator('#geometry-unit').select_option(index=1)
                             page.locator('#geometry-example').click()
                             page.locator('#geometry-measure').click()
