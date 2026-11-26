@@ -1,6 +1,6 @@
 // Copyright (c) 2026 Gian Paolo Franceschini. All rights reserved.
 // Pure Euclidean diagnostic; not cadastral area, no classification or official coefficients.
-export function measureSyntheticPolygon(report, unitId, vertices, calibration = null) {
+function measureSingleContour(report, unitId, vertices, calibration = null) {
   const out={version:'0.1.0',kind:'synthetic-geometry-annex',warning:'SIMULAZIONE SINTETICA — NON UFFICIALE. Misura geometrica non catastale; nessun coefficiente, superficie catastale o conformità attestata.',state:'blocked',caseDigest:null,unitId:null,operation:null,coordinateUnit:'mm',areaMm2:null,areaM2:null,perimeterMm:null,vertices:null,blocker:null};
   const stop=code=>({...out,blocker:code});
   if(!report||report.kind!=='synthetic-diagnostic-report'||report.state!=='research_candidate'||report.operative!==false||report.canExport!==false||typeof report.caseDigest!=='string'||!/^[a-f0-9]{64}$/.test(report.caseDigest)||!Array.isArray(report.operations)||typeof unitId!=='string')return stop('current_research_report_required');
@@ -38,6 +38,40 @@ export function measureSyntheticPolygon(report, unitId, vertices, calibration = 
   return {...out,state:'measured',caseDigest:report.caseDigest,unitId,operation:matching[0].operation,areaMm2:area.toString(),areaM2:(area/1000000n).toString()+'.'+(area%1000000n).toString().padStart(6,'0'),perimeterMm:perimeter.toString(),vertices:vertices.map(p=>[...p]),...(provenance?{calibration:provenance}:{})};
 }
 
+
+// [Codex] Multiple disjoint orthogonal contours on ONE common plane, in mm.
+// No holes, touching edges, nesting, overlaps, floor aggregation or cadastral weights.
+// Keep the single-contour wire format; a nested vertices array is explicit multi-contour input.
+export function measureSyntheticPolygon(report,unitId,vertices,calibration=null){
+  if(!Array.isArray(vertices)||!Array.isArray(vertices[0]?.[0]))
+    return measureSingleContour(report,unitId,vertices,calibration);
+  const blocked=blocker=>({...measureSingleContour(report,unitId,[]),blocker});
+  if(calibration!==null)return blocked('multi_contour_calibration_unsupported');
+  if(vertices.length<2||vertices.length>16||!Array.from(vertices).every(r=>Array.isArray(r))||
+     vertices.reduce((n,r)=>n+r.length,0)>128)return blocked('invalid_contour_collection');
+  const measured=vertices.map(r=>measureSingleContour(report,unitId,r));
+  const bad=measured.find(m=>m.state!=='measured');
+  if(bad)return bad;
+  const rings=measured.map(m=>m.vertices);
+  const edges=r=>r.map((a,i)=>[a,r[(i+1)%r.length]]);
+  const overlap=(a,b,c,d)=>Math.max(Math.min(a,b),Math.min(c,d))<=Math.min(Math.max(a,b),Math.max(c,d));
+  // Boundary intersection includes endpoint and edge contact. With no boundary
+  // intersection, a single interior test in both directions detects containment.
+  const meets=(r,s)=>edges(r).some(([a,b])=>edges(s).some(([c,d])=>
+    overlap(a[0],b[0],c[0],d[0])&&overlap(a[1],b[1],c[1],d[1])));
+  const inside=([x,y],r)=>edges(r).reduce((hit,[a,b])=>
+    a[0]===b[0]&&a[0]>x&&((a[1]>y)!==(b[1]>y))?!hit:hit,false);
+  for(let i=0;i<rings.length;i++)for(let j=i+1;j<rings.length;j++){
+    if(meets(rings[i],rings[j])||inside(rings[i][0],rings[j])||inside(rings[j][0],rings[i]))
+      return blocked('contours_not_disjoint');
+  }
+  const area=measured.reduce((n,m)=>n+BigInt(m.areaMm2),0n);
+  const perimeter=measured.reduce((n,m)=>n+BigInt(m.perimeterMm),0n);
+  return {...measured[0],vertices:rings,componentCount:rings.length,
+    areaMm2:area.toString(),areaM2:(area/1000000n).toString()+'.'+(area%1000000n).toString().padStart(6,'0'),
+    perimeterMm:perimeter.toString()};
+}
+
 // [Codex] Declared uniform conversion of synthetic drawing coordinates.
 // No image calibration, affine transform, CAD parser or official scale verification.
 export function convertSyntheticPlanScale(input){
@@ -72,9 +106,12 @@ export function syntheticPlanPreview(report,annex){
   const m=measureSyntheticPolygon(report,annex.unitId,annex.vertices,annex.calibration??null);
   if(m.state!=='measured'||m.areaMm2!==annex.areaMm2||m.areaM2!==annex.areaM2||
      m.perimeterMm!==annex.perimeterMm||m.operation!==annex.operation)return null;
-  const xs=m.vertices.map(p=>p[0]),ys=m.vertices.map(p=>p[1]);
+  if(m.componentCount!==annex.componentCount)return null;
+  const rings=m.componentCount?m.vertices:[m.vertices],all=rings.flat();
+  const xs=all.map(p=>p[0]),ys=all.map(p=>p[1]);
   const minX=Math.min(...xs),minY=Math.min(...ys),maxX=Math.max(...xs),maxY=Math.max(...ys);
   const widthMm=maxX-minX,heightMm=maxY-minY,pad=Math.max(1,Math.ceil(Math.max(widthMm,heightMm)/20));
   return {widthMm,heightMm,viewBox:[-pad,-pad,widthMm+2*pad,heightMm+2*pad].join(' '),
-    points:m.vertices.map(([x,y])=>[x-minX,maxY-y].join(',')).join(' ')};
+    ...(m.componentCount?{polygons:rings.map(r=>r.map(([x,y])=>[x-minX,maxY-y].join(',')).join(' '))}:
+      {points:m.vertices.map(([x,y])=>[x-minX,maxY-y].join(',')).join(' ')})};
 }
