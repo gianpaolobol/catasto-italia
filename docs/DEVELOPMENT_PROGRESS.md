@@ -304,3 +304,7 @@ PR #64 integrata squash 8d15e683be35ab0d3babcbf6ed1f4b524715f40d; CI 45870058161
 
 ## Iterazione 068 — [Codex] — modalità C — 2026-11-26
 PR #65 integrata squash f333ef0b9583aa6d9973888d836019be8e58f5bf; CI 45879047283 linee guida, 45879047314 Windows 289/289, 45879047292 core e Chromium 1280/360. Checkout 9af80f9ef986b9ee176e75149ed2cf0cd0d6b12e, head c88a4a0bd3fe53c32e97682e0e6757678afb0033 e base 8d15e683be35ab0d3babcbf6ed1f4b524715f40d verificati nei quattro log; main identico al base prima del merge. ID26/27: implementato ricevente di riferimento v0.2 con schema, copertura, digest non autenticante, misure ricalcolate e CLI stdin offline, per tutti e tre i target. Test Node e CLI predisposti, nuova CI obbligatoria. Revisione sequenziale; nessun import effettivo nei repository destinatari, nessuna nuova regola catastale o prova ufficiale. Dettagli docs/qa/ITERATION_068.md. Gate professionale aperto.
+
+
+## Iterazione 069 — [Codex] — modalità C — 2026-11-26
+PR #66 integrata squash 53d102ae0d32d0806446905a007d6278438f4c39 dopo quattro job positivi sul merge esatto; Windows 305/305 e Chromium 1280/360 PASS. ID26/27: PR dedicata nel repository destinatario MPE, comando CLI Python effettivo con ricevente riusato e candidato diagnostico non vincolante; CI Linux/Windows in coda. Nessun aggiornamento automatico al ledger; integrazione non ancora validata. Pianta Libera AGPL: non copiare codice proprietario senza decisione sulla licenza. Dettagli docs/qa/ITERATION_069.md. Gate professionale aperto.
