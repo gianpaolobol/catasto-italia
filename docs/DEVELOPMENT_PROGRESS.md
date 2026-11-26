@@ -308,3 +308,7 @@ PR #65 integrata squash f333ef0b9583aa6d9973888d836019be8e58f5bf; CI 45879047283
 
 ## Iterazione 069 — [Codex] — modalità C — 2026-11-26
 PR #66 integrata squash 53d102ae0d32d0806446905a007d6278438f4c39 dopo quattro job positivi sul merge esatto; Windows 305/305 e Chromium 1280/360 PASS. ID26/27: PR dedicata nel repository destinatario MPE, comando CLI Python effettivo con ricevente riusato e candidato diagnostico non vincolante; CI Linux/Windows in coda. Nessun aggiornamento automatico al ledger; integrazione non ancora validata. Pianta Libera AGPL: non copiare codice proprietario senza decisione sulla licenza. Dettagli docs/qa/ITERATION_069.md. Gate professionale aperto.
+
+
+## Iterazione 070 — [Codex] — modalità C — 2026-11-26
+PR #67 integrata squash c4e4da06911b5cf4ca55a72d553514ee15d5d377 dopo quattro job positivi sul merge esatto; Windows 305/305, Chromium 1280/360 PASS. Ricevente locale APE Italia proposto nella PR #101, CI dedicata e generale non ancora concluse; nessun calcolo energetico, mutazione o import nella pratica. MPE #2 entrambe le piattaforme failure, log 404 e step assenti: causa non verificata. Dettagli docs/qa/ITERATION_070.md. Revisione sequenziale; gate professionale aperto.
