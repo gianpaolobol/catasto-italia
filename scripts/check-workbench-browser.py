@@ -53,6 +53,7 @@ def run():
                         page.locator("#analyze").click()
                         expect(page.locator("#summary")).to_contain_text("Bloccato")
                         expect(page.locator("#operations tbody tr")).to_have_count(0)
+                        expect(page.locator("#inventory tbody tr")).to_have_count(0)
                         expect(page.locator("#handoff-download")).to_be_disabled()
                         expect(page.locator('#income-unit')).to_be_disabled()
                         for scenario, count in (("fusion", 4), ("division", 4), ("new_construction", 2), ("internal_distribution", 2), ("destination_change", 3), ("enlargement", 3)):
@@ -69,6 +70,10 @@ def run():
                             report = json.loads(path.read_text(encoding="utf-8"))
                             check(report["state"] == "research_candidate" and report["operative"] is False and report["canExport"] is False, "bad report state")
                             check(len(report["operations"]) == count, "operation mismatch")
+                            for phase, excluded in (("before", "C"), ("after", "S")):
+                                n = sum(len(o["identifiers"]) for o in report["operations"] if o["operation"] != excluded)
+                                expect(page.locator(f'#inventory table[data-phase="{phase}"] tbody tr')).to_have_count(n)
+                                check(page.locator(f'#inventory table[data-phase="{phase}"] tbody').text_content().count("other") >= 1, "unchanged unit missing")
                             if scenario == "enlargement":
                                 check(report["candidate"]["counts"] == {"S": 1, "C": 1, "V": 0}, "enlargement counts")
                                 check("Sagoma in mappa dichiarata invariata" in report["relation"], "missing map prerequisite")
@@ -124,6 +129,7 @@ def run():
                             doc.set_content(html)
                             expect(doc.locator("h1")).to_contain_text("dossier diagnostico")
                             expect(doc.locator("table").first.locator("tbody tr")).to_have_count(count)
+                            expect(doc.get_by_role("heading", name="Inventario diagnostico ante e post")).to_have_count(1)
                             check(doc.locator("script,iframe,form").count() == 0, "active elements")
                             doc.close()
                             panel = page.locator('details').filter(has=page.get_by_text('Misura geometrica sintetica', exact=True))
