@@ -5,6 +5,8 @@ Requires Node.js, Python Playwright and Chromium. Run from any directory.
 Set CHROMIUM_EXECUTABLE if using an installed system browser.
 """
 import json
+import hashlib
+import zipfile
 import os
 from pathlib import Path
 import subprocess
@@ -266,12 +268,25 @@ def run():
                                 partial = dossier.read_text(encoding='utf-8')
                                 check('8.000000' not in partial and '2.000000' in partial and '555.5551500' in partial, 'unit-scoped invalidation failed')
                             with page.expect_download() as event:
+                                page.locator("#download-archive").click()
+                            archive = Path(tmp) / "diagnostic.zip"
+                            event.value.save_as(archive)
+                            with zipfile.ZipFile(archive) as z:
+                                check(z.testzip() is None and len(z.namelist()) == 8, "invalid diagnostic ZIP")
+                                manifest = json.loads(z.read("manifest.json"))
+                                check(manifest["official"] is False and manifest["signature"] is False, "archive safety flags")
+                                for member in manifest["files"]:
+                                    data = z.read(member["name"])
+                                    check(len(data) == member["bytes"] and hashlib.sha256(data).hexdigest() == member["sha256"], "archive manifest mismatch")
+                                check("NON UFFICIALE" in z.read("dossier-sintetico.html").decode("utf-8"), "archive disclaimer missing")
+                            with page.expect_download() as event:
                                 page.locator("#save-draft").click()
                             draft = Path(tmp) / "draft.json"
                             event.value.save_as(draft)
                             page.locator("#import-draft").set_input_files(draft)
                             expect(page.locator("#status")).to_contain_text("Bozza sintetica importata")
                             expect(page.locator("#download-dossier")).to_be_disabled()
+                            expect(page.locator("#download-archive")).to_be_disabled()
                             expect(page.locator("#handoff-download")).to_be_disabled()
                             expect(page.locator('#geometry-unit')).to_be_disabled()
                             expect(page.locator('#geometry-download')).to_be_disabled()

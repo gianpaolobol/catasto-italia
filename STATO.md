@@ -35,3 +35,5 @@ Segue la versione **1.1.0** (`LINEE_GUIDA.md`).
 - 2026-11-26 [Codex] PR #52 integrata: salvataggio e riapertura con ricalcolo, CI core 1059/1059, Chromium e Windows superate. V1.0 non validata.
 
 - 2026-11-26 [Codex] PR #54 integrata dopo CI core, Chromium e Windows; inventario ante/post diagnostico. V1.0 non validata.
+
+- 2026-11-26 [Codex] PR #47 integrata con CI core, Chromium, Windows e linee guida verificata sul base esatto. Archivio ZIP diagnostico completo proposto in branch dedicato; collaudo da verificare. V1.0 non validata.
