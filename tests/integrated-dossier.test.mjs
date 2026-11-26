@@ -182,3 +182,28 @@ test('batch geometry API rejects foreign origin and invalid batch',async t=>{
  assert.equal((await fetch(base+'/api/geometry-batch',{...opts,headers:{...opts.headers,Origin:'https://example.invalid'}})).status,403);
  q.batch.geometry[1].vertices=[];assert.equal((await fetch(base+'/api/geometry-batch',{...opts,body:JSON.stringify(q)})).status,400);
 });
+
+// [Codex] Printable manual comparison remains a non-official blank worksheet.
+import {buildManualDocfaWorksheet} from '../packages/workbench/manual-docfa-worklist.mjs';
+test('printable comparison replays current session and keeps every official check open',()=>{
+ const s=session(),before=JSON.stringify(s),r=buildManualDocfaWorksheet(s);
+ assert.equal(r.ok,true);assert.equal(r.worklist.officialValidation,false);
+ assert.equal(r.worklist.checks.length,6);assert.ok(r.worklist.checks.every(c=>c.state==='unverified'));
+ assert.equal((r.worksheetHtml.match(/NON VERIFICATO/g)||[]).length,6);
+ for(const value of [s.request.expectedDigest,'8.000000','2.000000','555.5551500','200.0000000','Versione DOCFA','Riferimento tracciato ufficiale','NON UFFICIALE'])assert.ok(r.worksheetHtml.includes(value),value);
+ assert.doesNotMatch(r.worksheetHtml,/<(?:script|iframe|form|input)\b/i);
+ assert.match(r.worksheetHtml,/default-src 'none'/);
+ assert.equal(JSON.stringify(s),before);
+ assert.equal(buildManualDocfaWorksheet(s).worksheetHtml,r.worksheetHtml);
+ s.request.expectedDigest='0'.repeat(64);assert.equal(buildManualDocfaWorksheet(s).worksheetHtml,null);
+});
+test('printable worksheet loopback API fails closed for foreign origin and tampering',async t=>{
+ const server=createWorkbenchServer();server.listen(0,'127.0.0.1');await once(server,'listening');
+ t.after(()=>new Promise(resolve=>{server.close(resolve);server.closeAllConnections();}));
+ const base='http://127.0.0.1:'+server.address().port,s=session();
+ const opts={method:'POST',headers:{Origin:base,'Content-Type':'application/json'},body:JSON.stringify(s)};
+ const response=await fetch(base+'/api/manual-docfa-worksheet',opts);assert.equal(response.status,200);
+ assert.equal((await response.json()).worksheetHtml,buildManualDocfaWorksheet(s).worksheetHtml);
+ assert.equal((await fetch(base+'/api/manual-docfa-worksheet',{...opts,headers:{...opts.headers,Origin:'https://example.invalid'}})).status,403);
+ s.request.geometry[0].vertices=[];assert.equal((await fetch(base+'/api/manual-docfa-worksheet',{...opts,body:JSON.stringify(s)})).status,400);
+});
