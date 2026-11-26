@@ -253,3 +253,7 @@
 ## Iterazione 052 — [Codex] — modalità C
 - PR #50 integrata a 23ab1dc21145bb7255207b1d726bc17c696e694a, CI 45745088467 1045/1045 e Chromium PASS, Windows 45745088485 success; head/base esatti. PR #47 CI positiva sul base precedente: nuova verifica richiesta.
 - ID16/17/20/28: contorni ortogonali disgiunti sullo stesso piano in mm, area/perimetro esatti, preview UI e dossier server; limiti e blocchi topologici, nessuna nuova regola catastale. 13 gruppi di verifiche isolate V8 superati con report e TextEncoder sostitutivi, Node/Chromium predisposti, CI da verificare. Evidenze docs/qa/ITERATION_052.md. Revisione sequenziale. Backup intatti, gate 100+100 e prove ufficiali aperti.
+
+## Iterazione 053 — modalità C
+- PR #51 integrata squash afcc73c90c1a088cd96c00fd02a8c2d6444515de. CI 45751309847: core 139679490962 1049/1049 pass, zero fail/skip, browser 139679490552 PASS 1280/360 px; Windows 45751309856 job 139679490610 success. Tutti checkout 2c7c027, head 84ec8236abfc054d6c09159e2a6d90df827074ce e base 23ab1dc21145bb7255207b1d726bc17c696e694a; main identico al base prima del merge. PR #47 CI 45744963458 verde ma checkout sul base precedente 69ddc75c3c99908a0823cdc3024a2f116ddc0680; non integrata.
+- ID20/28/29: sessione sintetica locale riapribile, annessi ricalcolati, UI import/export, test Node e Chromium predisposti; nuova CI non verificata. Revisione sequenziale. Evidenze docs/qa/ITERATION_053.md. Backup intatti, gate 100+100 e prove ufficiali aperti.

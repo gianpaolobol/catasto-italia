@@ -1,11 +1,12 @@
 // Copyright (c) 2026 Gian Paolo Franceschini. All rights reserved.
 // Recompute all requested annexes from declarations; never accept client-calculated results.
 import {buildPracticeReport} from './index.mjs';
+import {guideFields} from './guided-draft.mjs';
 import {measureSyntheticPolygon} from './synthetic-geometry.mjs';
 import {syntheticIncomeWorksheet} from './synthetic-income.mjs';
 import {renderDiagnosticDossier} from './diagnostic-dossier.mjs';
 const shape=(x,keys)=>x!==null&&typeof x==='object'&&!Array.isArray(x)&&Object.keys(x).length===keys.length&&keys.every(k=>Object.hasOwn(x,k));
-export function buildIntegratedDossier(request){
+export function buildIntegratedDossier(request,{replay=false}={}){
   const block=error=>({ok:false,error,html:null});
   try{
     if(!shape(request,['draft','expectedState','expectedDigest','geometry','income']))return block('invalid_dossier_request');
@@ -31,6 +32,18 @@ export function buildIntegratedDossier(request){
       if(!result.ok)return block('income_blocked');
       income.push(result.worksheet);
     }
-    return {ok:true,error:null,html:renderDiagnosticDossier(report,{geometry,income})};
+    const html=renderDiagnosticDossier(report,{geometry,income});
+    return replay?{ok:true,error:null,report,geometry,income}:{ok:true,error:null,html};
   }catch{return block('dossier_processing_failed');}
+}
+
+/** A portable laboratory session contains declarations only, not trusted results. */
+export function replayPracticeSession(session){
+  const block=error=>({ok:false,error});
+  if(!shape(session,['version','kind','request'])||session.version!=='0.1.0'||session.kind!=='synthetic-practice-session')return block('invalid_session');
+  if(!shape(session.request,['draft','expectedState','expectedDigest','geometry','income'])||
+     session.request.expectedState!=='research_candidate'||!Array.isArray(session.request.geometry)||!Array.isArray(session.request.income))return block('invalid_session_request');
+  try{guideFields(session.request.draft);}catch{return block('unsupported_session_draft');}
+  const result=buildIntegratedDossier(session.request,{replay:true});
+  return result.ok?result:block(result.error);
 }

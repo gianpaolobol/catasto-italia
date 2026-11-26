@@ -207,6 +207,31 @@ def run():
                                 check(multi_html.count('<figure class="plan-preview">') == 2, 'multi-unit plan previews missing')
                                 check('Conversione dichiarata, scala non verificata' in multi_html and 'Millimetri dichiarati manualmente' in multi_html and '<td>40</td><td>4000</td>' in multi_html, 'calibration provenance missing or overwritten')
                                 expect(page.locator('#scale-status')).to_contain_text('Conversione dichiarata ripristinata')
+                                with page.expect_download() as event:
+                                    page.locator('#save-session').click()
+                                session_file = Path(tmp) / 'session.json'
+                                event.value.save_as(session_file)
+                                portable = json.loads(session_file.read_text(encoding='utf-8'))
+                                check(portable['kind'] == 'synthetic-practice-session' and len(portable['request']['geometry']) == 2, 'portable session missing units')
+                                # Invalid file must not overwrite the current work.
+                                bad_file = Path(tmp) / 'bad-session.json'
+                                bad_file.write_text('{"version":"999"}', encoding='utf-8')
+                                page.locator('#import-session').set_input_files(bad_file)
+                                expect(page.locator('#status')).to_contain_text('Sessione non valida')
+                                expect(page.locator('#geometry-count')).to_contain_text('2')
+                                page.reload()
+                                page.locator('#import-session').set_input_files(session_file)
+                                expect(page.locator('#status')).to_contain_text('Sessione sintetica ripristinata')
+                                expect(page.locator('#geometry-count')).to_contain_text('2')
+                                expect(page.locator('#income-count')).to_contain_text('2')
+                                page.get_by_text('Misura geometrica sintetica', exact=True).click()
+                                page.get_by_text('Classamento dichiarato e simulazione rendita', exact=True).click()
+                                page.get_by_text('Converti coordinate del disegno in millimetri', exact=True).click()
+                                expect(page.locator('#scale-status')).to_contain_text('Conversione dichiarata ripristinata')
+                                with page.expect_download() as event:
+                                    page.locator('#download-dossier').click()
+                                event.value.save_as(dossier)
+                                check(dossier.read_text(encoding='utf-8') == multi_html, 'reopened dossier differs')
                                 page.locator('#geometry-vertices').fill('[]')
                                 expect(page.locator('#geometry-count')).to_contain_text('1')
                                 expect(page.locator('#income-count')).to_contain_text('2')

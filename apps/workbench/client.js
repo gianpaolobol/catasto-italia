@@ -11,11 +11,11 @@ const incomeFields=['category','class','zone','consistency','tariff'];
 const el=(tag,text)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;return e;};
 function clear(){
   byId('visura-result').textContent='Nessun confronto corrente.';
-  report=null;byId('handoff-status').textContent='Analizza un caso sintetico.';resetGeometry();resetIncome();download.disabled=true;byId('download-dossier').disabled=true;byId('summary').textContent='Nessun rapporto corrente.';
+  report=null;byId('handoff-status').textContent='Analizza un caso sintetico.';resetGeometry();resetIncome();download.disabled=true;byId('save-session').disabled=true;byId('download-dossier').disabled=true;byId('summary').textContent='Nessun rapporto corrente.';
   byId('relation').textContent='—';byId('details').textContent='—';byId('operations').replaceChildren();
 }
-function refresh(){refreshGeometry();refreshIncome();const handoffEnabled=!busy&&!invalid.size&&report?.state==='research_candidate';byId('handoff-target').disabled=!handoffEnabled;byId('handoff-download').disabled=!handoffEnabled;byId('download-dossier').disabled=busy||!report||report.diagnosticReportExportable!==true;for(const id of ['visura-check','visura-example','visura-claim','visura-file','visura-text'])byId(id).disabled=busy||invalid.size>0;analyze.disabled=busy||invalid.size>0;byId('save-draft').disabled=busy||invalid.size>0;for(const e of guide.querySelectorAll('input,select'))e.disabled=busy;}
-function lock(value){busy=value;byId('import-draft').disabled=value;byId('reviewed-import').disabled=value;byId('reviewed-example').disabled=value;byId('reviewed-template').disabled=value;load.disabled=value;field.readOnly=value;byId('scenario').disabled=value;byId('open-guide').disabled=value;refresh();}
+function refresh(){refreshGeometry();refreshIncome();byId('save-session').disabled=busy||invalid.size>0||report?.state!=='research_candidate';const handoffEnabled=!busy&&!invalid.size&&report?.state==='research_candidate';byId('handoff-target').disabled=!handoffEnabled;byId('handoff-download').disabled=!handoffEnabled;byId('download-dossier').disabled=busy||!report||report.diagnosticReportExportable!==true;for(const id of ['visura-check','visura-example','visura-claim','visura-file','visura-text'])byId(id).disabled=busy||invalid.size>0;analyze.disabled=busy||invalid.size>0;byId('save-draft').disabled=busy||invalid.size>0;for(const e of guide.querySelectorAll('input,select'))e.disabled=busy;}
+function lock(value){busy=value;byId('import-session').disabled=value;byId('import-draft').disabled=value;byId('reviewed-import').disabled=value;byId('reviewed-example').disabled=value;byId('reviewed-template').disabled=value;load.disabled=value;field.readOnly=value;byId('scenario').disabled=value;byId('open-guide').disabled=value;refresh();}
 function resetGuide(){draft=null;invalid.clear();guide.replaceChildren();const option=el('option','Carica un caso nell’editor guidato');option.value='';byId('visura-claim').replaceChildren(option);byId('visura-text').value='';clearVisura();refresh();}
 function showGuide(input){
   resetGuide();
@@ -129,16 +129,20 @@ function showOperations(operations){
   }
   table.append(body);if(operations.length)byId('operations').append(table);
 }
+function showCurrentReport(){
+    byId('summary').textContent=report.state==='research_candidate'?'Ipotesi di ricerca: '+report.candidate.cause:'Bloccato — nessuna ipotesi disponibile.';
+    byId('relation').textContent=report.relation??'Nessuna relazione di proposta.';
+    showOperations(report.operations);populateGeometryUnits();populateIncomeUnits();
+    byId('details').textContent=JSON.stringify({warning:report.warning,operations:report.operations,evidence:report.evidence,source:report.source,blockers:report.blockers},null,2);
+  download.disabled=report.diagnosticReportExportable!==true;
+}
 analyze.addEventListener('click',async()=>{
   if(busy||invalid.size)return;clear();lock(true);
   try{
     if(new TextEncoder().encode(field.value).length>256*1024)throw Error('Input troppo grande.');
     const input=JSON.parse(field.value);
     report=await request('/api/report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)});
-    byId('summary').textContent=report.state==='research_candidate'?'Ipotesi di ricerca: '+report.candidate.cause:'Bloccato — nessuna ipotesi disponibile.';
-    byId('relation').textContent=report.relation??'Nessuna relazione di proposta.';
-    showOperations(report.operations);populateGeometryUnits();populateIncomeUnits();
-    byId('details').textContent=JSON.stringify({warning:report.warning,operations:report.operations,evidence:report.evidence,source:report.source,blockers:report.blockers},null,2);
+    showCurrentReport();
     status.textContent='Analisi diagnostica completata; nessuna approvazione.';
     download.disabled=report.diagnosticReportExportable!==true;
   }catch{clear();status.textContent='Analisi non riuscita. Controlla i dati e riprova.';}finally{lock(false);}
@@ -164,9 +168,7 @@ byId('download-dossier').addEventListener('click',async()=>{
   if(!report||busy||invalid.size||report.diagnosticReportExportable!==true)return;
   lock(true);
   try{
-    const payload={draft:JSON.parse(field.value),expectedState:report.state,expectedDigest:report.caseDigest,
-      geometry:[...geometries.values()].map(a=>({unitId:a.unitId,vertices:a.vertices,...(a.calibration?{calibration:a.calibration}:{})})),
-      income:[...incomes.values()].map(a=>({unitId:a.unitId,declared:a.declared}))};
+    const payload=currentDeclarations();
     if(new TextEncoder().encode(JSON.stringify(payload)).length>256*1024)throw Error('too_large');
     const result=await request('/api/dossier',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!result.ok||typeof result.html!=='string')throw Error('blocked');
@@ -399,4 +401,53 @@ byId('income-calculate').addEventListener('click',async()=>{
 byId('income-download').addEventListener('click',()=>{
   if(busy||invalid.size||!incomeReport||incomeReport.caseDigest!==report?.caseDigest||incomeReport.unitId!==byId('income-unit').value)return;
   saveJson(incomeReport,'catasto-annesso-estimativo-sintetico.json');
+});
+
+function currentDeclarations(){
+  return {draft:JSON.parse(field.value),expectedState:report.state,expectedDigest:report.caseDigest,
+    geometry:[...geometries.values()].map(a=>({unitId:a.unitId,vertices:a.vertices,...(a.calibration?{calibration:a.calibration}:{})})),
+    income:[...incomes.values()].map(a=>({unitId:a.unitId,declared:a.declared}))};
+}
+async function replaySession(session){
+  const body=JSON.stringify(session);
+  if(new TextEncoder().encode(body).length>256*1024)throw Error('too_large');
+  const result=await request('/api/session',{method:'POST',headers:{'Content-Type':'application/json'},body});
+  if(!result.ok||result.report?.state!=='research_candidate'||!Array.isArray(result.geometry)||!Array.isArray(result.income))throw Error('blocked');
+  return result;
+}
+byId('save-session').addEventListener('click',async()=>{
+  if(busy||invalid.size||report?.state!=='research_candidate')return;
+  lock(true);
+  try{
+    const session={version:'0.1.0',kind:'synthetic-practice-session',request:currentDeclarations()};
+    guideFields(session.request.draft);
+    await replaySession(session);
+    // Compact representation keeps the saved file within the server byte limit.
+    saveFile(JSON.stringify(session),'application/json','catasto-sessione-sintetica.json');
+    status.textContent='Download sessione richiesto: caso e annessi correnti, nessun risultato accettato senza ricalcolo.';
+  }catch{status.textContent='Sessione non esportabile: controlla il caso e gli annessi.';}
+  finally{lock(false);}
+});
+byId('import-session').addEventListener('change',async event=>{
+  const file=event.target.files?.[0];event.target.value='';
+  if(!file||busy)return;
+  lock(true);
+  try{
+    if(file.size>256*1024)throw Error('too_large');
+    const session=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(await file.arrayBuffer()));
+    const result=await replaySession(session);
+    // Validate editor compatibility before replacing the current work.
+    guideFields(session.request.draft);
+    clear();showGuide(session.request.draft);
+    field.value=JSON.stringify(session.request.draft);
+    byId('scenario').value=session.request.draft.input.scenario;
+    report=result.report;showCurrentReport();
+    for(const a of result.geometry)geometries.set(a.unitId,a);
+    for(const a of result.income)incomes.set(a.unitId,a);
+    for(const [id,items] of [['geometry-unit',geometries],['income-unit',incomes]]){
+      if(items.size){byId(id).value=items.keys().next().value;byId(id).dispatchEvent(new Event('change'));}
+    }
+    status.textContent='Sessione sintetica ripristinata; caso e annessi ricalcolati. Nessuna approvazione.';
+  }catch{status.textContent='Sessione non valida: nessun ripristino eseguito.';}
+  finally{lock(false);}
 });
