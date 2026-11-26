@@ -251,10 +251,10 @@ function resetGeometry(){
   byId('geometry-unit').replaceChildren(option);byId('geometry-vertices').value='';clearGeometryAnnex();refreshGeometry();
 }
 function populateGeometryUnits(){
-  const option=el('option','Seleziona unità risultante');option.value='';
+  const option=el('option','Seleziona unità risultante o conservata');option.value='';
   byId('geometry-unit').replaceChildren(option);
-  if(report?.state==='research_candidate')for(const op of report.operations)if(['C','V'].includes(op.operation)){
-    const row=el('option',op.operation+' · '+op.unitId);row.value=op.unitId;byId('geometry-unit').append(row);
+  if(report?.state==='research_candidate')for(const op of [...report.operations.filter(o=>['C','V'].includes(o.operation)),...report.operations.filter(o=>o.operation==='unchanged')]){
+    const row=el('option',(op.operation==='unchanged'?'Conservata (contesto)':op.operation)+' · '+op.unitId);row.value=op.unitId;byId('geometry-unit').append(row);
   }
   refreshGeometry();
 }
@@ -286,7 +286,8 @@ function readPlacement(){
 function refreshFloorPreview(){
   const box=byId('floor-preview');box.replaceChildren();
   const plans=syntheticFloorPlans(report,[...geometries.values()]);
-  if(!plans||!plans.floors.length){box.textContent='Nessuna posizione comune dichiarata.';return;}
+  if(!plans){box.textContent='Nessuno schema corrente.';return;}
+  if(!plans.floors.length)box.append(el('p','Nessuna posizione comune dichiarata.'));
   const ns='http://www.w3.org/2000/svg';
   for(const f of plans.floors){
     const svg=document.createElementNS(ns,'svg');
@@ -298,12 +299,12 @@ function refreshFloorPreview(){
         for(const [k,v] of Object.entries({points,fill:u.color,'fill-opacity':'.65',stroke:'#245e4b','stroke-width':'2','vector-effect':'non-scaling-stroke'}))polygon.setAttribute(k,v);
         svg.append(polygon);
       }
-      const legend=el('p',u.unitId+' — X '+u.placement.xMm+' mm, Y '+u.placement.yMm+' mm');
+      const legend=el('p',u.unitId+(u.operation==='unchanged'?' (conservata, solo contesto)':'')+' — X '+u.placement.xMm+' mm, Y '+u.placement.yMm+' mm');
       legend.style.borderLeft='12px solid '+u.color;legend.style.paddingLeft='6px';box.append(legend);
     }
     box.append(el('p',f.potentialOverlaps.length?'Possibili sovrapposizioni degli ingombri: '+f.potentialOverlaps.map(p=>p.join(' / ')).join('; '):'Nessuna intersezione positiva degli ingombri rilevata; non è verifica topologica.'));
   }
-  box.append(el('p','Unità misurate senza posizione: '+(plans.unplaced.join(', ')||'nessuna')+'. Unità non misurate, soppresse e conservate non rappresentate.'));
+  box.append(el('p','Unità misurate senza posizione: '+(plans.unplaced.join(', ')||'nessuna')+'. Unità post senza geometria: '+(plans.missing.map(u=>u.unitId+' ('+u.operation+')').join(', ')||'nessuna')+'. Unità soppresse non rappresentate; completezza non attestata.'));
 }
 for(const id of placementIds)byId(id).addEventListener('input',()=>{clearGeometryAnnex();refreshGeometry();});
 function refreshGeometry(){
@@ -371,7 +372,7 @@ byId('geometry-measure').addEventListener('click',()=>{
     const raw=byId('geometry-vertices').value;
     if(raw.length>16384)throw Error('too_large');
     const placement=readPlacement();
-    const measured=measureSyntheticPolygon(report,byId('geometry-unit').value,JSON.parse(raw),appliedScale);
+    const measured=measureSyntheticPolygon(report,byId('geometry-unit').value,JSON.parse(raw),appliedScale,placement!==null);
     if(measured.state==='measured'){
       if(placement)measured.placement=placement;
       geometryReport=measured;geometries.set(measured.unitId,measured);

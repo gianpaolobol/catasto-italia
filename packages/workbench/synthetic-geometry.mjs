@@ -1,11 +1,11 @@
 // Copyright (c) 2026 Gian Paolo Franceschini. All rights reserved.
 // Pure Euclidean diagnostic; not cadastral area, no classification or official coefficients.
-function measureSingleContour(report, unitId, vertices, calibration = null) {
+function measureSingleContour(report, unitId, vertices, calibration = null, allowRetained = false) {
   const out={version:'0.1.0',kind:'synthetic-geometry-annex',warning:'SIMULAZIONE SINTETICA — NON UFFICIALE. Misura geometrica non catastale; nessun coefficiente, superficie catastale o conformità attestata.',state:'blocked',caseDigest:null,unitId:null,operation:null,coordinateUnit:'mm',areaMm2:null,areaM2:null,perimeterMm:null,vertices:null,blocker:null};
   const stop=code=>({...out,blocker:code});
   if(!report||report.kind!=='synthetic-diagnostic-report'||report.state!=='research_candidate'||report.operative!==false||report.canExport!==false||typeof report.caseDigest!=='string'||!/^[a-f0-9]{64}$/.test(report.caseDigest)||!Array.isArray(report.operations)||typeof unitId!=='string')return stop('current_research_report_required');
   const matching=report.operations.filter(o=>o&&o.unitId===unitId);
-  if(matching.length!==1||!['C','V'].includes(matching[0].operation))return stop('result_unit_required');
+  if(matching.length!==1||!(['C','V'].includes(matching[0].operation)||(allowRetained===true&&matching[0].operation==='unchanged')))return stop('result_unit_required');
   if(!Array.isArray(vertices)||vertices.length<4||vertices.length>128||!Array.from(vertices).every(p=>Array.isArray(p)&&p.length===2&&Array.from(p).every(n=>Number.isSafeInteger(n)&&n>=0&&n<=10000000)))return stop('invalid_vertices');
   // [Codex] Preserve only replayable declared conversions; never attest actual drawing scale.
   let provenance=null;
@@ -42,14 +42,14 @@ function measureSingleContour(report, unitId, vertices, calibration = null) {
 // [Codex] Multiple disjoint orthogonal contours on ONE common plane, in mm.
 // No holes, touching edges, nesting, overlaps, floor aggregation or cadastral weights.
 // Keep the single-contour wire format; a nested vertices array is explicit multi-contour input.
-export function measureSyntheticPolygon(report,unitId,vertices,calibration=null){
+export function measureSyntheticPolygon(report,unitId,vertices,calibration=null,allowRetained=false){
   if(!Array.isArray(vertices)||!Array.isArray(vertices[0]?.[0]))
-    return measureSingleContour(report,unitId,vertices,calibration);
-  const blocked=blocker=>({...measureSingleContour(report,unitId,[]),blocker});
+    return measureSingleContour(report,unitId,vertices,calibration,allowRetained);
+  const blocked=blocker=>({...measureSingleContour(report,unitId,[],null,allowRetained),blocker});
   if(calibration!==null)return blocked('multi_contour_calibration_unsupported');
   if(vertices.length<2||vertices.length>16||!Array.from(vertices).every(r=>Array.isArray(r))||
      vertices.reduce((n,r)=>n+r.length,0)>128)return blocked('invalid_contour_collection');
-  const measured=vertices.map(r=>measureSingleContour(report,unitId,r));
+  const measured=vertices.map(r=>measureSingleContour(report,unitId,r,null,allowRetained));
   const bad=measured.find(m=>m.state!=='measured');
   if(bad)return bad;
   const rings=measured.map(m=>m.vertices);
@@ -103,7 +103,7 @@ export function convertSyntheticPlanScale(input){
 // determine the displayed area or the drawing. All SVG attributes are numeric.
 export function syntheticPlanPreview(report,annex){
   if(!annex||annex.caseDigest!==report?.caseDigest||annex.state!=='measured')return null;
-  const m=measureSyntheticPolygon(report,annex.unitId,annex.vertices,annex.calibration??null);
+  const m=measureSyntheticPolygon(report,annex.unitId,annex.vertices,annex.calibration??null,annex.operation==='unchanged'&&!!annex.placement);
   if(m.state!=='measured'||m.areaMm2!==annex.areaMm2||m.areaM2!==annex.areaM2||
      m.perimeterMm!==annex.perimeterMm||m.operation!==annex.operation)return null;
   if(m.componentCount!==annex.componentCount)return null;

@@ -267,6 +267,22 @@ def run():
                                 event.value.save_as(dossier)
                                 partial = dossier.read_text(encoding='utf-8')
                                 check('8.000000' not in partial and '2.000000' in partial and '555.5551500' in partial, 'unit-scoped invalidation failed')
+                                # Conserved units are context only and must be explicitly positioned.
+                                page.locator('#geometry-unit').select_option(value='other')
+                                page.locator('#geometry-vertices').fill('[[0,0],[1000,0],[1000,1000],[0,1000]]')
+                                page.locator('#geometry-measure').click()
+                                expect(page.locator('#geometry-count')).to_contain_text('1')
+                                page.locator('#placement-floor').fill('P0')
+                                page.locator('#placement-x').fill('6000')
+                                page.locator('#placement-y').fill('0')
+                                page.locator('#geometry-measure').click()
+                                expect(page.locator('#geometry-count')).to_contain_text('2')
+                                expect(page.locator('#floor-preview')).to_contain_text('other (conservata, solo contesto)')
+                                expect(page.locator('#income-count')).to_contain_text('2')
+                                with page.expect_download() as event:
+                                    page.locator('#download-dossier').click()
+                                event.value.save_as(dossier)
+                                check('Conservata — contesto' in dossier.read_text(encoding='utf-8'), 'retained context missing in dossier')
                             with page.expect_download() as event:
                                 page.locator("#download-archive").click()
                             archive = Path(tmp) / "diagnostic.zip"
@@ -279,6 +295,17 @@ def run():
                                     data = z.read(member["name"])
                                     check(len(data) == member["bytes"] and hashlib.sha256(data).hexdigest() == member["sha256"], "archive manifest mismatch")
                                 check("NON UFFICIALE" in z.read("dossier-sintetico.html").decode("utf-8"), "archive disclaimer missing")
+                                check(manifest["submission"] is False, "archive submission safety flag")
+                                extracted = Path(tmp) / "extracted-session.json"
+                                extracted.write_bytes(z.read("sessione-sintetica.json"))
+                                packed_html = z.read("dossier-sintetico.html")
+                            page.locator("#import-session").set_input_files(extracted)
+                            expect(page.locator("#status")).to_contain_text("Sessione sintetica ripristinata")
+                            with page.expect_download() as event:
+                                page.locator("#download-dossier").click()
+                            replayed_dossier = Path(tmp) / "replayed-dossier.html"
+                            event.value.save_as(replayed_dossier)
+                            check(replayed_dossier.read_bytes() == packed_html, "archive session replay differs from bundled dossier")
                             with page.expect_download() as event:
                                 page.locator("#save-draft").click()
                             draft = Path(tmp) / "draft.json"
@@ -300,7 +327,7 @@ def run():
                         check(page.evaluate("document.documentElement.scrollWidth <= innerWidth"), "horizontal page overflow")
                         check(not errors and not external, f"browser errors or external requests: {errors}, {external}")
                         context.close()
-                        print(f"PASS workbench {width}px: blocked reviewed case, 6 diagnostic scenarios, JSON/HTML downloads, independent geometry/income annexes, draft reimport")
+                        print(f"PASS workbench {width}px: blocked reviewed case, 6 diagnostic scenarios, JSON/HTML/ZIP downloads, independent geometry/income annexes, archive session and draft reimport")
                 finally:
                     browser.close()
         finally:

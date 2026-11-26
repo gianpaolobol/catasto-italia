@@ -17,12 +17,12 @@ export function syntheticFloorPlans(report,annexes){
   for(const a of annexes){
     if(!a||seen.has(a.unitId)||!syntheticPlanPreview(report,a))return null;
     seen.add(a.unitId);
-    if(!Object.hasOwn(a,'placement'))continue;
+    if(!Object.hasOwn(a,'placement')){if(a.operation==='unchanged')return null;continue;}
     const p=a.placement;
     if(!validPlacement(p))return null;
     const rings=(a.componentCount?a.vertices:[a.vertices]).map(r=>r.map(([x,y])=>[x+p.xMm,y+p.yMm]));
     const group=byFloor.get(p.floor)??[];
-    group.push({unitId:a.unitId,placement:{...p},rings,bounds:rings.map(bounds)});
+    group.push({unitId:a.unitId,placement:{...p},operation:a.operation,rings,bounds:rings.map(bounds)});
     byFloor.set(p.floor,group);
   }
   const floors=[];
@@ -37,9 +37,10 @@ export function syntheticFloorPlans(report,annexes){
       if(group[i].bounds.some(a=>group[j].bounds.some(b=>overlaps(a,b))))
         potentialOverlaps.push([group[i].unitId,group[j].unitId]);
     floors.push({floor,widthMm:w,heightMm:h,viewBox:[-pad,-pad,w+2*pad,h+2*pad].join(' '),potentialOverlaps,
-      units:group.map((u,i)=>({unitId:u.unitId,placement:u.placement,color:colors[i%colors.length],
+      units:group.map((u,i)=>({unitId:u.unitId,placement:u.placement,operation:u.operation,color:u.operation==='unchanged'?'#cbd5e1':colors[i%colors.length],
         polygons:u.rings.map(r=>r.map(([x,y])=>[x-b.minX,b.maxY-y].join(',')).join(' ')),
         labelPoint:[u.rings[0][0][0]-b.minX,b.maxY-u.rings[0][0][1]]}))});
   }
-  return {floors,unplaced:annexes.filter(a=>!Object.hasOwn(a,'placement')).map(a=>a.unitId)};
+  const missing=report?.state==='research_candidate'?report.operations.filter(o=>['C','V','unchanged'].includes(o.operation)&&!seen.has(o.unitId)).map(o=>({unitId:o.unitId,operation:o.operation})):[];
+  return {floors,unplaced:annexes.filter(a=>!Object.hasOwn(a,'placement')).map(a=>a.unitId),missing};
 }

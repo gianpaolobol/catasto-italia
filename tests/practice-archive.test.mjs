@@ -67,3 +67,19 @@ test('loopback ZIP download and origin protection',async t=>{
   assert.equal(response.headers.get('cache-control'),'no-store');assert.equal(files(Buffer.from(await response.arrayBuffer())).size,8);
   assert.equal((await fetch(base+'/api/archive',{...opts,headers:{...opts.headers,Origin:'https://example.invalid'}})).status,403);
 });
+
+// [Codex] Combined retained geometry and archive replay: context must not leak into result-only handoffs.
+test('retained unit survives ZIP replay without becoming a handoff operation',()=>{
+  const s=session('division'),r=buildPracticeReport(s.request.draft),other=r.operations.find(o=>o.operation==='unchanged');
+  assert.ok(other);
+  s.request.geometry.push({unitId:other.unitId,vertices:[[0,0],[1000,0],[1000,1000],[0,1000]],placement:{floor:'P0',xMm:8000,yMm:0}});
+  const a=buildPracticeArchive(s);assert.equal(a.ok,true,a.error);
+  const z=files(a.bytes),get=n=>JSON.parse(z.get(n).toString('utf8'));
+  const replay=replayPracticeSession(get('sessione-sintetica.json'));assert.equal(replay.ok,true);
+  assert.equal(replay.geometry.find(g=>g.unitId===other.unitId).operation,'unchanged');
+  assert.match(z.get('dossier-sintetico.html').toString(),/Conservata — contesto/);
+  for(const target of ['pianta-libera','mpe','ape-italia']){
+    const h=get('interscambio-'+target+'.json');assert.ok(!h.operations.some(o=>o.unitId===other.unitId));assert.equal(verifySyntheticHandoff(s.request.draft,target,h),true);
+  }
+  delete s.request.geometry.at(-1).placement;assert.equal(buildPracticeArchive(s).ok,false);
+});

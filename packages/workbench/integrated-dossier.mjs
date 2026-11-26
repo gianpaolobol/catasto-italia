@@ -22,10 +22,11 @@ export function buildIntegratedDossier(request,{replay=false}={}){
     for(const item of geometries){
       if(!(['unitId,vertices','unitId,vertices,calibration','unitId,vertices,placement','unitId,vertices,calibration,placement'].some(k=>shape(item,k.split(','))))||typeof item.unitId!=='string'||gIds.has(item.unitId))return block('invalid_geometry_request');
       gIds.add(item.unitId);
-      const measured=measureSyntheticPolygon(report,item.unitId,item.vertices,item.calibration??null);
+      if(Object.hasOwn(item,'placement')&&!validPlacement(item.placement))return block('invalid_geometry_placement');
+      // Retained units are context only and require a declared common position.
+      const measured=measureSyntheticPolygon(report,item.unitId,item.vertices,item.calibration??null,Object.hasOwn(item,'placement'));
       if(measured.state!=='measured')return block('geometry_blocked');
       if(Object.hasOwn(item,'placement')){
-        if(!validPlacement(item.placement))return block('invalid_geometry_placement');
         measured.placement={...item.placement};
       }
       geometry.push(measured);
