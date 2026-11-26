@@ -11,6 +11,7 @@ import {buildPracticeArchive} from '../packages/workbench/practice-archive.mjs';
 import {buildGeometryHandoff} from '../packages/workbench/geometry-handoff.mjs';
 import {replayPracticeSession} from '../packages/workbench/integrated-dossier.mjs';
 import {verifySyntheticHandoff} from '../packages/workbench/synthetic-handoff.mjs';
+import {buildManualDocfaWorklist} from '../packages/workbench/manual-docfa-worklist.mjs';
 import {createWorkbenchServer} from '../apps/workbench/server.mjs';
 
 const scenarios=[
@@ -255,3 +256,48 @@ for(const [scenario] of scenarios)for(let p=0;p<3;p++)for(let k=0;k<6;k++){
   await assert.rejects(()=>reopenVerifiedArchive(altered,regenerateCorpus));
  });
 }
+
+// [Codex] Manual DOCFA review aid: no record format or official approval.
+test('manual worklist projects replayed operations across six scenarios and never approves',()=>{
+  for(const [scenario] of scenarios){
+    const s=session(scenario),before=JSON.stringify(s),replay=replayPracticeSession(s);
+    const result=buildManualDocfaWorklist(s);assert.equal(result.ok,true,result.error);
+    const w=result.worklist;
+    assert.equal(w.caseDigest,replay.report.caseDigest);
+    assert.deepEqual(w.rows.map(({unitId,operation,identifiers})=>({unitId,operation,identifiers})),replay.report.operations);
+    assert.deepEqual(w.evidence,replay.report.evidence);
+    assert.ok(w.checks.length>=6&&w.checks.every(c=>c.state==='unverified'));
+    assert.ok([w.officialValidation,w.officialExport,w.signature,w.submission].every(v=>v===false));
+    assert.ok(w.rows.filter(r=>['C','V'].includes(r.operation)).every(r=>r.income.state==='synthetic_only'&&r.geometry.areaM2==='8.000000'));
+    assert.ok(w.rows.filter(r=>r.operation==='S').every(r=>r.geometry===null&&r.income===null));
+    assert.ok(w.rows.filter(r=>r.operation==='unchanged').every(r=>r.income===null));
+    assert.equal(w.diagnosticCoverageComplete,false);assert.ok(w.gaps.geometry.includes('other'));
+    assert.equal(JSON.stringify(s),before);
+  }
+});
+test('manual worklist detects absent measures, absent positions and possible overlaps without official claims',()=>{
+  const s=session('division');
+  delete s.request.geometry[0].placement;
+  s.request.income.pop();
+  s.request.geometry.push({unitId:'other',vertices:[[0,0],[1000,0],[1000,1000],[0,1000]],placement:{floor:'P0',xMm:4000,yMm:0}});
+  let r=buildManualDocfaWorklist(s);assert.equal(r.ok,true,r.error);
+  assert.deepEqual(r.worklist.gaps.placement,['d1']);assert.deepEqual(r.worklist.gaps.income,['d2']);
+  assert.deepEqual(r.worklist.gaps.potentialOverlaps,[{floor:'P0',unitIds:['d2','other']}]);
+  s.request.geometry[0].placement={floor:'P0',xMm:0,yMm:0};
+  s.request.geometry.at(-1).placement.xMm=8000;
+  s.request.income.push(session('division').request.income[1]);
+  r=buildManualDocfaWorklist(s);assert.equal(r.ok,true,r.error);assert.equal(r.worklist.diagnosticCoverageComplete,true);
+  assert.equal(r.worklist.officialValidation,false);
+  s.request.expectedDigest='0'.repeat(64);assert.equal(buildManualDocfaWorklist(s).ok,false);
+});
+test('manual worklist endpoint rejects forged session and external origin',async t=>{
+  const server=createWorkbenchServer();server.listen(0,'127.0.0.1');await once(server,'listening');
+  t.after(()=>new Promise(resolve=>{server.close(resolve);server.closeAllConnections();}));
+  const base='http://127.0.0.1:'+server.address().port;
+  const options={method:'POST',headers:{Origin:base,'Content-Type':'application/json'},body:JSON.stringify(session('fusion'))};
+  const res=await fetch(base+'/api/manual-docfa-worklist',options);assert.equal(res.status,200);
+  assert.equal(res.headers.get('cache-control'),'no-store');
+  assert.equal((await res.json()).worklist.officialValidation,false);
+  assert.equal((await fetch(base+'/api/manual-docfa-worklist',{...options,body:'{}'})).status,400);
+  assert.equal((await fetch(base+'/api/manual-docfa-worklist',{...options,headers:{...options.headers,Origin:'https://example.invalid'}})).status,403);
+});
