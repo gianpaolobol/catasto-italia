@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Gian Paolo Franceschini. All rights reserved.
 // Recompute all requested annexes from declarations; never accept client-calculated results.
 import {buildPracticeReport} from './index.mjs';
+import {guideFields} from './guided-draft.mjs';
 import {measureSyntheticPolygon} from './synthetic-geometry.mjs';
 import {syntheticIncomeWorksheet} from './synthetic-income.mjs';
 import {renderDiagnosticDossier} from './diagnostic-dossier.mjs';
@@ -42,6 +43,7 @@ export function replayPracticeSession(session){
   if(!shape(session,['version','kind','request'])||session.version!=='0.1.0'||session.kind!=='synthetic-practice-session')return block('invalid_session');
   if(!shape(session.request,['draft','expectedState','expectedDigest','geometry','income'])||
      session.request.expectedState!=='research_candidate'||!Array.isArray(session.request.geometry)||!Array.isArray(session.request.income))return block('invalid_session_request');
+  try{guideFields(session.request.draft);}catch{return block('unsupported_session_draft');}
   const result=buildIntegratedDossier(session.request,{replay:true});
   return result.ok?result:block(result.error);
 }
