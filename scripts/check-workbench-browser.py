@@ -342,6 +342,29 @@ def run():
                             sheet = sheet_file.read_text(encoding="utf-8")
                             check(worklist["caseDigest"] in sheet and sheet.count("NON VERIFICATO") == 6, "worksheet digest or checks")
                             check("Versione DOCFA" in sheet and "NON UFFICIALE" in sheet and "<script" not in sheet, "unsafe or incomplete worksheet")
+                            register_summary = page.get_by_text("Registra riscontri manuali su prova sintetica", exact=True)
+                            if not page.locator("#manual-docfa-register-template").is_visible():
+                                register_summary.click()
+                            with page.expect_download() as register_event:
+                                page.locator("#manual-docfa-register-template").click()
+                            template_file = Path(tmp) / "manual-register-template.json"
+                            register_event.value.save_as(template_file)
+                            register = json.loads(template_file.read_text(encoding="utf-8"))
+                            check(len(register["observations"]) == 6 and all(o["state"] == "unrecorded" for o in register["observations"]), "manual register template")
+                            register["environment"] = {"date":"2026-11-26","docfaVersion":"SYNTH-TEST","province":"SYNTH","archiveSha256":"a"*64,"specificationReference":"SYNTH-SPEC","localRunReference":"SYNTH-RUN"}
+                            register["observations"][0].update(state="difference_declared", evidenceReference="SYNTH-EVIDENCE", note="Synthetic test only")
+                            template_file.write_text(json.dumps(register), encoding="utf-8")
+                            with page.expect_download() as record_event:
+                                page.locator("#manual-docfa-register-file").set_input_files(str(template_file))
+                            record_file = Path(tmp) / "manual-register-record.json"
+                            record_event.value.save_as(record_file)
+                            record = json.loads(record_file.read_text(encoding="utf-8"))
+                            check(record["officialValidation"] is False and record["counts"]["difference_declared"] == 1 and record["counts"]["unrecorded"] == 5, "manual register falsely validated")
+                            expect(page.locator("#manual-docfa-status")).to_contain_text("1 difformità dichiarate")
+                            register["snapshotDigest"] = "0"*64
+                            template_file.write_text(json.dumps(register), encoding="utf-8")
+                            page.locator("#manual-docfa-register-file").set_input_files(str(template_file))
+                            expect(page.locator("#manual-docfa-status")).to_contain_text("Pratica invariata")
                             with page.expect_download() as event:
                                 page.locator("#download-archive").click()
                             archive = Path(tmp) / "diagnostic.zip"

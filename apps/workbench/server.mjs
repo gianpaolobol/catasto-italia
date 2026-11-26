@@ -12,6 +12,7 @@ import {buildPracticeArchive} from '../../packages/workbench/practice-archive.mj
 import {buildSyntheticHandoff} from '../../packages/workbench/synthetic-handoff.mjs';
 import {buildGeometryHandoff} from '../../packages/workbench/geometry-handoff.mjs';
 import {buildManualDocfaWorklist,buildManualDocfaWorksheet} from '../../packages/workbench/manual-docfa-worklist.mjs';
+import {manualReviewRegister} from '../../packages/workbench/manual-review-register.mjs';
 import {importGeometryBatch} from '../../packages/workbench/geometry-batch.mjs';
 const page=readFileSync(new URL('./index.html',import.meta.url));
 const script=readFileSync(new URL('./client.js',import.meta.url));
@@ -58,7 +59,7 @@ export function createWorkbenchServer(){
         if(scenario)return json(res,200,syntheticCase(scenario));
         return reject(res,404,'not_found');
       }
-      if(req.method!=='POST'||!['/api/report','/api/visura-check','/api/visura-example','/api/handoff','/api/geometry-handoff','/api/geometry-batch','/api/income','/api/tariff-lookup','/api/dossier','/api/session','/api/archive','/api/manual-docfa-worklist','/api/manual-docfa-worksheet'].includes(req.url))return reject(res,404,'not_found');
+      if(req.method!=='POST'||!['/api/report','/api/visura-check','/api/visura-example','/api/handoff','/api/geometry-handoff','/api/geometry-batch','/api/income','/api/tariff-lookup','/api/dossier','/api/session','/api/archive','/api/manual-docfa-worklist','/api/manual-docfa-worksheet','/api/manual-docfa-register-template','/api/manual-docfa-register-check'].includes(req.url))return reject(res,404,'not_found');
       if(req.headers.origin!=='http://'+authority||req.headers['content-type']!=='application/json')
         return reject(res,403,'same_origin_json_required');
       if(req.headers['content-encoding']!==undefined)return reject(res,415,'encoding_not_supported');
@@ -78,6 +79,15 @@ export function createWorkbenchServer(){
       if(req.url==='/api/visura-example'){
         try{return json(res,200,syntheticVisuraExample(envelope.draft,envelope.claimId));}
         catch{return reject(res,400,'invalid_example');}
+      }
+      if(req.url==='/api/manual-docfa-register-template'){
+        const result=manualReviewRegister(envelope);return json(res,result.ok?200:400,result);
+      }
+      if(req.url==='/api/manual-docfa-register-check'){
+        if(!envelope||typeof envelope!=='object'||Array.isArray(envelope)||Object.keys(envelope).length!==2||!Object.hasOwn(envelope,'session')||!Object.hasOwn(envelope,'observations')||envelope.observations===null)
+          return reject(res,400,'invalid_review_register_request');
+        const result=manualReviewRegister(envelope.session,envelope.observations);
+        return json(res,result.ok&&result.record?200:400,result);
       }
       if(req.url==='/api/manual-docfa-worksheet'){const result=buildManualDocfaWorksheet(envelope);return json(res,result.ok?200:400,result);}
       if(req.url==='/api/manual-docfa-worklist'){const result=buildManualDocfaWorklist(envelope);return json(res,result.ok?200:400,result);}
