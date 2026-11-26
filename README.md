@@ -38,3 +38,6 @@ Con Node.js 22 o successivo già installato, fare doppio clic su `Avvia-Catasto-
 
 ### Archivio completo e riapertura verificata [Codex]
 Il pulsante ZIP crea dossier, sessione, rapporto, tre handoff diagnostici e manifest. Selezionare il file ZIP nel campo di riapertura: vengono letti solo i byte della sessione JSON, il server locale rigenera l'intero ZIP e l'app confronta tutti i byte prima di sostituire il lavoro corrente. Solo archivi canonici della versione corrente; non è un lettore ZIP generico e non autentica chi lo ha prodotto. La sessione JSON separata rimane un percorso di recupero. Non inserire dati reali. PR #57: CI Chromium e Windows verificate sul commit integrato; riapertura diretta ZIP in nuova PR, CI da verificare.
+
+### Interscambio geometrico v0.2 [Codex]
+Nel pannello Building Core, selezionare il destinatario e scaricare l'interscambio con geometrie correnti. Il server ricalcola la sessione, trasferisce esclusivamente unità C/V, contorni in mm, posizione dichiarata o nulla, provenienza della calibrazione e misure geometriche; unità senza misura esplicite. Nessun dato estimativo o unità conservata, nessuna superficie catastale o scala verificata. Formato diagnostico separato dal precedente JSON e dallo ZIP canonico, importatori destinatari non validati. PR #58 integrata dopo CI positive.
