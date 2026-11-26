@@ -129,6 +129,8 @@ def run():
                             page.locator('#geometry-example').click()
                             page.locator('#geometry-measure').click()
                             expect(page.locator('#geometry-result')).to_contain_text('8.000000 m²')
+                            expect(page.locator('#geometry-preview polygon')).to_have_count(1)
+                            expect(page.locator('#geometry-preview')).to_contain_text('4000 × 3000 mm')
                             with page.expect_download() as event:
                                 page.locator('#geometry-download').click()
                             annex = Path(tmp) / 'geometry.json'
@@ -141,6 +143,7 @@ def run():
                             both = dossier.read_text(encoding="utf-8")
                             check("555.5551500" in both and "8.000000" in both and "14000" in both, "integrated dossier mismatch")
                             page.locator('#geometry-vertices').fill('[]')
+                            expect(page.locator('#geometry-preview polygon')).to_have_count(0)
                             expect(page.locator('#geometry-download')).to_be_disabled()
                             # Separate annexes: editing geometry does not change the case or the income declaration.
                             expect(page.locator('#income-download')).to_be_enabled()
@@ -187,6 +190,7 @@ def run():
                                 event.value.save_as(dossier)
                                 multi_html = dossier.read_text(encoding='utf-8')
                                 check(all(v in multi_html for v in ('8.000000','2.000000','555.5551500','200.0000000','Copertura degli annessi')), 'multi-unit dossier missing values')
+                                check(multi_html.count('<figure class="plan-preview">') == 2, 'multi-unit plan previews missing')
                                 page.locator('#geometry-vertices').fill('[]')
                                 expect(page.locator('#geometry-count')).to_contain_text('1')
                                 expect(page.locator('#income-count')).to_contain_text('2')
