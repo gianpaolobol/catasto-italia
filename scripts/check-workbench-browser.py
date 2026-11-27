@@ -52,6 +52,27 @@ def run():
                                 request_route.abort()
                         context.route("**/*", route)
                         page.goto(base + "/")
+                        # [Codex] Source bytes stay in the browser, no API request or filename echo.
+                        source_summary = page.get_by_text("Impronta locale dell’archivio di riferimento", exact=True)
+                        source_summary.click()
+                        source_requests = []
+                        def record_source_request(req):
+                            source_requests.append(req.url)
+                        page.on("request", record_source_request)
+                        source = b"SYNTHETIC-REFERENCE-ONLY"
+                        page.locator("#docfa-source-file").set_input_files({"name":"synthetic-source.zip","mimeType":"application/zip","buffer":source})
+                        expect(page.locator("#docfa-source-hash")).to_have_value(hashlib.sha256(source).hexdigest())
+                        expect(page.locator("#docfa-source-status")).to_contain_text("Provenienza e vigenza non verificate")
+                        page.locator("#docfa-source-file").set_input_files({"name":"empty.zip","mimeType":"application/zip","buffer":b""})
+                        expect(page.locator("#docfa-source-status")).to_contain_text("Impronta non disponibile")
+                        expect(page.locator("#docfa-source-hash")).to_have_value("")
+                        page.locator("#docfa-source-file").set_input_files({"name":"other.zip","mimeType":"application/zip","buffer":b"OTHER"})
+                        expect(page.locator("#docfa-source-hash")).to_have_value(hashlib.sha256(b"OTHER").hexdigest())
+                        page.locator("#docfa-source-clear").click()
+                        expect(page.locator("#docfa-source-hash")).to_have_value("")
+                        check(not source_requests, "source fingerprint issued a request")
+                        page.remove_listener("request", record_source_request)
+                        source_summary.click()
                         page.locator("#reviewed-example").click()
                         page.locator("#analyze").click()
                         expect(page.locator("#summary")).to_contain_text("Bloccato")
