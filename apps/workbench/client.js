@@ -11,6 +11,7 @@ const field=byId('case'),status=byId('status'),download=byId('download'),load=by
 let report=null,busy=false,draft=null,geometryReport=null,incomeReport=null,appliedScale=null;
 // [Codex] Keep only one prepared archive in memory, bound to exact declarations.
 let preparedArchive=null;
+let guidedReview=null;
 function discardPreparedArchive(){
   const link=byId('save-prepared-archive');
   link.hidden=true;link.removeAttribute('href');
@@ -32,11 +33,12 @@ function setTariffSource(source='synthetic-tariff'){tariffSource=source;byId('in
 const el=(tag,text)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;return e;};
 function clear(){
   discardPreparedArchive();
+  clearGuidedReview();
   byId('visura-result').textContent='Nessun confronto corrente.';
   report=null;byId('manual-docfa-download').disabled=true;byId('manual-docfa-worksheet').disabled=true;byId('manual-docfa-register-template').disabled=true;byId('manual-docfa-register-file').disabled=true;byId('manual-docfa-status').textContent='Nessuna verifica ufficiale effettuata.';byId('handoff-status').textContent='Analizza un caso sintetico.';resetGeometry();resetIncome();download.disabled=true;byId('save-session').disabled=true;byId('download-archive').disabled=true;byId('download-dossier').disabled=true;byId('summary').textContent='Nessun rapporto corrente.';
   byId('relation').textContent='—';byId('details').textContent='—';byId('operations').replaceChildren();byId('inventory').replaceChildren();
 }
-function refresh(){refreshGeometry();refreshIncome();byId('save-session').disabled=busy||invalid.size>0||report?.state!=='research_candidate';byId('download-archive').disabled=byId('save-session').disabled;byId('manual-docfa-download').disabled=byId('save-session').disabled;byId('manual-docfa-worksheet').disabled=byId('save-session').disabled;byId('manual-docfa-register-template').disabled=byId('save-session').disabled;byId('manual-docfa-register-file').disabled=byId('save-session').disabled;const handoffEnabled=!busy&&!invalid.size&&report?.state==='research_candidate';byId('handoff-target').disabled=!handoffEnabled;byId('handoff-download').disabled=!handoffEnabled;byId('geometry-handoff-download').disabled=!handoffEnabled;byId('download-dossier').disabled=busy||!report||report.diagnosticReportExportable!==true;for(const id of ['visura-check','visura-example','visura-claim','visura-file','visura-text'])byId(id).disabled=busy||invalid.size>0;analyze.disabled=busy||invalid.size>0;byId('save-draft').disabled=busy||invalid.size>0;for(const e of guide.querySelectorAll('input,select'))e.disabled=busy;}
+function refresh(){refreshGeometry();refreshIncome();refreshGuidedReview();byId('save-session').disabled=busy||invalid.size>0||report?.state!=='research_candidate';byId('download-archive').disabled=byId('save-session').disabled;byId('manual-docfa-download').disabled=byId('save-session').disabled;byId('manual-docfa-worksheet').disabled=byId('save-session').disabled;byId('manual-docfa-register-template').disabled=byId('save-session').disabled;byId('manual-docfa-register-file').disabled=byId('save-session').disabled;const handoffEnabled=!busy&&!invalid.size&&report?.state==='research_candidate';byId('handoff-target').disabled=!handoffEnabled;byId('handoff-download').disabled=!handoffEnabled;byId('geometry-handoff-download').disabled=!handoffEnabled;byId('download-dossier').disabled=busy||!report||report.diagnosticReportExportable!==true;for(const id of ['visura-check','visura-example','visura-claim','visura-file','visura-text'])byId(id).disabled=busy||invalid.size>0;analyze.disabled=busy||invalid.size>0;byId('save-draft').disabled=busy||invalid.size>0;for(const e of guide.querySelectorAll('input,select'))e.disabled=busy;}
 function lock(value){if(value)discardPreparedArchive();busy=value;byId('import-session').disabled=value;byId('import-draft').disabled=value;byId('reviewed-import').disabled=value;byId('reviewed-example').disabled=value;byId('reviewed-template').disabled=value;load.disabled=value;field.readOnly=value;byId('scenario').disabled=value;byId('open-guide').disabled=value;refresh();}
 function resetGuide(){draft=null;invalid.clear();guide.replaceChildren();const option=el('option','Carica un caso nell’editor guidato');option.value='';byId('visura-claim').replaceChildren(option);byId('visura-text').value='';clearVisura();refresh();}
 function showGuide(input){
@@ -654,6 +656,89 @@ sourceFile.addEventListener('change',async()=>{
     sourceStatus.textContent='Impronta calcolata localmente ('+file.size+' byte). Provenienza e vigenza non verificate.';
   }catch{sourceStatus.textContent='Impronta non disponibile: file vuoto, oltre 64 MiB, non leggibile o contesto non supportato.';}
   finally{sourceFile.disabled=false;sourceClear.disabled=false;}
+});
+// [Codex] Guided observations use the same server-issued template and register validator.
+// Keep the original declaration body, never silently rebind observations to another session.
+const guidedEnvLabels={date:'Data della prova (AAAA-MM-GG)',docfaVersion:'Versione DOCFA',province:'Provincia / archivio',archiveSha256:'SHA-256 archivio',specificationReference:'Riferimento specifica',localRunReference:'Riferimento prova locale'};
+const guidedCheckLabels={territory_and_identifiers:'Territorio, identificativi e titolarità',cause_and_documents:'Causale, atti ed evidenze',drawings:'Disegni, scala e poligoni',classification:'Classamento, consistenza e rendita',official_forms:'Modelli ufficiali',official_validation:'Collaudo locale ufficiale'};
+const guidedStates={unrecorded:'Non registrato',match_declared:'Concordanza dichiarata',difference_declared:'Difformità dichiarata',not_applicable_declared:'Non applicabile (dichiarato)'};
+function clearGuidedReview(){
+  guidedReview=null;
+  byId('guided-review-fields').hidden=true;
+  byId('guided-review-fields').disabled=true;
+  byId('guided-review-environment').replaceChildren();
+  byId('guided-review-observations').replaceChildren();
+  byId('guided-review-status').textContent='Nessun modello guidato aperto.';
+}
+function guidedReviewCurrent(){
+  try{return !!guidedReview&&report?.state==='research_candidate'&&!invalid.size&&archiveDeclarationBody()===guidedReview.body;}
+  catch{return false;}
+}
+function refreshGuidedReview(){
+  const eligible=!busy&&!invalid.size&&report?.state==='research_candidate';
+  byId('guided-review-open').disabled=!eligible;
+  const current=guidedReviewCurrent();
+  byId('guided-review-fields').disabled=!eligible||!current;
+  if(guidedReview&&!current)byId('guided-review-status').textContent='Sessione modificata: modello non utilizzabile. Apri un nuovo modello.';
+}
+function guidedInput(parent,id,label,max){
+  const control=el('input');control.id=id;control.maxLength=max;control.autocomplete='off';control.spellcheck=false;
+  const l=el('label',label);l.htmlFor=id;parent.append(l,control);return control;
+}
+function renderGuidedReview(template,body){
+  clearGuidedReview();
+  const env=byId('guided-review-environment'),rows=byId('guided-review-observations');
+  const envControls={};
+  for(const [key,label] of Object.entries(guidedEnvLabels))envControls[key]=guidedInput(env,'guided-env-'+key,label,key==='archiveSha256'?64:240);
+  const observationControls=template.observations.map((o,index)=>{
+    const section=el('fieldset');section.append(el('legend',guidedCheckLabels[o.id]??o.id));
+    const state=el('select');state.id='guided-state-'+index;
+    const label=el('label','Esito dichiarato');label.htmlFor=state.id;
+    for(const [key,labelText] of Object.entries(guidedStates)){const option=el('option',labelText);option.value=key;state.append(option);}
+    section.append(label,state);
+    const evidence=guidedInput(section,'guided-evidence-'+index,'Riferimento evidenza sintetica',240);
+    const note=guidedInput(section,'guided-note-'+index,'Nota del riscontro',1000);
+    function update(){const absent=state.value==='unrecorded';evidence.disabled=absent;note.disabled=absent;if(absent){evidence.value='';note.value='';}}
+    state.addEventListener('change',update);update();rows.append(section);
+    return {id:o.id,state,evidence,note};
+  });
+  guidedReview={template,body,envControls,observationControls};
+  byId('guided-review-fields').hidden=false;
+  byId('guided-review-status').textContent='Modello aperto: tutti i riscontri non registrati.';
+}
+byId('guided-review-open').addEventListener('click',async()=>{
+  if(busy||invalid.size||report?.state!=='research_candidate')return;
+  clearGuidedReview();lock(true);
+  try{
+    const body=archiveDeclarationBody();
+    const result=await request('/api/manual-docfa-register-template',{method:'POST',headers:{'Content-Type':'application/json'},body});
+    const t=result.template;
+    if(!result.ok||t?.caseDigest!==report.caseDigest||typeof t.snapshotDigest!=='string'||!Array.isArray(t.observations)||t.observations.length!==6||t.observations.some(o=>!Object.hasOwn(guidedCheckLabels,o.id)||o.state!=='unrecorded'))throw Error('blocked');
+    renderGuidedReview(t,body);
+  }catch{byId('guided-review-status').textContent='Modello non disponibile: controlla sessione e annessi.';}
+  finally{lock(false);}
+});
+byId('guided-review-copy-hash').addEventListener('click',()=>{
+  if(busy||!guidedReviewCurrent())return;
+  if(/^[0-9a-f]{64}$/.test(sourceHash.value)){guidedReview.envControls.archiveSha256.value=sourceHash.value;byId('guided-review-status').textContent='Impronta copiata su richiesta; provenienza non verificata.';}
+  else byId('guided-review-status').textContent='Calcola prima l’impronta di un archivio di riferimento.';
+});
+byId('guided-review-save').addEventListener('click',async()=>{
+  if(busy||!guidedReviewCurrent())return;
+  const g=guidedReview;
+  const observations={...g.template,environment:Object.fromEntries(Object.entries(g.envControls).map(([k,v])=>[k,v.value.trim()])),
+    observations:g.observationControls.map(o=>({id:o.id,state:o.state.value,evidenceReference:o.evidence.value.trim(),note:o.note.value.trim()}))};
+  lock(true);
+  try{
+    const body=JSON.stringify({session:JSON.parse(g.body),observations});
+    if(new TextEncoder().encode(body).length>256*1024)throw Error('too_large');
+    const result=await request('/api/manual-docfa-register-check',{method:'POST',headers:{'Content-Type':'application/json'},body});
+    const r=result.record;
+    if(!result.ok||r?.caseDigest!==g.template.caseDigest||r.snapshotDigest!==g.template.snapshotDigest||r.officialValidation!==false||r.officialExport!==false||r.signature!==false||r.submission!==false||!guidedReviewCurrent())throw Error('blocked');
+    saveJson(r,'catasto-registro-riscontri-non-ufficiale.json');
+    byId('guided-review-status').textContent='Registro controllato: '+r.counts.unrecorded+' non registrati, '+r.counts.difference_declared+' difformità dichiarate. Nessuna verifica ufficiale attestata.';
+  }catch{byId('guided-review-status').textContent='Registro non accettato: completa ambiente, note ed evidenze per ogni riscontro dichiarato. Pratica invariata.';}
+  finally{lock(false);}
 });
 // [Codex] Review observations are exported separately; they never mutate the practice.
 async function reviewRegister(file=null){
