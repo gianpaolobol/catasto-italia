@@ -3,7 +3,7 @@
 > Formato fisso: `gianpaolobol/registro-delle-idee` → `PROTOCOLLO_AI.md`, sezione 4. Massimo una pagina: i dettagli restano in `README.md`, `docs/`.
 
 ## Cos'è
-Banco di lavoro locale per sei scenari catastali sintetici, dossier multi-unità, misure e anteprime geometriche, sessioni locali riapribili, simulazioni estimative e handoff Building Core diagnostico; ricevente CLI APE Italia integrato, MPE e Pianta Libera ancora da collaudare.
+Banco di lavoro locale per sei scenari catastali sintetici, dossier multi-unità, misure e anteprime geometriche, sessioni locali riapribili, simulazioni estimative e handoff Building Core diagnostico; ricevente CLI APE Italia integrato, ponte DXF Pianta Libera collaudato come base di ricalco; MPE ancora bloccato.
 
 ## Fase
 in sviluppo
@@ -12,7 +12,7 @@ in sviluppo
 non pubblicata
 
 ## Prossimi passi
-1. Collaudare il ricevente DXF Pianta Libera e risolvere CI MPE.
+1. Risolvere CI MPE; integrare i candidati nelle pratiche destinatarie con revisione umana.
 2. Acquisire tariffari ufficiali vigenti e tracciati.
 3. Completare elaborati e adattatori DOCFA verificati.
 4. Eseguire prove professionali: corpus sintetico 108+108 già superato.
@@ -69,3 +69,5 @@ Segue la versione **1.1.0** (`LINEE_GUIDA.md`).
 - 2026-11-27 [Codex] PR #69: CI 45918902202 browser ancora fallita (HTTP 200, click eseguito, nessun evento download); sostituito click programmatico con collegamento nativo persistente, ripetibile e revocato alla modifica. CI obbligatoria, non integrata.
 
 - 2026-11-27 [Codex] PR #69 integrata dopo quattro job positivi; DXF e ZIP nativo collaudati in Chromium 1280/360. PR Pianta Libera #111 test ricevente predisposto; nuova CI necessaria. MPE retry ancora fallito, senza step. Gate professionale aperto.
+
+- 2026-11-27 [Codex] #70 e Pianta Libera #111 integrate con CI positiva; impronta locale delle fonti predisposta, nuova CI obbligatoria. Gate professionale aperto.
