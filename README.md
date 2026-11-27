@@ -65,3 +65,6 @@ Nel pannello geometrico selezionare e misurare una unità C/V, quindi scaricare 
 
 ### Impronta locale delle fonti DOCFA [Codex]
 Nel pannello verifica manuale, aprire Impronta locale dell’archivio di riferimento, selezionare il pacchetto di riferimento (max 64 MiB) e copiare SHA-256 nel campo `archiveSha256` del modello dei riscontri. I byte non vengono inviati al server o inclusi nella pratica; non si estrae né si interpreta il file. Non selezionare documenti cliente. L'impronta non verifica provenienza, vigenza o compatibilità. Procedura per acquisizione e confronto ufficiale: [registro 076](docs/qa/ITERATION_076.md). Nuova CI browser da verificare.
+
+### Compilazione guidata dei riscontri DOCFA [Codex]
+Nel pannello di verifica manuale apri **Compila i riscontri guidati in questa pagina**, poi il nuovo modello. Inserisci ambiente e riscontri con note e riferimenti sintetici. Puoi copiare esplicitamente l'impronta dell'archivio calcolata localmente. Il controllo riusa il registro server vincolato alla sessione; se modifichi gli annessi devi aprire un nuovo modello. Il registro scaricato resta separato; nessun dato viene interpretato come prova ufficiale. Alternativa JSON manuale invariata. CI nuova da verificare.
