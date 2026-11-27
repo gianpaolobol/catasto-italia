@@ -41,7 +41,8 @@ def run():
                     for width in (1280, 360):
                         context = browser.new_context(viewport={"width": width, "height": 900}, accept_downloads=True)
                         page = context.new_page()
-                        errors, external = [], []
+                        errors, external, console_messages = [], [], []
+                        page.on("console", lambda msg: console_messages.append(f"{msg.type}: {msg.text}"))
                         page.on("pageerror", lambda error: errors.append(str(error)))
                         def route(request_route):
                             if request_route.request.url.startswith(base + "/"):
@@ -384,15 +385,22 @@ def run():
                                 check(archive_http == 200, f"archive API returned {archive_http}")
                                 check(archive_response.value.headers.get("content-type", "").startswith("application/zip"), "archive response not ZIP")
                                 expect(page.locator("#status")).to_contain_text("Archivio pronto")
-                                expect(page.locator("#download-archive")).to_have_text("Scarica ZIP preparato")
+                                expect(page.locator("#save-prepared-archive")).to_be_visible()
+                                expect(page.locator("#save-prepared-archive")).to_have_attribute("download", "catasto-pratica-sintetica-non-ufficiale.zip")
                                 with page.expect_download() as event:
-                                    page.locator("#download-archive").click()
+                                    page.locator("#save-prepared-archive").click()
                                 expect(page.locator("#status")).to_contain_text("Archivio richiesto")
-                                expect(page.locator("#download-archive")).to_have_text("Prepara archivio ZIP completo non ufficiale")
+                                expect(page.locator("#save-prepared-archive")).to_be_visible()
                             except Exception as exc:
-                                raise RuntimeError(f"archive download failed: scenario={scenario}, viewport={width}, HTTP={archive_http}, status={page.locator('#status').text_content()}, review={page.locator('#manual-docfa-status').text_content()}, pageErrors={errors}") from exc
+                                raise RuntimeError(f"archive download failed: scenario={scenario}, viewport={width}, HTTP={archive_http}, status={page.locator('#status').text_content()}, review={page.locator('#manual-docfa-status').text_content()}, pageErrors={errors}, console={console_messages[-12:]}") from exc
                             archive = Path(tmp) / "diagnostic.zip"
                             event.value.save_as(archive)
+                            # Real native retry must deliver identical bytes without another POST.
+                            with page.expect_download() as retry_event:
+                                page.locator("#save-prepared-archive").click()
+                            retry_path = Path(tmp) / "retry.zip"
+                            retry_event.value.save_as(retry_path)
+                            check(retry_path.read_bytes() == archive.read_bytes(), "ZIP retry differs")
                             with zipfile.ZipFile(archive) as z:
                                 check(z.testzip() is None and len(z.namelist()) == 8, "invalid diagnostic ZIP")
                                 manifest = json.loads(z.read("manifest.json"))
@@ -430,12 +438,13 @@ def run():
                             event.value.save_as(draft)
                             # Prepared bytes cannot survive a case replacement.
                             page.locator("#download-archive").click()
-                            expect(page.locator("#download-archive")).to_have_text("Scarica ZIP preparato")
+                            expect(page.locator("#save-prepared-archive")).to_be_visible()
                             page.locator("#import-draft").set_input_files(draft)
                             expect(page.locator("#status")).to_contain_text("Bozza sintetica importata")
                             expect(page.locator("#download-dossier")).to_be_disabled()
                             expect(page.locator("#download-archive")).to_be_disabled()
-                            expect(page.locator("#download-archive")).to_have_text("Prepara archivio ZIP completo non ufficiale")
+                            expect(page.locator("#save-prepared-archive")).to_be_hidden()
+                            check(page.locator("#save-prepared-archive").get_attribute("href") is None, "stale ZIP link retained")
                             expect(page.locator("#manual-docfa-download")).to_be_disabled()
                             expect(page.locator("#manual-docfa-worksheet")).to_be_disabled()
                             expect(page.locator("#handoff-download")).to_be_disabled()
