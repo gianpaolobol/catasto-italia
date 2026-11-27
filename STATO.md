@@ -71,3 +71,5 @@ Segue la versione **1.1.0** (`LINEE_GUIDA.md`).
 - 2026-11-27 [Codex] PR #69 integrata dopo quattro job positivi; DXF e ZIP nativo collaudati in Chromium 1280/360. PR Pianta Libera #111 test ricevente predisposto; nuova CI necessaria. MPE retry ancora fallito, senza step. Gate professionale aperto.
 
 - 2026-11-27 [Codex] #70 e Pianta Libera #111 integrate con CI positiva; impronta locale delle fonti predisposta, nuova CI obbligatoria. Gate professionale aperto.
+
+- 2026-11-27 [Codex] PR #71 integrata dopo quattro job positivi; compilazione guidata dei riscontri DOCFA predisposta, CI da verificare. Gate professionale aperto.
