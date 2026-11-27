@@ -671,7 +671,7 @@ function clearGuidedReview(){
   byId('guided-review-status').textContent='Nessun modello guidato aperto.';
 }
 function guidedReviewCurrent(){
-  try{return !!guidedReview&&report?.state==='research_candidate'&&!invalid.size&&archiveDeclarationBody()===guidedReview.body;}
+  try{return !!guidedReview&&!guidedReview.stale&&report?.state==='research_candidate'&&!invalid.size&&archiveDeclarationBody()===guidedReview.body;}
   catch{return false;}
 }
 function refreshGuidedReview(){
@@ -679,7 +679,7 @@ function refreshGuidedReview(){
   byId('guided-review-open').disabled=!eligible;
   const current=guidedReviewCurrent();
   byId('guided-review-fields').disabled=!eligible||!current;
-  if(guidedReview&&!current)byId('guided-review-status').textContent='Sessione modificata: modello non utilizzabile. Apri un nuovo modello.';
+  if(guidedReview&&!current){guidedReview.stale=true;byId('guided-review-status').textContent='Sessione modificata: modello non utilizzabile. Apri un nuovo modello.';}
 }
 function guidedInput(parent,id,label,max){
   const control=el('input');control.id=id;control.maxLength=max;control.autocomplete='off';control.spellcheck=false;
