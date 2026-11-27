@@ -634,6 +634,27 @@ async function downloadManualReview(printable=false){
 }
 byId('manual-docfa-download').addEventListener('click',()=>downloadManualReview(false));
 byId('manual-docfa-worksheet').addEventListener('click',()=>downloadManualReview(true));
+// [Codex] Fingerprint only: file bytes never leave this handler or enter a session.
+const sourceFile=byId('docfa-source-file'),sourceHash=byId('docfa-source-hash'),sourceStatus=byId('docfa-source-status'),sourceClear=byId('docfa-source-clear');
+sourceClear.addEventListener('click',()=>{
+  sourceFile.value='';sourceHash.value='';sourceStatus.textContent='Nessuna impronta calcolata.';
+});
+sourceFile.addEventListener('change',async()=>{
+  const file=sourceFile.files?.[0];
+  sourceFile.value='';sourceHash.value='';
+  if(!file){sourceStatus.textContent='Nessuna impronta calcolata.';return;}
+  sourceFile.disabled=true;sourceClear.disabled=true;
+  sourceStatus.textContent='Calcolo locale in corso…';
+  try{
+    if(file.size===0||file.size>64*1024*1024||!globalThis.crypto?.subtle)throw Error('invalid_file');
+    const bytes=await file.arrayBuffer();
+    if(bytes.byteLength!==file.size)throw Error('incomplete_file');
+    const hash=await globalThis.crypto.subtle.digest('SHA-256',bytes);
+    sourceHash.value=Array.from(new Uint8Array(hash),b=>b.toString(16).padStart(2,'0')).join('');
+    sourceStatus.textContent='Impronta calcolata localmente ('+file.size+' byte). Provenienza e vigenza non verificate.';
+  }catch{sourceStatus.textContent='Impronta non disponibile: file vuoto, oltre 64 MiB, non leggibile o contesto non supportato.';}
+  finally{sourceFile.disabled=false;sourceClear.disabled=false;}
+});
 // [Codex] Review observations are exported separately; they never mutate the practice.
 async function reviewRegister(file=null){
   if(busy||invalid.size||report?.state!=='research_candidate')return;
