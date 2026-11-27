@@ -90,3 +90,6 @@ Segue la versione **1.1.0** (`LINEE_GUIDA.md`).
 - 2026-11-27 [Codex] Tracciato storico elenco subalterni 2005 verificato in G.U.; lettore/comparatore diagnostico sintetico proposto su branch dedicato, senza export DAT o compatibilità ufficiale. Nuova CI necessaria; gate #77 aperto.
 
 - 2026-11-27 [Codex] PR #78 integrata dopo quattro job positivi; riconciliazione della sessione e dei registri storici ante/post proposta su ramo dedicato. CI nuova obbligatoria, gate #77 aperto.
+
+
+- 2026-11-27 [Codex] PR #79 integrata dopo quattro job positivi (Windows 329/329); confronto storico ante/post collegato al workbench locale, con esito separato e nuova CI obbligatoria. Gate #77 aperto.
