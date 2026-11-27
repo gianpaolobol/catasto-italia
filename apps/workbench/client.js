@@ -11,6 +11,14 @@ const field=byId('case'),status=byId('status'),download=byId('download'),load=by
 let report=null,busy=false,draft=null,geometryReport=null,incomeReport=null,appliedScale=null;
 // [Codex] Keep only one prepared archive in memory, bound to exact declarations.
 let preparedArchive=null;
+// [Codex] Native draft download, bound to the exact editor text until invalidated.
+let preparedDraft=null;
+function discardPreparedDraft(){
+  const link=byId('save-prepared-draft');
+  link.hidden=true;link.removeAttribute('href');
+  if(preparedDraft)URL.revokeObjectURL(preparedDraft.url);
+  preparedDraft=null;
+}
 let guidedReview=null;
 function discardPreparedArchive(){
   const link=byId('save-prepared-archive');
@@ -32,14 +40,15 @@ let tariffSource='synthetic-tariff';
 function setTariffSource(source='synthetic-tariff'){tariffSource=source;byId('income-source').textContent=source==='synthetic-catalog-v1'?'Catalogo di prova v1 (non ufficiale)':'Tariffa inventata dichiarata manualmente';}
 const el=(tag,text)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;return e;};
 function clear(){
+  discardPreparedDraft();
   discardPreparedArchive();
   clearGuidedReview();
   byId('visura-result').textContent='Nessun confronto corrente.';
   report=null;byId('manual-docfa-download').disabled=true;byId('manual-docfa-worksheet').disabled=true;byId('manual-docfa-register-template').disabled=true;byId('manual-docfa-register-file').disabled=true;byId('manual-docfa-status').textContent='Nessuna verifica ufficiale effettuata.';byId('handoff-status').textContent='Analizza un caso sintetico.';resetGeometry();resetIncome();download.disabled=true;byId('save-session').disabled=true;byId('download-archive').disabled=true;byId('download-dossier').disabled=true;byId('summary').textContent='Nessun rapporto corrente.';
   byId('relation').textContent='—';byId('details').textContent='—';byId('operations').replaceChildren();byId('inventory').replaceChildren();
 }
-function refresh(){refreshGeometry();refreshIncome();refreshGuidedReview();byId('save-session').disabled=busy||invalid.size>0||report?.state!=='research_candidate';byId('download-archive').disabled=byId('save-session').disabled;byId('manual-docfa-download').disabled=byId('save-session').disabled;byId('manual-docfa-worksheet').disabled=byId('save-session').disabled;byId('manual-docfa-register-template').disabled=byId('save-session').disabled;byId('manual-docfa-register-file').disabled=byId('save-session').disabled;const handoffEnabled=!busy&&!invalid.size&&report?.state==='research_candidate';byId('handoff-target').disabled=!handoffEnabled;byId('handoff-download').disabled=!handoffEnabled;byId('geometry-handoff-download').disabled=!handoffEnabled;byId('download-dossier').disabled=busy||!report||report.diagnosticReportExportable!==true;for(const id of ['visura-check','visura-example','visura-claim','visura-file','visura-text'])byId(id).disabled=busy||invalid.size>0;analyze.disabled=busy||invalid.size>0;byId('save-draft').disabled=busy||invalid.size>0;for(const e of guide.querySelectorAll('input,select'))e.disabled=busy;}
-function lock(value){if(value)discardPreparedArchive();busy=value;byId('import-session').disabled=value;byId('import-draft').disabled=value;byId('reviewed-import').disabled=value;byId('reviewed-example').disabled=value;byId('reviewed-template').disabled=value;load.disabled=value;field.readOnly=value;byId('scenario').disabled=value;byId('open-guide').disabled=value;refresh();}
+function refresh(){if(preparedDraft&&(busy||invalid.size||preparedDraft.text!==field.value))discardPreparedDraft();refreshGeometry();refreshIncome();refreshGuidedReview();byId('save-session').disabled=busy||invalid.size>0||report?.state!=='research_candidate';byId('download-archive').disabled=byId('save-session').disabled;byId('manual-docfa-download').disabled=byId('save-session').disabled;byId('manual-docfa-worksheet').disabled=byId('save-session').disabled;byId('manual-docfa-register-template').disabled=byId('save-session').disabled;byId('manual-docfa-register-file').disabled=byId('save-session').disabled;const handoffEnabled=!busy&&!invalid.size&&report?.state==='research_candidate';byId('handoff-target').disabled=!handoffEnabled;byId('handoff-download').disabled=!handoffEnabled;byId('geometry-handoff-download').disabled=!handoffEnabled;byId('download-dossier').disabled=busy||!report||report.diagnosticReportExportable!==true;for(const id of ['visura-check','visura-example','visura-claim','visura-file','visura-text'])byId(id).disabled=busy||invalid.size>0;analyze.disabled=busy||invalid.size>0;byId('save-draft').disabled=busy||invalid.size>0;for(const e of guide.querySelectorAll('input,select'))e.disabled=busy;}
+function lock(value){if(value){discardPreparedDraft();discardPreparedArchive();}busy=value;byId('import-session').disabled=value;byId('import-draft').disabled=value;byId('reviewed-import').disabled=value;byId('reviewed-example').disabled=value;byId('reviewed-template').disabled=value;load.disabled=value;field.readOnly=value;byId('scenario').disabled=value;byId('open-guide').disabled=value;refresh();}
 function resetGuide(){draft=null;invalid.clear();guide.replaceChildren();const option=el('option','Carica un caso nell’editor guidato');option.value='';byId('visura-claim').replaceChildren(option);byId('visura-text').value='';clearVisura();refresh();}
 function showGuide(input){
   resetGuide();
@@ -122,12 +131,25 @@ byId('import-draft').addEventListener('change',async event=>{
 });
 byId('save-draft').addEventListener('click',()=>{
   if(busy||invalid.size)return;
+  discardPreparedDraft();
   try{
-    if(new TextEncoder().encode(field.value).length>256*1024)throw Error('too_large');
-    const input=JSON.parse(field.value);guideFields(input);
-    saveJson(input,'catasto-bozza-sintetica.json');
-    status.textContent='Download bozza richiesto.';
-  }catch{status.textContent='Bozza non supportata: nessun download.';}
+    const text=field.value;
+    if(new TextEncoder().encode(text).length>256*1024)throw Error('too_large');
+    const input=JSON.parse(text);guideFields(input);
+    const bytes=JSON.stringify(input,null,2);
+    if(new TextEncoder().encode(bytes).length>256*1024)throw Error('too_large');
+    const url=URL.createObjectURL(new Blob([bytes],{type:'application/json'}));
+    preparedDraft={text,url};
+    const link=byId('save-prepared-draft');link.href=url;link.hidden=false;
+    status.textContent='Bozza pronta: premi Scarica bozza preparata.';
+  }catch{discardPreparedDraft();status.textContent='Bozza non supportata: nessun download.';}
+});
+byId('save-prepared-draft').addEventListener('click',event=>{
+  if(busy||invalid.size||!preparedDraft||preparedDraft.text!==field.value||
+     event.currentTarget.href!==preparedDraft.url){
+    event.preventDefault();discardPreparedDraft();status.textContent='Bozza non disponibile: ripeti la preparazione.';return;
+  }
+  status.textContent='Download bozza richiesto.';
 });
 field.addEventListener('input',()=>{resetGuide();clear();status.textContent='JSON modificato: riaprire l’editor guidato o analizzare.';});
 byId('open-guide').addEventListener('click',()=>{

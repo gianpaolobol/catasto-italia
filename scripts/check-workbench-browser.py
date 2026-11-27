@@ -517,13 +517,32 @@ def run():
                             replayed_dossier = Path(tmp) / "replayed-dossier.html"
                             event.value.save_as(replayed_dossier)
                             check(replayed_dossier.read_bytes() == packed_html, "archive session replay differs from bundled dossier")
-                            with page.expect_download() as event:
-                                page.locator("#save-draft").click()
+                            # [Codex] Native draft link, real download and exact JSON, not a simulated click.
+                            expected_draft = json.loads(page.locator("#case").input_value())
+                            page.locator("#save-draft").click()
+                            expect(page.locator("#status")).to_contain_text("Bozza pronta")
+                            draft_link = page.locator("#save-prepared-draft")
+                            expect(draft_link).to_be_visible()
+                            expect(draft_link).to_have_attribute("download", "catasto-bozza-sintetica.json")
+                            try:
+                                with page.expect_download() as event:
+                                    draft_link.click()
+                            except Exception as exc:
+                                raise RuntimeError(f"draft download failed: scenario={scenario}, viewport={width}, status={page.locator('#status').text_content()}, pageErrors={errors}, console={console_messages[-12:]}") from exc
                             draft = Path(tmp) / "draft.json"
                             event.value.save_as(draft)
-                            # Prepared bytes cannot survive a case replacement.
+                            check(json.loads(draft.read_text(encoding="utf-8")) == expected_draft, "draft download changed declarations")
+                            if scenario == "fusion":
+                                with page.expect_download() as retry:
+                                    draft_link.click()
+                                draft_retry = Path(tmp) / "draft-retry.json"
+                                retry.value.save_as(draft_retry)
+                                check(draft_retry.read_bytes() == draft.read_bytes(), "draft retry differs")
+                            # Prepared bytes cannot survive a new elaboration or case replacement.
                             page.locator("#download-archive").click()
                             expect(page.locator("#save-prepared-archive")).to_be_visible()
+                            expect(draft_link).to_be_hidden()
+                            check(draft_link.get_attribute("href") is None, "stale draft link retained")
                             page.locator("#import-draft").set_input_files(draft)
                             expect(page.locator("#status")).to_contain_text("Bozza sintetica importata")
                             expect(page.locator("#download-dossier")).to_be_disabled()
