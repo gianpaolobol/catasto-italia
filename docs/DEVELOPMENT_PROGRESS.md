@@ -363,3 +363,7 @@ PR #75 integrata squash b73cd047a06ee75e549730d1c561425008834f06 dopo verifica C
 
 ## Iterazione 089 — [Codex] — modalità C — 2026-11-27
 ID19/22: fonte primaria G.U. 04/04/2005 SO 58 p. 38 Sub Allegato 4 verificata anche visivamente. Lettore/comparatore locale del layout storico, sottoinsieme ASCII sintetico, identificatori testuali, differenze campo per campo, hash, CLI read-only limitata. Nessun serializer DAT, nessuna prova DOCFA attuale, nessuna mutazione della sessione. Revisione sequenziale con correzione lettura file non regolari; test predisposti, CI obbligatoria. Main e backup verificati, gate #77 aperto. Dettagli docs/qa/ITERATION_089.md.
+
+
+## Iterazione 090 — [Codex] — modalità C — 2026-11-27
+PR #78 integrata squash 3102ed113283bce849b9cc02b359fc6ae95693a3; quattro job success su checkout b0a918b73203807de16a29272139623d49d7fd5b (46036905240 linee guida, 46036905247 Windows 315/315, 46036905227 core 1364 pass e Chromium 1280/360). ID10/19/22: collegato inventario ricalcolato della sessione alla lettura storica ante/post in CLI; confronto chiavi, mancanti/inattesi e modifiche su conservate, convenzione sintetica esplicita. Test predisposti, nuova CI obbligatoria. Revisione sequenziale, registro centrale 404, backup intatti, nessuna nuova regola ufficiale. Gate professionale aperto. Dettagli docs/qa/ITERATION_090.md.
