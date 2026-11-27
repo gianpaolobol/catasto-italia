@@ -9,3 +9,6 @@ PR #72 integrata a dca3597ce6fa69a4c22d119351fb2576e2f0010c dopo verifica di qua
 
 ## Blocchi e fonti
 Consultazione 27/11/2026: https://arcom.agenziaentrate.gov.it/CitizenArCom/ documenta competenze e allineamento amministrativo; la pagina DOCFA 4.00.3 (https://agenziaentrate.gov.it/portale/web/guest/schede/fabbricatiterreni/aggiornamento-catasto-fabbricati-docfa/docfa-versioni-precedenti/software-docfa-4003) è storica e sostituita. Nessuna tariffa vigente acquisita, nessuna regola codificata. Non usare archivi Docte2 per il Catasto fabbricati. MPE #2 ancora aperta, CI precedentemente fallita. Registro centrale mappa/diario 404. Backup verificati f128cffb0504eee2a3873341f0c91fa00199eb41 e 2b45109482e153b83ff58ea7b08b856a99f589b4; licenza non modificata. Solo fixture sintetiche. Gate professionale aperto: servono ambiente DOCFA ufficiale, tariffe attuali, prove locali documentate; nessuna firma o invio.
+
+## Verifica isolata effettiva
+Callback di riapertura riletto dal blob Git 1e2ebed6fcd3701c030a089da9f093cb7c32f219 ed eseguito in ECMAScript con DOM, trasporto e codificatori ASCII simulati: 5/5 casi (record coerente, flag ufficiale alterato, conteggio alterato, campo extra, snapshot diverso). Non è un test del server, del browser o del decoder UTF-8 reale. CI integrale obbligatoria.
