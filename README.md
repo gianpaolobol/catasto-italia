@@ -83,3 +83,7 @@ Dopo la compilazione dei riscontri guidati per le sessioni del kit, salva **i re
 
 ### Download nativo del dossier HTML [Codex]
 Prepara il dossier, poi usa **Scarica dossier preparato**; il collegamento è ripetibile e viene revocato su variazione di caso/annessi o nuova elaborazione. Ricalcolo locale invariato; nuova CI browser obbligatoria.
+
+
+### Verifica preliminare del kit di confronto [Codex]
+Prima di aprire le schede o iniziare il confronto con DOCFA, eseguire `node scripts/verify-docfa-comparison-kit.mjs <cartella-kit-locale>` dalla stessa revisione di Catasto Italia usata per generarlo. Il controllo rigenera i 26 file attesi e confronta tutti i byte, manifest compreso; non si fida dei percorsi o degli hash dichiarati dal manifest ricevuto. Exit 0: file iniziali identici; 1: file diversi, mancanti, non regolari o non leggibili; 2: argomenti errati. Non legge file estranei, non modifica il kit e non autentica le fonti o i riscontri. Usare cartelle locali fidate e non modificate durante il controllo. Conservare il kit iniziale immutato e gli esiti in una cartella separata. CI #75 positiva su core, Windows e Chromium 1280/360; preflight nuovo in attesa di CI.
