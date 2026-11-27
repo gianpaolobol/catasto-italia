@@ -461,3 +461,51 @@ test('offline review reader uses only fixed filenames and bounded input, without
    assert.equal(await kitRead(kitJoin(root,'fusion.json'),'utf8'),bytes);
  }finally{await kitRm(root,{recursive:true,force:true});}
 });
+
+
+// [Codex] Verify the actual kit bytes before comparisons; a self-consistent altered manifest is not sufficient.
+import {verifyOfflineComparisonKit} from '../scripts/verify-docfa-comparison-kit.mjs';
+import {unlink as kitUnlink,mkdir as kitMkdir,symlink as kitLink} from 'node:fs/promises';
+test('offline kit preflight detects missing, changed and non-file entries without rewriting them',async()=>{
+ const root=await kitMkdtemp(kitJoin(kitTmpdir(),'catasto-preflight-'));
+ try{
+   const dest=kitJoin(root,'kit');
+   await writeOfflineComparisonKit(dest);
+   let result=await verifyOfflineComparisonKit(dest);
+   assert.equal(result.canonical,true);assert.equal(result.identical,26);
+   for(const flag of ['officialValidation','officialExport','signature','submission'])assert.equal(result[flag],false);
+   const changed=kitJoin(dest,'fusion','sessione.json');
+   const bytes=await kitRead(changed);
+   bytes[0]^=1;await reviewWrite(changed,bytes);
+   const manifestPath=kitJoin(dest,'manifest.json');
+   const manifest=JSON.parse(await kitRead(manifestPath,'utf8'));
+   manifest.files.find(x=>x.name==='fusion/sessione.json').sha256=kitHash('sha256').update(bytes).digest('hex');
+   await reviewWrite(manifestPath,JSON.stringify(manifest,null,2)+'\n');
+   const missing=kitJoin(dest,'division','scheda-confronto.html');
+   await kitUnlink(missing);
+   const directory=kitJoin(dest,'new_construction','riscontri-modello.json');
+   await kitUnlink(directory);await kitMkdir(directory);
+   await reviewWrite(kitJoin(dest,'unrelated.json'),'ignored');
+   result=await verifyOfflineComparisonKit(dest);
+   const states=Object.fromEntries(result.files.map(f=>[f.name,f.state]));
+   assert.equal(result.canonical,false);assert.equal(result.identical,22);
+   assert.equal(states['fusion/sessione.json'],'different');
+   assert.equal(states['manifest.json'],'different');
+   assert.equal(states['division/scheda-confronto.html'],'missing');
+   assert.equal(states['new_construction/riscontri-modello.json'],'not_regular');
+   assert.deepEqual(await kitRead(changed),bytes);
+   assert.equal((await kitRead(kitJoin(dest,'unrelated.json'),'utf8')),'ignored');
+ }finally{await kitRm(root,{recursive:true,force:true});}
+});
+test('offline kit preflight refuses a scenario directory link even if its target is canonical',async()=>{
+ const root=await kitMkdtemp(kitJoin(kitTmpdir(),'catasto-preflight-link-'));
+ try{
+   const dest=kitJoin(root,'kit'),other=kitJoin(root,'other');
+   await writeOfflineComparisonKit(dest);await writeOfflineComparisonKit(other);
+   await kitRm(kitJoin(dest,'fusion'),{recursive:true});
+   await kitLink(kitJoin(other,'fusion'),kitJoin(dest,'fusion'),process.platform==='win32'?'junction':'dir');
+   const result=await verifyOfflineComparisonKit(dest);
+   assert.equal(result.canonical,false);assert.equal(result.identical,22);
+   assert.ok(result.files.filter(f=>f.name.startsWith('fusion/')).every(f=>f.state==='not_regular'));
+ }finally{await kitRm(root,{recursive:true,force:true});}
+});
