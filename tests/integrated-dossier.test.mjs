@@ -404,3 +404,60 @@ test('offline kit only creates a new directory, never overwrites an existing kit
    assert.deepEqual(before,buildOfflineComparisonKit().get('manifest.json'));
  }finally{await kitRm(temp,{recursive:true,force:true});}
 });
+
+
+// [Codex] Review reconciliation: actual kit sessions, not a second source of review rules.
+import {summarizeOfflineReviews,readOfflineReviews} from '../scripts/summarize-docfa-reviews.mjs';
+import {writeFile as reviewWrite} from 'node:fs/promises';
+const kitReview=(kit,scenario,state='match_declared',partial=false)=>{
+ const session=JSON.parse(kit.get(scenario+'/sessione.json'));
+ const template=manualReviewRegister(session).template;
+ const environment={date:'2026-01-01',docfaVersion:'SYNTHETIC',province:'SYNTH',
+   archiveSha256:'a'.repeat(64),specificationReference:'synthetic-spec',localRunReference:'synthetic-run'};
+ const observations=template.observations.map((o,i)=>partial&&i>0?o:{
+   ...o,state,evidenceReference:'synthetic-evidence',note:'synthetic note'});
+ const result=manualReviewRegister(session,{...template,environment,observations});
+ assert.equal(result.ok,true);
+ return result.record;
+};
+test('offline review summary distinguishes missing, partial, mismatch, and declared differences',()=>{
+ const kit=buildOfflineComparisonKit();
+ const fusion=kitReview(kit,'fusion','difference_declared');
+ const partial=kitReview(kit,'division','match_declared',true);
+ const wrong=structuredClone(fusion);
+ wrong.officialValidation=true;
+ const result=summarizeOfflineReviews(new Map([['fusion',fusion],['division',partial],['new_construction',wrong]]));
+ assert.equal(result.expectedCases,6);assert.equal(result.expectedChecks,36);
+ assert.equal(result.missing,3);assert.equal(result.invalid,1);
+ assert.equal(result.partial,1);assert.equal(result.completeDeclared,1);
+ assert.equal(result.unassessedChecks,29);
+ assert.deepEqual(result.totals,{unrecorded:5,match_declared:1,difference_declared:6,not_applicable_declared:0});
+ assert.equal(result.cases.find(c=>c.scenario==='fusion').differenceChecks.length,6);
+ assert.equal(result.officialValidation,false);
+ assert.doesNotMatch(JSON.stringify(result),/synthetic-evidence|synthetic note|synthetic-run/);
+ // Wrong scenario with otherwise valid record and spoofed derived counts are rejected.
+ const altered=structuredClone(fusion);altered.counts.difference_declared=0;
+ assert.equal(summarizeOfflineReviews(new Map([['fusion',altered],['division',fusion]])).invalid,2);
+});
+test('all 36 declared comparisons do not establish official validation',()=>{
+ const kit=buildOfflineComparisonKit();
+ const result=summarizeOfflineReviews(new Map(scenarios.map(s=>[s,kitReview(kit,s)])));
+ assert.equal(result.completeDeclared,6);assert.equal(result.unassessedChecks,0);
+ assert.equal(result.totals.match_declared,36);
+ for(const flag of ['officialValidation','officialExport','signature','submission'])assert.equal(result[flag],false);
+});
+test('offline review reader uses only fixed filenames and bounded input, without modifying records',async()=>{
+ const root=await kitMkdtemp(kitJoin(kitTmpdir(),'catasto-reviews-'));
+ try{
+   const kit=buildOfflineComparisonKit();
+   const bytes=JSON.stringify(kitReview(kit,'fusion'));
+   await reviewWrite(kitJoin(root,'fusion.json'),bytes);
+   await reviewWrite(kitJoin(root,'division.json'),Buffer.alloc(128*1024+1));
+   await reviewWrite(kitJoin(root,'new_construction.json'),'{');
+   await reviewWrite(kitJoin(root,'enlargement.json'),'null');
+   await reviewWrite(kitJoin(root,'unrelated.json'),'not inspected');
+   const result=await readOfflineReviews(root);
+   assert.equal(result.completeDeclared,1);assert.equal(result.invalid,3);assert.equal(result.missing,2);
+   assert.equal(await kitRead(kitJoin(root,'fusion.json'),'utf8'),bytes);
+ }finally{await kitRm(root,{recursive:true,force:true});}
+});
