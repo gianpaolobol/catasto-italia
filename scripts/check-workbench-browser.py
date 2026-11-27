@@ -495,6 +495,7 @@ def run():
                                 expect(page.locator("#guided-review-status")).to_contain_text("Sessione modificata")
                                 expect(page.locator("#guided-review-save")).to_be_disabled()
                                 page.locator("#guided-review-import").set_input_files(guided_path)
+                                expect(page.locator("#guided-review-import")).to_be_enabled()
                                 expect(page.locator("#guided-review-save")).to_be_disabled()
                             page.locator("#import-session").set_input_files(archive)
                             expect(page.locator("#status")).to_contain_text("Archivio sintetico verificato e ripristinato")
