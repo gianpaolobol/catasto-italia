@@ -394,6 +394,34 @@ def run():
                             template_file.write_text(json.dumps(register), encoding="utf-8")
                             page.locator("#manual-docfa-register-file").set_input_files(str(template_file))
                             expect(page.locator("#manual-docfa-status")).to_contain_text("Pratica invariata")
+                            if scenario == "fusion":
+                                # [Codex] A real guided review, including server rejection and native download.
+                                page.get_by_text("Compila i riscontri guidati in questa pagina", exact=True).click()
+                                page.locator("#guided-review-open").click()
+                                expect(page.locator("#guided-review-status")).to_contain_text("tutti i riscontri non registrati")
+                                expect(page.locator("#guided-evidence-0")).to_be_disabled()
+                                page.locator("#guided-state-0").select_option("difference_declared")
+                                expect(page.locator("#guided-evidence-0")).to_be_enabled()
+                                page.locator("#guided-review-save").click()
+                                expect(page.locator("#guided-review-status")).to_contain_text("Registro non accettato")
+                                expect(page.locator("#guided-review-save")).to_be_enabled()
+                                page.get_by_text("Impronta locale dell’archivio di riferimento", exact=True).click()
+                                page.locator("#docfa-source-file").set_input_files({"name":"synthetic.tar","mimeType":"application/octet-stream","buffer":b"SYNTH-GUIDED"})
+                                expect(page.locator("#docfa-source-hash")).to_have_value(hashlib.sha256(b"SYNTH-GUIDED").hexdigest())
+                                page.locator("#guided-review-copy-hash").click()
+                                expect(page.locator("#guided-env-archiveSha256")).to_have_value(hashlib.sha256(b"SYNTH-GUIDED").hexdigest())
+                                for key, value in {"date":"2026-11-27","docfaVersion":"SYNTH-TEST","province":"SYNTH","specificationReference":"SYNTH-SPEC","localRunReference":"SYNTH-RUN"}.items():
+                                    page.locator("#guided-env-"+key).fill(value)
+                                page.locator("#guided-evidence-0").fill("SYNTH-EVIDENCE")
+                                page.locator("#guided-note-0").fill("Synthetic discrepancy only")
+                                with page.expect_download() as guided_event:
+                                    page.locator("#guided-review-save").click()
+                                guided_path = Path(tmp) / "guided-review.json"
+                                guided_event.value.save_as(guided_path)
+                                guided = json.loads(guided_path.read_text(encoding="utf-8"))
+                                check(guided["snapshotDigest"] == record["snapshotDigest"] and guided["counts"]["difference_declared"] == 1 and guided["counts"]["unrecorded"] == 5, "guided review snapshot/count mismatch")
+                                check(all(guided[k] is False for k in ("officialValidation","officialExport","signature","submission")), "guided review falsely official")
+                                check(guided["environment"]["archiveSha256"] == hashlib.sha256(b"SYNTH-GUIDED").hexdigest(), "guided archive fingerprint mismatch")
                             # [Codex] Keep the real download gate; distinguish API failure from
                             # browser download failure and wait explicitly for the preceding import.
                             expect(page.locator("#manual-docfa-register-file")).to_be_enabled()
@@ -436,6 +464,7 @@ def run():
                                 packed_html = z.read("dossier-sintetico.html")
                             page.locator("#import-session").set_input_files(archive)
                             expect(page.locator("#status")).to_contain_text("Archivio sintetico verificato e ripristinato")
+                            expect(page.locator("#guided-review-fields")).to_be_hidden()
                             corrupt = Path(tmp) / "corrupt.zip"
                             corrupt.write_bytes(archive.read_bytes() + b"extra")
                             page.locator("#import-session").set_input_files(corrupt)
