@@ -1,8 +1,9 @@
 // [Codex] Local, read-only historical layout review; synthetic data only.
-import { openSync, fstatSync, readSync, closeSync } from 'node:fs';
+import { openSync, fstatSync, readSync, closeSync, lstatSync, constants } from 'node:fs';
 import { MAX_BYTES, parseHistoricalSubalternRegister, compareHistoricalSubalternRegisters } from '../packages/workbench/historical-subaltern-register.mjs';
 function readBounded(path) {
-  const fd=openSync(path,'r');
+  if (!lstatSync(path).isFile()) throw new Error('Expected bounded regular file');
+  const fd=openSync(path,constants.O_RDONLY | (constants.O_NONBLOCK ?? 0) | (constants.O_NOFOLLOW ?? 0));
   try {
     const stat=fstatSync(fd);
     if (!stat.isFile() || stat.size<1 || stat.size>MAX_BYTES) throw new Error('Expected bounded regular file');
