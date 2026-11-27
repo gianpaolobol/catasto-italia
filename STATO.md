@@ -79,3 +79,5 @@ Segue la versione **1.1.0** (`LINEE_GUIDA.md`).
 - 2026-11-27 [Codex] PR #73 integrata dopo quattro job positivi; generatore di kit offline per sei confronti sintetici predisposto, CI da verificare. Gate professionale aperto.
 
 - 2026-11-27 [Codex] PR #74 non integrata: kit offline positivo su Linux/Windows, Chromium desktop positivo ma timeout del download bozza in mobile al retry; collegamento nativo diagnostico predisposto, nuova CI obbligatoria.
+
+- 2026-11-27 [Codex] PR #74 integrata dopo quattro job positivi (incluso download bozza reale desktop/mobile); nuovo riepilogo locale dei 36 riscontri dichiarati del kit predisposto, CI obbligatoria. Validazione DOCFA professionale ancora aperta.
