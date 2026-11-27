@@ -68,3 +68,6 @@ Nel pannello verifica manuale, aprire Impronta locale dell’archivio di riferim
 
 ### Compilazione guidata dei riscontri DOCFA [Codex]
 Nel pannello di verifica manuale apri **Compila i riscontri guidati in questa pagina**, poi il nuovo modello. Inserisci ambiente e riscontri con note e riferimenti sintetici. Puoi copiare esplicitamente l'impronta dell'archivio calcolata localmente. Il controllo riusa il registro server vincolato alla sessione; se modifichi gli annessi devi aprire un nuovo modello. Il registro scaricato resta separato; nessun dato viene interpretato come prova ufficiale. Alternativa JSON manuale invariata. CI nuova da verificare.
+
+### Riprendi una verifica manuale salvata [Codex]
+Riapri la sessione o lo ZIP diagnostico originale, poi scegli **Riapri registro non ufficiale già salvato** nel pannello guidato. Il server ricalcola il registro dalle dichiarazioni; tutti i campi derivati devono coincidere con il file. Il modello precedente viene sostituito solo dopo esito positivo. Puoi correggere i riscontri e scaricare un nuovo registro separato. Non è autenticazione, firma o verifica DOCFA; conservare localmente i file. CI browser nuova da verificare.
