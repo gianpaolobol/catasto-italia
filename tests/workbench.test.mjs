@@ -61,6 +61,24 @@ test('actual loopback HTTP workflow and security boundaries',async t=>{
   assert.equal((await fetch(base+'/api/report',{...options,body:'{'})).status,400);
   assert.equal((await fetch(base+'/api/report',{...options,body:'x'.repeat(262145)})).status,413);
   assert.equal((await fetch(base+'/LICENSE')).status,404);
+  // [Codex] Actual local historical comparison, no format/authority claims.
+  const draft=syntheticCase('internal_distribution'),report=buildPracticeReport(draft);
+  const session={version:'0.1.0',kind:'synthetic-practice-session',request:{draft,expectedState:report.state,expectedDigest:report.caseDigest,geometry:[],income:[]}};
+  const row=(sub,desc='SYNTH ROOM')=>'000Z999    0999009000000'+sub+' '.repeat(73)+desc.padEnd(300)+'00000000000000001U'+' '.repeat(81);
+  const a=[row('0001'),row('0009')].join('\r\n')+'\r\n';
+  const b=[row('0001'),row('0008')].join('\n')+'\n';
+  const hist={session,before:a,after:b};
+  const sendHistorical=(data,origin=base)=>fetch(base+'/api/historical-inventory',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify(data)});
+  const comparison=await sendHistorical(hist);assert.equal(comparison.status,200);
+  const diagnostic=await comparison.json();
+  assert.equal(diagnostic.requiresReview,true);assert.equal(diagnostic.caseDigest,report.caseDigest);
+  assert.equal(diagnostic.phases.after.missing[0].key.slice(-4),'0009');
+  assert.equal(diagnostic.officialCompatibility,false);
+  assert.equal((await sendHistorical({...hist,after:a})).status,200);
+  assert.equal((await sendHistorical({...hist,after:a.replace('SYNTH','èYNTH')})).status,400);
+  assert.equal((await sendHistorical({...hist,after:' '.repeat(102401)})).status,400);
+  assert.equal((await sendHistorical({...hist,extra:true})).status,400);
+  assert.equal((await sendHistorical(hist,'https://example.invalid')).status,403);
   const invalidHost=await new Promise((resolve,reject)=>{
     const r=httpRequest(base,{headers:{Host:'example.invalid'}},res=>{res.resume();resolve(res.statusCode);});r.on('error',reject);r.end();
   });assert.equal(invalidHost,403);
