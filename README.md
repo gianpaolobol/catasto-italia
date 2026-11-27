@@ -80,3 +80,6 @@ Premere **Prepara bozza sintetica JSON**, poi **Scarica bozza preparata**. Il co
 
 ### Riepilogo locale dei sei confronti [Codex]
 Dopo la compilazione dei riscontri guidati per le sessioni del kit, salva **i registri esportati** (non i modelli vuoti) in una cartella separata fuori da Git: fusion.json, division.json, new_construction.json, internal_distribution.json, destination_change.json, enlargement.json. Esegui `node scripts/summarize-docfa-reviews.mjs <cartella-locale-riscontri>`. Il comando rigenera le sessioni del kit della stessa versione, confronta l'intero registro con il ricalcolo e restituisce solo conteggi e identificativi dei controlli con discrepanze. Non legge riferimenti alle evidenze, non stampa note, non scrive file. Exit 1: record non valido/errore; 2: controlli mancanti o non registrati; 0: tutti dichiarati, anche in presenza di differenze (non è un'approvazione). I record relativi a sessioni modificate non sono accettati. Solo prove sintetiche in cartelle locali fidate, nessun dato cliente. CI nuova da verificare.
+
+### Download nativo del dossier HTML [Codex]
+Prepara il dossier, poi usa **Scarica dossier preparato**; il collegamento è ripetibile e viene revocato su variazione di caso/annessi o nuova elaborazione. Ricalcolo locale invariato; nuova CI browser obbligatoria.
