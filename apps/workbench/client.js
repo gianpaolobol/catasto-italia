@@ -11,7 +11,19 @@ const field=byId('case'),status=byId('status'),download=byId('download'),load=by
 let report=null,busy=false,draft=null,geometryReport=null,incomeReport=null,appliedScale=null;
 // [Codex] Keep only one prepared archive in memory, bound to exact declarations.
 let preparedArchive=null;
-function discardPreparedArchive(){preparedArchive=null;byId('download-archive').textContent='Prepara archivio ZIP completo non ufficiale';}
+function discardPreparedArchive(){
+  const link=byId('save-prepared-archive');
+  link.hidden=true;link.removeAttribute('href');
+  if(preparedArchive)URL.revokeObjectURL(preparedArchive.url);
+  preparedArchive=null;
+}
+function archiveDeclarationBody(){
+  const session={version:'0.1.0',kind:'synthetic-practice-session',request:currentDeclarations()};
+  guideFields(session.request.draft);
+  const body=JSON.stringify(session);
+  if(new TextEncoder().encode(body).length>256*1024)throw Error('too_large');
+  return body;
+}
 const invalid=new Set();
 const geometries=new Map(),incomes=new Map();
 const incomeFields=['category','class','zone','consistency','tariff'];
@@ -655,34 +667,30 @@ byId('manual-docfa-register-template').addEventListener('click',()=>reviewRegist
 byId('manual-docfa-register-file').addEventListener('change',event=>{
   const file=event.target.files?.[0];event.target.value='';if(file)reviewRegister(file);
 });
-// [Codex] Separate async preparation from an explicit, synchronous user download gesture.
+// [Codex] A persistent native download link avoids a second programmatic click.
+// Keep the blob available for retries until a declaration changes or preparation restarts.
+byId('save-prepared-archive').addEventListener('click',event=>{
+  try{
+    if(busy||invalid.size||report?.state!=='research_candidate'||!preparedArchive||
+       preparedArchive.body!==archiveDeclarationBody()||event.currentTarget.href!==preparedArchive.url)throw Error('stale');
+    status.textContent='Archivio richiesto: dossier, sessione, rapporto, interscambi e manifest. Riapribile dal selettore sessione/ZIP.';
+  }catch{event.preventDefault();discardPreparedArchive();status.textContent='Archivio non disponibile: ripeti la preparazione.';}
+});
 byId('download-archive').addEventListener('click',async()=>{
   if(busy||invalid.size||report?.state!=='research_candidate')return;
   let body;
-  try{
-    const session={version:'0.1.0',kind:'synthetic-practice-session',request:currentDeclarations()};
-    guideFields(session.request.draft);
-    body=JSON.stringify(session);
-    if(new TextEncoder().encode(body).length>256*1024)throw Error('too_large');
-  }catch{discardPreparedArchive();status.textContent='Archivio non disponibile: controlla il caso e gli annessi.';return;}
-  if(preparedArchive?.body===body){
-    const bytes=preparedArchive.bytes;
-    discardPreparedArchive();
-    try{
-      saveFile(bytes,'application/zip','catasto-pratica-sintetica-non-ufficiale.zip');
-      status.textContent='Archivio richiesto: dossier, sessione, rapporto, interscambi e manifest. Riapribile dal selettore sessione/ZIP.';
-    }catch{status.textContent='Download archivio non riuscito: ripeti la preparazione.';}
-    return;
-  }
+  try{body=archiveDeclarationBody();}
+  catch{discardPreparedArchive();status.textContent='Archivio non disponibile: controlla il caso e gli annessi.';return;}
   lock(true);
   status.textContent='Preparazione archivio diagnostico in corso…';
   try{
     const response=await fetch('/api/archive',{method:'POST',headers:{'Content-Type':'application/json'},body});
     if(!response.ok||!response.headers.get('content-type')?.startsWith('application/zip'))throw Error('blocked');
     const bytes=await response.arrayBuffer();
-    if(bytes.byteLength===0||bytes.byteLength>8*1024*1024)throw Error('too_large');
-    preparedArchive={body,bytes};
-    byId('download-archive').textContent='Scarica ZIP preparato';
+    if(bytes.byteLength===0||bytes.byteLength>8*1024*1024||body!==archiveDeclarationBody())throw Error('invalid_archive');
+    const url=URL.createObjectURL(new Blob([bytes],{type:'application/zip'}));
+    preparedArchive={body,url};
+    const link=byId('save-prepared-archive');link.href=url;link.hidden=false;
     status.textContent='Archivio pronto: premi Scarica ZIP preparato per salvarlo.';
   }catch{discardPreparedArchive();status.textContent='Archivio non disponibile: controlla il caso e gli annessi.';}
   finally{lock(false);}
