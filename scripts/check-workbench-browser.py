@@ -378,13 +378,17 @@ def run():
                             expect(page.locator("#download-archive")).to_be_enabled()
                             archive_http = None
                             try:
+                                with page.expect_response(lambda response: response.url == base + "/api/archive" and response.request.method == "POST") as archive_response:
+                                    page.locator("#download-archive").click()
+                                archive_http = archive_response.value.status
+                                check(archive_http == 200, f"archive API returned {archive_http}")
+                                check(archive_response.value.headers.get("content-type", "").startswith("application/zip"), "archive response not ZIP")
+                                expect(page.locator("#status")).to_contain_text("Archivio pronto")
+                                expect(page.locator("#download-archive")).to_have_text("Scarica ZIP preparato")
                                 with page.expect_download() as event:
-                                    with page.expect_response(lambda response: response.url == base + "/api/archive" and response.request.method == "POST") as archive_response:
-                                        page.locator("#download-archive").click()
-                                    archive_http = archive_response.value.status
-                                    check(archive_http == 200, f"archive API returned {archive_http}")
-                                    check(archive_response.value.headers.get("content-type", "").startswith("application/zip"), "archive response not ZIP")
+                                    page.locator("#download-archive").click()
                                 expect(page.locator("#status")).to_contain_text("Archivio richiesto")
+                                expect(page.locator("#download-archive")).to_have_text("Prepara archivio ZIP completo non ufficiale")
                             except Exception as exc:
                                 raise RuntimeError(f"archive download failed: scenario={scenario}, viewport={width}, HTTP={archive_http}, status={page.locator('#status').text_content()}, review={page.locator('#manual-docfa-status').text_content()}, pageErrors={errors}") from exc
                             archive = Path(tmp) / "diagnostic.zip"
@@ -424,10 +428,14 @@ def run():
                                 page.locator("#save-draft").click()
                             draft = Path(tmp) / "draft.json"
                             event.value.save_as(draft)
+                            # Prepared bytes cannot survive a case replacement.
+                            page.locator("#download-archive").click()
+                            expect(page.locator("#download-archive")).to_have_text("Scarica ZIP preparato")
                             page.locator("#import-draft").set_input_files(draft)
                             expect(page.locator("#status")).to_contain_text("Bozza sintetica importata")
                             expect(page.locator("#download-dossier")).to_be_disabled()
                             expect(page.locator("#download-archive")).to_be_disabled()
+                            expect(page.locator("#download-archive")).to_have_text("Prepara archivio ZIP completo non ufficiale")
                             expect(page.locator("#manual-docfa-download")).to_be_disabled()
                             expect(page.locator("#manual-docfa-worksheet")).to_be_disabled()
                             expect(page.locator("#handoff-download")).to_be_disabled()
