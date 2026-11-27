@@ -13,6 +13,14 @@ let report=null,busy=false,draft=null,geometryReport=null,incomeReport=null,appl
 let preparedArchive=null;
 // [Codex] Native draft download, bound to the exact editor text until invalidated.
 let preparedDraft=null;
+// [Codex] Prepare dossier asynchronously; use a native, repeatable download link.
+let preparedDossier=null;
+function discardPreparedDossier(){
+  const link=byId('save-prepared-dossier');
+  link.hidden=true;link.removeAttribute('href');
+  if(preparedDossier)URL.revokeObjectURL(preparedDossier.url);
+  preparedDossier=null;
+}
 function discardPreparedDraft(){
   const link=byId('save-prepared-draft');
   link.hidden=true;link.removeAttribute('href');
@@ -21,6 +29,7 @@ function discardPreparedDraft(){
 }
 let guidedReview=null;
 function discardPreparedArchive(){
+  discardPreparedDossier();
   const link=byId('save-prepared-archive');
   link.hidden=true;link.removeAttribute('href');
   if(preparedArchive)URL.revokeObjectURL(preparedArchive.url);
@@ -225,17 +234,30 @@ download.addEventListener('click',()=>{
   }catch{status.textContent='Download non riuscito.';}
 });
 
+function dossierBody(){
+  const body=JSON.stringify(currentDeclarations());
+  if(new TextEncoder().encode(body).length>256*1024)throw Error('too_large');
+  return body;
+}
+byId('save-prepared-dossier').addEventListener('click',event=>{
+  try{
+    if(busy||invalid.size||report?.diagnosticReportExportable!==true||!preparedDossier||
+       preparedDossier.body!==dossierBody()||event.currentTarget.href!==preparedDossier.url)throw Error('stale');
+    status.textContent='Download dossier richiesto; aprire localmente per stampare.';
+  }catch{event.preventDefault();discardPreparedDossier();status.textContent='Dossier non disponibile: ripeti la preparazione.';}
+});
 byId('download-dossier').addEventListener('click',async()=>{
   if(!report||busy||invalid.size||report.diagnosticReportExportable!==true)return;
   lock(true);
   try{
-    const payload=currentDeclarations();
-    if(new TextEncoder().encode(JSON.stringify(payload)).length>256*1024)throw Error('too_large');
-    const result=await request('/api/dossier',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    if(!result.ok||typeof result.html!=='string')throw Error('blocked');
-    saveFile(result.html,'text/html;charset=utf-8','catasto-dossier-sintetico-non-ufficiale.html');
-    status.textContent='Download dossier richiesto, con gli annessi correnti disponibili; aprire localmente per stampare.';
-  }catch{status.textContent='Dossier non disponibile: ripetere l’analisi.';}
+    const body=dossierBody();
+    const result=await request('/api/dossier',{method:'POST',headers:{'Content-Type':'application/json'},body});
+    if(!result.ok||typeof result.html!=='string'||!result.html||body!==dossierBody())throw Error('blocked');
+    const url=URL.createObjectURL(new Blob([result.html],{type:'text/html;charset=utf-8'}));
+    preparedDossier={body,url};
+    const link=byId('save-prepared-dossier');link.href=url;link.hidden=false;
+    status.textContent='Dossier pronto: premi Scarica dossier preparato.';
+  }catch{discardPreparedDossier();status.textContent='Dossier non disponibile: ripetere l’analisi.';}
   finally{lock(false);}
 });
 const visuraText=byId('visura-text'),visuraClaim=byId('visura-claim'),visuraResult=byId('visura-result');
