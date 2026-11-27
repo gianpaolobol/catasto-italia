@@ -338,6 +338,16 @@ test('CAD contour export supports disjoint contours and rejects missing or stale
   delete g.calibration;
   const out=exportCadContour({session:s,unitId:g.unitId});
   assert.equal(out.ok,true);assert.equal(out.areaMm2,'10000000');
+  // [Codex] Exact neutral exchange fixture used by Pianta Libera PR #111.
+  const fixture=[
+    '0','SECTION','2','ENTITIES',
+    '0','LWPOLYLINE','100','AcDbEntity','8','SYNTH_CONTOUR_MM','100','AcDbPolyline','90','4','70','1',
+    '10','0','20','0','10','4000','20','0','10','4000','20','2000','10','0','20','2000',
+    '0','LWPOLYLINE','100','AcDbEntity','8','SYNTH_CONTOUR_MM','100','AcDbPolyline','90','4','70','1',
+    '10','5000','20','0','10','7000','20','0','10','7000','20','1000','10','5000','20','1000',
+    '0','ENDSEC','0','EOF',''
+  ].join('\n');
+  assert.equal(out.dxf,fixture);
   assert.deepEqual(readExportedContour(out.dxf,'mm').vertices,g.vertices);
   assert.equal(exportCadContour({session:s,unitId:'other'}).ok,false);
   assert.equal(exportCadContour({session:s,unitId:'missing'}).ok,false);
