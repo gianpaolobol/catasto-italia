@@ -462,6 +462,11 @@ def run():
                                 extracted = Path(tmp) / "extracted-session.json"
                                 extracted.write_bytes(z.read("sessione-sintetica.json"))
                                 packed_html = z.read("dossier-sintetico.html")
+                            if scenario == "fusion":
+                                page.locator("#income-unit").select_option(index=1)
+                                page.locator("#income-consistency").fill("999")
+                                expect(page.locator("#guided-review-status")).to_contain_text("Sessione modificata")
+                                expect(page.locator("#guided-review-save")).to_be_disabled()
                             page.locator("#import-session").set_input_files(archive)
                             expect(page.locator("#status")).to_contain_text("Archivio sintetico verificato e ripristinato")
                             expect(page.locator("#guided-review-fields")).to_be_hidden()
