@@ -367,3 +367,7 @@ ID19/22: fonte primaria G.U. 04/04/2005 SO 58 p. 38 Sub Allegato 4 verificata an
 
 ## Iterazione 090 — [Codex] — modalità C — 2026-11-27
 PR #78 integrata squash 3102ed113283bce849b9cc02b359fc6ae95693a3; quattro job success su checkout b0a918b73203807de16a29272139623d49d7fd5b (46036905240 linee guida, 46036905247 Windows 315/315, 46036905227 core 1364 pass e Chromium 1280/360). ID10/19/22: collegato inventario ricalcolato della sessione alla lettura storica ante/post in CLI; confronto chiavi, mancanti/inattesi e modifiche su conservate, convenzione sintetica esplicita. Test predisposti, nuova CI obbligatoria. Revisione sequenziale, registro centrale 404, backup intatti, nessuna nuova regola ufficiale. Gate professionale aperto. Dettagli docs/qa/ITERATION_090.md.
+
+
+## Iterazione 091 — [Codex] — modalità C — 2026-11-27
+PR #79 integrata squash 32c8b12df3540bb8fa775fb6550dd24d637a938d dopo CI 46043975656, 46043975671 Windows 329/329, 46043975704 core 1374 pass e Chromium 1280/360. Quattro log checkout 4ed3e7002a6fc321e1c375d6117f36951f8f1937 con head e10cdc15e9725f08442b6b49714fedc3a53564a3 e base 3102ed113283bce849b9cc02b359fc6ae95693a3; ahead 8/behind 0. ID10/19/22/28: UI e API locale per confronto registri sintetici con sessione ricalcolata, diagnostica leggibile ed export separato; limiti e invalidazione. Test HTTP e Chromium predisposti; nuova CI obbligatoria. Revisione sequenziale, nessun nuovo criterio normativo. Dettagli docs/qa/ITERATION_091.md. Gate #77 aperto.
