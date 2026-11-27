@@ -318,3 +318,40 @@ test('reference recipient CLI reads stdin and emits only diagnostic preview',()=
   const bad=recipientSpawn(process.execPath,[path,'ape-italia'],{input,encoding:'utf8',timeout:10000});
   assert.equal(bad.status,1);assert.equal(bad.stdout,'');
 });
+
+// [Codex] Diagnostic DXF bridge; round trip through the restricted Catasto reader.
+import {exportCadContour} from '../packages/workbench/cad-contour-export.mjs';
+import {readSyntheticDxf as readExportedContour} from '../packages/workbench/synthetic-dxf.mjs';
+test('CAD contour export round trips measured result geometry without metadata',()=>{
+  const s=session(),before=JSON.stringify(s),g=replayPracticeSession(s).geometry[0];
+  const out=exportCadContour({session:s,unitId:g.unitId});
+  assert.equal(out.ok,true);assert.equal(out.areaMm2,g.areaMm2);assert.equal(out.perimeterMm,g.perimeterMm);
+  assert.equal(out.official,false);assert.equal(out.placementIncluded,false);
+  assert.equal(out.coordinateUnit,'mm');assert.ok(!out.dxf.includes(s.request.expectedDigest));
+  const parsed=readExportedContour(out.dxf,'mm');
+  assert.equal(parsed.ok,true);assert.deepEqual(parsed.vertices,g.vertices);
+  assert.equal(JSON.stringify(s),before);
+});
+test('CAD contour export supports disjoint contours and rejects missing or stale data',()=>{
+  const s=session(),g=s.request.geometry[0];
+  g.vertices=[[[0,0],[4000,0],[4000,2000],[0,2000]],[[5000,0],[7000,0],[7000,1000],[5000,1000]]];
+  delete g.calibration;
+  const out=exportCadContour({session:s,unitId:g.unitId});
+  assert.equal(out.ok,true);assert.equal(out.areaMm2,'10000000');
+  assert.deepEqual(readExportedContour(out.dxf,'mm').vertices,g.vertices);
+  assert.equal(exportCadContour({session:s,unitId:'other'}).ok,false);
+  assert.equal(exportCadContour({session:s,unitId:'missing'}).ok,false);
+  assert.equal(exportCadContour({session:s,unitId:g.unitId,official:true}).ok,false);
+  s.request.expectedDigest='0'.repeat(64);
+  assert.equal(exportCadContour({session:s,unitId:g.unitId}).ok,false);
+});
+test('CAD contour endpoint is local-only and requires a measured result',async t=>{
+  const server=createWorkbenchServer();server.listen(0,'127.0.0.1');await once(server,'listening');
+  t.after(()=>new Promise(resolve=>{server.close(resolve);server.closeAllConnections();}));
+  const base='http://127.0.0.1:'+server.address().port,s=session();
+  const post=(unitId,origin=base)=>fetch(base+'/api/cad-contour',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({session:s,unitId})});
+  const good=await post(s.request.geometry[0].unitId);assert.equal(good.status,200);
+  assert.equal((await good.json()).official,false);
+  assert.equal((await post('other')).status,400);
+  assert.equal((await post(s.request.geometry[0].unitId,'https://example.invalid')).status,403);
+});

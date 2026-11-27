@@ -9,6 +9,21 @@ import {draftFromReviewedVisura,reviewedVisuraExample} from '/reviewed-visura.mj
 const byId=id=>document.getElementById(id);
 const field=byId('case'),status=byId('status'),download=byId('download'),load=byId('load'),analyze=byId('analyze'),guide=byId('guide');
 let report=null,busy=false,draft=null,geometryReport=null,incomeReport=null,appliedScale=null;
+// [Codex] Keep only one prepared archive in memory, bound to exact declarations.
+let preparedArchive=null;
+function discardPreparedArchive(){
+  const link=byId('save-prepared-archive');
+  link.hidden=true;link.removeAttribute('href');
+  if(preparedArchive)URL.revokeObjectURL(preparedArchive.url);
+  preparedArchive=null;
+}
+function archiveDeclarationBody(){
+  const session={version:'0.1.0',kind:'synthetic-practice-session',request:currentDeclarations()};
+  guideFields(session.request.draft);
+  const body=JSON.stringify(session);
+  if(new TextEncoder().encode(body).length>256*1024)throw Error('too_large');
+  return body;
+}
 const invalid=new Set();
 const geometries=new Map(),incomes=new Map();
 const incomeFields=['category','class','zone','consistency','tariff'];
@@ -16,12 +31,13 @@ let tariffSource='synthetic-tariff';
 function setTariffSource(source='synthetic-tariff'){tariffSource=source;byId('income-source').textContent=source==='synthetic-catalog-v1'?'Catalogo di prova v1 (non ufficiale)':'Tariffa inventata dichiarata manualmente';}
 const el=(tag,text)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;return e;};
 function clear(){
+  discardPreparedArchive();
   byId('visura-result').textContent='Nessun confronto corrente.';
   report=null;byId('manual-docfa-download').disabled=true;byId('manual-docfa-worksheet').disabled=true;byId('manual-docfa-register-template').disabled=true;byId('manual-docfa-register-file').disabled=true;byId('manual-docfa-status').textContent='Nessuna verifica ufficiale effettuata.';byId('handoff-status').textContent='Analizza un caso sintetico.';resetGeometry();resetIncome();download.disabled=true;byId('save-session').disabled=true;byId('download-archive').disabled=true;byId('download-dossier').disabled=true;byId('summary').textContent='Nessun rapporto corrente.';
   byId('relation').textContent='—';byId('details').textContent='—';byId('operations').replaceChildren();byId('inventory').replaceChildren();
 }
 function refresh(){refreshGeometry();refreshIncome();byId('save-session').disabled=busy||invalid.size>0||report?.state!=='research_candidate';byId('download-archive').disabled=byId('save-session').disabled;byId('manual-docfa-download').disabled=byId('save-session').disabled;byId('manual-docfa-worksheet').disabled=byId('save-session').disabled;byId('manual-docfa-register-template').disabled=byId('save-session').disabled;byId('manual-docfa-register-file').disabled=byId('save-session').disabled;const handoffEnabled=!busy&&!invalid.size&&report?.state==='research_candidate';byId('handoff-target').disabled=!handoffEnabled;byId('handoff-download').disabled=!handoffEnabled;byId('geometry-handoff-download').disabled=!handoffEnabled;byId('download-dossier').disabled=busy||!report||report.diagnosticReportExportable!==true;for(const id of ['visura-check','visura-example','visura-claim','visura-file','visura-text'])byId(id).disabled=busy||invalid.size>0;analyze.disabled=busy||invalid.size>0;byId('save-draft').disabled=busy||invalid.size>0;for(const e of guide.querySelectorAll('input,select'))e.disabled=busy;}
-function lock(value){busy=value;byId('import-session').disabled=value;byId('import-draft').disabled=value;byId('reviewed-import').disabled=value;byId('reviewed-example').disabled=value;byId('reviewed-template').disabled=value;load.disabled=value;field.readOnly=value;byId('scenario').disabled=value;byId('open-guide').disabled=value;refresh();}
+function lock(value){if(value)discardPreparedArchive();busy=value;byId('import-session').disabled=value;byId('import-draft').disabled=value;byId('reviewed-import').disabled=value;byId('reviewed-example').disabled=value;byId('reviewed-template').disabled=value;load.disabled=value;field.readOnly=value;byId('scenario').disabled=value;byId('open-guide').disabled=value;refresh();}
 function resetGuide(){draft=null;invalid.clear();guide.replaceChildren();const option=el('option','Carica un caso nell’editor guidato');option.value='';byId('visura-claim').replaceChildren(option);byId('visura-text').value='';clearVisura();refresh();}
 function showGuide(input){
   resetGuide();
@@ -239,6 +255,7 @@ byId('visura-example').addEventListener('click',()=>runVisura(true));
 byId('visura-check').addEventListener('click',()=>runVisura(false));
 
 function clearGeometryAnnex(){
+  discardPreparedArchive();
   geometries.delete(byId('geometry-unit').value);geometryReport=null;byId('geometry-result').textContent='Nessuna misura corrente.';byId('geometry-download').disabled=true;
 }
 function resetScale(){
@@ -318,6 +335,7 @@ function refreshGeometry(){
   byId('geometry-unit').disabled=!enabled;
   for(const id of ['geometry-example','geometry-multi-example','geometry-vertices','geometry-measure','scale-vertices','scale-drawing','scale-mm','scale-example','scale-convert',...placementIds])byId(id).disabled=!enabled||!byId('geometry-unit').value;
   byId('geometry-download').disabled=!enabled||!geometryReport;
+  byId('cad-contour-download').disabled=!enabled||!geometryReport||!['C','V'].includes(geometryReport.operation);
   byId('geometry-batch-template').disabled=!enabled;
   byId('geometry-batch-file').disabled=!enabled;
   const dxfEnabled=enabled&&!!byId('geometry-unit').value&&!geometries.has(byId('geometry-unit').value);
@@ -418,6 +436,22 @@ byId('geometry-download').addEventListener('click',()=>{
   catch{status.textContent='Download non riuscito.';}
 });
 
+// [Codex] Replayed local DXF; no identifiers or inferred placement in the drawing.
+byId('cad-contour-download').addEventListener('click',async()=>{
+  if(busy||invalid.size||!geometryReport||!['C','V'].includes(geometryReport.operation))return;
+  const unitId=geometryReport.unitId,digest=report?.caseDigest;
+  lock(true);
+  try{
+    const session={version:'0.1.0',kind:'synthetic-practice-session',request:currentDeclarations()};
+    const body=JSON.stringify({session,unitId});
+    if(new TextEncoder().encode(body).length>256*1024)throw Error('too_large');
+    const result=await request('/api/cad-contour',{method:'POST',headers:{'Content-Type':'application/json'},body});
+    if(!result.ok||result.caseDigest!==digest||result.unitId!==unitId||result.official!==false||result.coordinateUnit!=='mm'||typeof result.dxf!=='string')throw Error('blocked');
+    saveFile(result.dxf,'application/dxf','catasto-contorno-locale-mm-non-ufficiale.dxf');
+    status.textContent='Download DXF richiesto: contorno locale in mm, nessuna posizione o scala verificata.';
+  }catch{status.textContent='DXF non disponibile: verifica la misura corrente.';}
+  finally{lock(false);}
+});
 byId('handoff-target').addEventListener('change',()=>{byId('handoff-status').textContent='Destinatario selezionato.';});
 byId('handoff-download').addEventListener('click',async()=>{
   if(busy||invalid.size||report?.state!=='research_candidate')return;
@@ -434,7 +468,7 @@ byId('handoff-download').addEventListener('click',async()=>{
   finally{lock(false);}
 });
 
-function clearIncome(){incomes.delete(byId('income-unit').value);incomeReport=null;byId('income-result').textContent='Nessun calcolo corrente.';}
+function clearIncome(){discardPreparedArchive();incomes.delete(byId('income-unit').value);incomeReport=null;byId('income-result').textContent='Nessun calcolo corrente.';}
 function resetIncome(){
   incomes.clear();setTariffSource();
   const option=el('option','Analizza il caso');option.value='';
@@ -633,21 +667,32 @@ byId('manual-docfa-register-template').addEventListener('click',()=>reviewRegist
 byId('manual-docfa-register-file').addEventListener('change',event=>{
   const file=event.target.files?.[0];event.target.value='';if(file)reviewRegister(file);
 });
+// [Codex] A persistent native download link avoids a second programmatic click.
+// Keep the blob available for retries until a declaration changes or preparation restarts.
+byId('save-prepared-archive').addEventListener('click',event=>{
+  try{
+    if(busy||invalid.size||report?.state!=='research_candidate'||!preparedArchive||
+       preparedArchive.body!==archiveDeclarationBody()||event.currentTarget.href!==preparedArchive.url)throw Error('stale');
+    status.textContent='Archivio richiesto: dossier, sessione, rapporto, interscambi e manifest. Riapribile dal selettore sessione/ZIP.';
+  }catch{event.preventDefault();discardPreparedArchive();status.textContent='Archivio non disponibile: ripeti la preparazione.';}
+});
 byId('download-archive').addEventListener('click',async()=>{
   if(busy||invalid.size||report?.state!=='research_candidate')return;
+  let body;
+  try{body=archiveDeclarationBody();}
+  catch{discardPreparedArchive();status.textContent='Archivio non disponibile: controlla il caso e gli annessi.';return;}
   lock(true);
+  status.textContent='Preparazione archivio diagnostico in corso…';
   try{
-    const session={version:'0.1.0',kind:'synthetic-practice-session',request:currentDeclarations()};
-    guideFields(session.request.draft);
-    const body=JSON.stringify(session);
-    if(new TextEncoder().encode(body).length>256*1024)throw Error('too_large');
     const response=await fetch('/api/archive',{method:'POST',headers:{'Content-Type':'application/json'},body});
     if(!response.ok||!response.headers.get('content-type')?.startsWith('application/zip'))throw Error('blocked');
     const bytes=await response.arrayBuffer();
-    if(bytes.byteLength>8*1024*1024)throw Error('too_large');
-    saveFile(bytes,'application/zip','catasto-pratica-sintetica-non-ufficiale.zip');
-    status.textContent='Archivio richiesto: dossier, sessione, rapporto, interscambi e manifest. Riapribile dal selettore sessione/ZIP.';
-  }catch{status.textContent='Archivio non disponibile: controlla il caso e gli annessi.';}
+    if(bytes.byteLength===0||bytes.byteLength>8*1024*1024||body!==archiveDeclarationBody())throw Error('invalid_archive');
+    const url=URL.createObjectURL(new Blob([bytes],{type:'application/zip'}));
+    preparedArchive={body,url};
+    const link=byId('save-prepared-archive');link.href=url;link.hidden=false;
+    status.textContent='Archivio pronto: premi Scarica ZIP preparato per salvarlo.';
+  }catch{discardPreparedArchive();status.textContent='Archivio non disponibile: controlla il caso e gli annessi.';}
   finally{lock(false);}
 });
 byId('save-session').addEventListener('click',async()=>{

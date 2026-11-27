@@ -41,7 +41,8 @@ def run():
                     for width in (1280, 360):
                         context = browser.new_context(viewport={"width": width, "height": 900}, accept_downloads=True)
                         page = context.new_page()
-                        errors, external = [], []
+                        errors, external, console_messages = [], [], []
+                        page.on("console", lambda msg: console_messages.append(f"{msg.type}: {msg.text}"))
                         page.on("pageerror", lambda error: errors.append(str(error)))
                         def route(request_route):
                             if request_route.request.url.startswith(base + "/"):
@@ -159,6 +160,12 @@ def run():
                             expect(page.locator('#geometry-result')).to_contain_text('8.000000 m²')
                             expect(page.locator('#geometry-preview polygon')).to_have_count(1)
                             expect(page.locator('#geometry-preview')).to_contain_text('4000 × 3000 mm')
+                            with page.expect_download() as cad_event:
+                                page.locator('#cad-contour-download').click()
+                            cad_file = Path(tmp) / 'cad-local-mm.dxf'
+                            cad_event.value.save_as(cad_file)
+                            cad_text = cad_file.read_text(encoding='ascii')
+                            check('LWPOLYLINE' in cad_text and 'SYNTH_CONTOUR_MM' in cad_text and report['caseDigest'] not in cad_text, 'CAD contour missing or metadata leaked')
                             with page.expect_download() as event:
                                 page.locator('#geometry-download').click()
                             annex = Path(tmp) / 'geometry.json'
@@ -173,6 +180,7 @@ def run():
                             page.locator('#geometry-vertices').fill('[]')
                             expect(page.locator('#geometry-preview polygon')).to_have_count(0)
                             expect(page.locator('#geometry-download')).to_be_disabled()
+                            expect(page.locator('#cad-contour-download')).to_be_disabled()
                             # Separate annexes: editing geometry does not change the case or the income declaration.
                             expect(page.locator('#income-download')).to_be_enabled()
                             expect(page.locator('#income-unit')).to_be_enabled()
@@ -365,10 +373,34 @@ def run():
                             template_file.write_text(json.dumps(register), encoding="utf-8")
                             page.locator("#manual-docfa-register-file").set_input_files(str(template_file))
                             expect(page.locator("#manual-docfa-status")).to_contain_text("Pratica invariata")
-                            with page.expect_download() as event:
-                                page.locator("#download-archive").click()
+                            # [Codex] Keep the real download gate; distinguish API failure from
+                            # browser download failure and wait explicitly for the preceding import.
+                            expect(page.locator("#manual-docfa-register-file")).to_be_enabled()
+                            expect(page.locator("#download-archive")).to_be_enabled()
+                            archive_http = None
+                            try:
+                                with page.expect_response(lambda response: response.url == base + "/api/archive" and response.request.method == "POST") as archive_response:
+                                    page.locator("#download-archive").click()
+                                archive_http = archive_response.value.status
+                                check(archive_http == 200, f"archive API returned {archive_http}")
+                                check(archive_response.value.headers.get("content-type", "").startswith("application/zip"), "archive response not ZIP")
+                                expect(page.locator("#status")).to_contain_text("Archivio pronto")
+                                expect(page.locator("#save-prepared-archive")).to_be_visible()
+                                expect(page.locator("#save-prepared-archive")).to_have_attribute("download", "catasto-pratica-sintetica-non-ufficiale.zip")
+                                with page.expect_download() as event:
+                                    page.locator("#save-prepared-archive").click()
+                                expect(page.locator("#status")).to_contain_text("Archivio richiesto")
+                                expect(page.locator("#save-prepared-archive")).to_be_visible()
+                            except Exception as exc:
+                                raise RuntimeError(f"archive download failed: scenario={scenario}, viewport={width}, HTTP={archive_http}, status={page.locator('#status').text_content()}, review={page.locator('#manual-docfa-status').text_content()}, pageErrors={errors}, console={console_messages[-12:]}") from exc
                             archive = Path(tmp) / "diagnostic.zip"
                             event.value.save_as(archive)
+                            # Real native retry must deliver identical bytes without another POST.
+                            with page.expect_download() as retry_event:
+                                page.locator("#save-prepared-archive").click()
+                            retry_path = Path(tmp) / "retry.zip"
+                            retry_event.value.save_as(retry_path)
+                            check(retry_path.read_bytes() == archive.read_bytes(), "ZIP retry differs")
                             with zipfile.ZipFile(archive) as z:
                                 check(z.testzip() is None and len(z.namelist()) == 8, "invalid diagnostic ZIP")
                                 manifest = json.loads(z.read("manifest.json"))
@@ -404,10 +436,15 @@ def run():
                                 page.locator("#save-draft").click()
                             draft = Path(tmp) / "draft.json"
                             event.value.save_as(draft)
+                            # Prepared bytes cannot survive a case replacement.
+                            page.locator("#download-archive").click()
+                            expect(page.locator("#save-prepared-archive")).to_be_visible()
                             page.locator("#import-draft").set_input_files(draft)
                             expect(page.locator("#status")).to_contain_text("Bozza sintetica importata")
                             expect(page.locator("#download-dossier")).to_be_disabled()
                             expect(page.locator("#download-archive")).to_be_disabled()
+                            expect(page.locator("#save-prepared-archive")).to_be_hidden()
+                            check(page.locator("#save-prepared-archive").get_attribute("href") is None, "stale ZIP link retained")
                             expect(page.locator("#manual-docfa-download")).to_be_disabled()
                             expect(page.locator("#manual-docfa-worksheet")).to_be_disabled()
                             expect(page.locator("#handoff-download")).to_be_disabled()
