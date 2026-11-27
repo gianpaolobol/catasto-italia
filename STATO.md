@@ -63,3 +63,5 @@ Segue la versione **1.1.0** (`LINEE_GUIDA.md`).
 - 2026-11-26 [Codex] PR #68 integrata dopo quattro job CI positivi; aggiunto export DXF diagnostico per CAD/Pianta Libera, CI da verificare. CI generale APE #101 positiva; nessun import nella pratica energetica validato. Gate professionale aperto.
 
 - 2026-11-27 [Codex] PR #69 non integrata: CI browser fallita al download ZIP, core/Windows (308/308) e linee guida positivi. Aggiunta diagnostica HTTP/browser senza rimuovere il gate. APE #101 integrata in main dopo sei job positivi; ricezione locale CLI, non import in pratica. V1.0 professionale aperta.
+
+- 2026-11-27 [Codex] PR #69: ZIP HTTP 200 ma download browser non rilevato; preparazione separata dal click di salvataggio, invalidazione buffer e collaudo reale preservato. Nuova CI necessaria. Gate professionale aperto.
