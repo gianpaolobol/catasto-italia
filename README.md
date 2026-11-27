@@ -71,3 +71,6 @@ Nel pannello di verifica manuale apri **Compila i riscontri guidati in questa pa
 
 ### Riprendi una verifica manuale salvata [Codex]
 Riapri la sessione o lo ZIP diagnostico originale, poi scegli **Riapri registro non ufficiale già salvato** nel pannello guidato. Il server ricalcola il registro dalle dichiarazioni; tutti i campi derivati devono coincidere con il file. Il modello precedente viene sostituito solo dopo esito positivo. Puoi correggere i riscontri e scaricare un nuovo registro separato. Non è autenticazione, firma o verifica DOCFA; conservare localmente i file. CI browser nuova da verificare.
+
+### Kit di confronto offline DOCFA [Codex]
+Eseguire `node scripts/generate-docfa-comparison-kit.mjs <nuova-cartella-locale>` con Node 22+, scegliendo una cartella nuova **fuori dal repository**. Genera sei sessioni sintetiche complete, ZIP, schede stampabili, modelli dei riscontri vuoti e manifest SHA-256. Aprire `LEGGIMI.txt`; il confronto richiede DOCFA ufficiale locale e dati di prova ammessi, da costruire manualmente e documentare. Il kit non è importabile in DOCFA e non esegue prove ufficiali, firma o invio. Nessuna sovrascrittura; se manca il manifest l'output è incompleto. Nuova CI da verificare.

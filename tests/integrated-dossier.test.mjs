@@ -365,3 +365,42 @@ test('CAD contour endpoint is local-only and requires a measured result',async t
   assert.equal((await post('other')).status,400);
   assert.equal((await post(s.request.geometry[0].unitId,'https://example.invalid')).status,403);
 });
+
+// [Codex] Offline comparison kit: six fixed scenarios and reproducible initial files.
+import {buildOfflineComparisonKit,writeOfflineComparisonKit} from '../scripts/generate-docfa-comparison-kit.mjs';
+import {mkdtemp as kitMkdtemp,readFile as kitRead,rm as kitRm} from 'node:fs/promises';
+import {tmpdir as kitTmpdir} from 'node:os';
+import {join as kitJoin} from 'node:path';
+import {createHash as kitHash} from 'node:crypto';
+test('offline kit contains six replayable cases, all reviews blank and hash-bound',()=>{
+ const entries=buildOfflineComparisonKit(),manifest=JSON.parse(entries.get('manifest.json'));
+ assert.equal(entries.size,26);
+ assert.equal(manifest.cases.length,6);assert.equal(manifest.files.length,25);
+ assert.equal(new Set(manifest.cases.map(c=>c.caseDigest)).size,6);
+ for(const flag of ['officialValidation','officialExport','signature','submission'])assert.equal(manifest[flag],false);
+ for(const f of manifest.files){const b=entries.get(f.name);assert.equal(b.length,f.bytes);assert.equal(kitHash('sha256').update(b).digest('hex'),f.sha256);}
+ for(const c of manifest.cases){
+   const get=name=>entries.get(c.scenario+'/'+name);
+   const s=JSON.parse(get('sessione.json')),t=JSON.parse(get('riscontri-modello.json'));
+   assert.equal(replayPracticeSession(s).ok,true);
+   assert.equal(s.request.expectedDigest,c.caseDigest);
+   assert.deepEqual(manualReviewRegister(s).template,t);
+   assert.equal(t.snapshotDigest,c.snapshotDigest);assert.equal(c.checksPending,6);
+   assert.ok(t.observations.every(o=>o.state==='unrecorded'));
+   assert.ok(Object.values(t.environment).every(v=>v===''));
+   assert.equal(get('pratica-non-ufficiale.zip').readUInt32LE(0),0x04034b50);
+   assert.match(get('scheda-confronto.html').toString(),/NON UFFICIALE/);
+ }
+ assert.deepEqual(buildOfflineComparisonKit(),entries);
+});
+test('offline kit only creates a new directory, never overwrites an existing kit',async()=>{
+ const temp=await kitMkdtemp(kitJoin(kitTmpdir(),'catasto-kit-'));
+ try{
+   const dest=kitJoin(temp,'new-kit');
+   await writeOfflineComparisonKit(dest);
+   const before=await kitRead(kitJoin(dest,'manifest.json'));
+   await assert.rejects(writeOfflineComparisonKit(dest),{code:'EEXIST'});
+   assert.deepEqual(await kitRead(kitJoin(dest,'manifest.json')),before);
+   assert.deepEqual(before,buildOfflineComparisonKit().get('manifest.json'));
+ }finally{await kitRm(temp,{recursive:true,force:true});}
+});

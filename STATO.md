@@ -75,3 +75,5 @@ Segue la versione **1.1.0** (`LINEE_GUIDA.md`).
 - 2026-11-27 [Codex] PR #71 integrata dopo quattro job positivi; compilazione guidata dei riscontri DOCFA predisposta, CI da verificare. Gate professionale aperto.
 
 - 2026-11-27 [Codex] PR #72 integrata con quattro job positivi, inclusa UI guidata Chromium; riapertura di registro e prosecuzione dei riscontri implementate, CI nuova necessaria. Gate professionale aperto.
+
+- 2026-11-27 [Codex] PR #73 integrata dopo quattro job positivi; generatore di kit offline per sei confronti sintetici predisposto, CI da verificare. Gate professionale aperto.
