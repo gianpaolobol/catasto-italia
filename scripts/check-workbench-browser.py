@@ -112,6 +112,32 @@ def run():
                                 n = sum(len(o["identifiers"]) for o in report["operations"] if o["operation"] != excluded)
                                 expect(page.locator(f'#inventory table[data-phase="{phase}"] tbody tr')).to_have_count(n)
                                 check(page.locator(f'#inventory table[data-phase="{phase}"] tbody').text_content().count("other") >= 1, "unchanged unit missing")
+                            # [Codex] Test real file selection, comparison, native download and invalidation.
+                            if scenario == "internal_distribution":
+                                historical = page.get_by_text("Confronta elenco subalterni storico ante/post", exact=True)
+                                historical.click()
+                                def historical_row(sub, description="SYNTH ROOM"):
+                                    return ("000Z999    0999009000000" + sub + " "*73 +
+                                            description.ljust(300) + "00000000000000001U" + " "*81)
+                                a = ("\r\n".join(historical_row(x) for x in ("0001", "0009"))+"\r\n").encode("ascii")
+                                b = ("\n".join(historical_row(x) for x in ("0001", "0008"))+"\n").encode("ascii")
+                                for selector, raw in (("#historical-before",a),("#historical-after",b)):
+                                    page.locator(selector).set_input_files({"name":"synthetic.dat","mimeType":"application/octet-stream","buffer":raw})
+                                page.locator("#historical-check").click()
+                                expect(page.locator("#historical-status")).to_contain_text("Difformità da riesaminare")
+                                expect(page.locator("#historical-result")).to_contain_text("mancanti 1, inattesi 1")
+                                with page.expect_download() as event:
+                                    page.locator("#historical-download").click()
+                                historical_file = Path(tmp)/"historical.json"
+                                event.value.save_as(historical_file)
+                                diagnostic = json.loads(historical_file.read_text(encoding="utf-8"))
+                                check(diagnostic["caseDigest"] == report["caseDigest"] and diagnostic["officialValidation"] is False, "historical diagnostic mismatch")
+                                check(diagnostic["afterSha256"] == hashlib.sha256(b).hexdigest(), "historical bytes mismatch")
+                                page.locator("#historical-after").set_input_files({"name":"synthetic.dat","mimeType":"application/octet-stream","buffer":a})
+                                expect(page.locator("#historical-download")).to_be_hidden()
+                                page.locator("#historical-check").click()
+                                expect(page.locator("#historical-status")).to_contain_text("Insiemi delle chiavi concordanti")
+                                historical.click()
                             if scenario == "enlargement":
                                 check(report["candidate"]["counts"] == {"S": 1, "C": 1, "V": 0}, "enlargement counts")
                                 check("Sagoma in mappa dichiarata invariata" in report["relation"], "missing map prerequisite")
@@ -480,11 +506,25 @@ def run():
                             archive = Path(tmp) / "diagnostic.zip"
                             event.value.save_as(archive)
                             # Real native retry must deliver identical bytes without another POST.
-                            with page.expect_download() as retry_event:
-                                page.locator("#save-prepared-archive").click()
-                            retry_path = Path(tmp) / "retry.zip"
-                            retry_event.value.save_as(retry_path)
-                            check(retry_path.read_bytes() == archive.read_bytes(), "ZIP retry differs")
+                            archive_link = page.locator("#save-prepared-archive")
+                            first_href = archive_link.get_attribute("href")
+                            retry_requests = []
+                            def capture_retry(req):
+                                if req.url == base + "/api/archive" and req.method == "POST":
+                                    retry_requests.append(req.url)
+                            page.on("request", capture_retry)
+                            try:
+                                with page.expect_download() as retry_event:
+                                    archive_link.click()
+                                retry_path = Path(tmp) / "retry.zip"
+                                retry_event.value.save_as(retry_path)
+                                check(retry_path.read_bytes() == archive.read_bytes(), "ZIP retry differs")
+                                check(archive_link.get_attribute("href") != first_href, "ZIP retry reused native URL")
+                                check(not retry_requests, "ZIP retry made another archive POST")
+                            except Exception as exc:
+                                raise RuntimeError(f"archive retry failed: scenario={scenario}, viewport={width}, status={page.locator('#status').text_content()}, freshURL={archive_link.get_attribute('href') != first_href}, POSTs={len(retry_requests)}, pageErrors={errors}, console={console_messages[-12:]}") from exc
+                            finally:
+                                page.remove_listener("request", capture_retry)
                             with zipfile.ZipFile(archive) as z:
                                 check(z.testzip() is None and len(z.namelist()) == 8, "invalid diagnostic ZIP")
                                 manifest = json.loads(z.read("manifest.json"))

@@ -15,6 +15,8 @@ import {exportCadContour} from '../../packages/workbench/cad-contour-export.mjs'
 import {buildManualDocfaWorklist,buildManualDocfaWorksheet} from '../../packages/workbench/manual-docfa-worklist.mjs';
 import {manualReviewRegister} from '../../packages/workbench/manual-review-register.mjs';
 import {importGeometryBatch} from '../../packages/workbench/geometry-batch.mjs';
+// [Codex] Restricted historical diagnostic, local only.
+import {reconcileHistoricalInventory} from '../../packages/workbench/historical-inventory-reconciliation.mjs';
 const page=readFileSync(new URL('./index.html',import.meta.url));
 const script=readFileSync(new URL('./client.js',import.meta.url));
 const guideScript=readFileSync(new URL('../../packages/workbench/guided-draft.mjs',import.meta.url));
@@ -60,7 +62,7 @@ export function createWorkbenchServer(){
         if(scenario)return json(res,200,syntheticCase(scenario));
         return reject(res,404,'not_found');
       }
-      if(req.method!=='POST'||!['/api/report','/api/visura-check','/api/visura-example','/api/handoff','/api/geometry-handoff','/api/cad-contour','/api/geometry-batch','/api/income','/api/tariff-lookup','/api/dossier','/api/session','/api/archive','/api/manual-docfa-worklist','/api/manual-docfa-worksheet','/api/manual-docfa-register-template','/api/manual-docfa-register-check'].includes(req.url))return reject(res,404,'not_found');
+      if(req.method!=='POST'||!['/api/report','/api/visura-check','/api/visura-example','/api/handoff','/api/geometry-handoff','/api/cad-contour','/api/geometry-batch','/api/income','/api/tariff-lookup','/api/dossier','/api/session','/api/archive','/api/manual-docfa-worklist','/api/manual-docfa-worksheet','/api/manual-docfa-register-template','/api/manual-docfa-register-check','/api/historical-inventory'].includes(req.url))return reject(res,404,'not_found');
       if(req.headers.origin!=='http://'+authority||req.headers['content-type']!=='application/json')
         return reject(res,403,'same_origin_json_required');
       if(req.headers['content-encoding']!==undefined)return reject(res,415,'encoding_not_supported');
@@ -80,6 +82,16 @@ export function createWorkbenchServer(){
       if(req.url==='/api/visura-example'){
         try{return json(res,200,syntheticVisuraExample(envelope.draft,envelope.claimId));}
         catch{return reject(res,400,'invalid_example');}
+      }
+      // [Codex] Deliberately retain the existing 256 KiB envelope limit.
+      if(req.url==='/api/historical-inventory'){
+        if(!envelope||typeof envelope!=='object'||Array.isArray(envelope)||
+          Object.keys(envelope).length!==3||!['session','before','after'].every(k=>Object.hasOwn(envelope,k)))
+          return reject(res,400,'invalid_historical_request');
+        const valid=s=>typeof s==='string'&&s.length>0&&s.length<=100*1024&&/^[\x20-\x7e\r\n]+$/.test(s);
+        if(!valid(envelope.before)||!valid(envelope.after))return reject(res,400,'invalid_historical_register');
+        const result=reconcileHistoricalInventory(envelope.session,Buffer.from(envelope.before,'ascii'),Buffer.from(envelope.after,'ascii'));
+        return json(res,result.ok?200:400,result);
       }
       if(req.url==='/api/manual-docfa-register-template'){
         const result=manualReviewRegister(envelope);return json(res,result.ok?200:400,result);
