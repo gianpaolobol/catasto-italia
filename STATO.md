@@ -73,3 +73,5 @@ Segue la versione **1.1.0** (`LINEE_GUIDA.md`).
 - 2026-11-27 [Codex] #70 e Pianta Libera #111 integrate con CI positiva; impronta locale delle fonti predisposta, nuova CI obbligatoria. Gate professionale aperto.
 
 - 2026-11-27 [Codex] PR #71 integrata dopo quattro job positivi; compilazione guidata dei riscontri DOCFA predisposta, CI da verificare. Gate professionale aperto.
+
+- 2026-11-27 [Codex] PR #72 integrata con quattro job positivi, inclusa UI guidata Chromium; riapertura di registro e prosecuzione dei riscontri implementate, CI nuova necessaria. Gate professionale aperto.

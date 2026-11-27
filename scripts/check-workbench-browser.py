@@ -422,6 +422,33 @@ def run():
                                 check(guided["snapshotDigest"] == record["snapshotDigest"] and guided["counts"]["difference_declared"] == 1 and guided["counts"]["unrecorded"] == 5, "guided review snapshot/count mismatch")
                                 check(all(guided[k] is False for k in ("officialValidation","officialExport","signature","submission")), "guided review falsely official")
                                 check(guided["environment"]["archiveSha256"] == hashlib.sha256(b"SYNTH-GUIDED").hexdigest(), "guided archive fingerprint mismatch")
+                                # [Codex] Resume a saved record only after complete canonical replay.
+                                page.locator("#guided-review-open").click()
+                                expect(page.locator("#guided-review-status")).to_contain_text("tutti i riscontri non registrati")
+                                forged = json.loads(json.dumps(guided))
+                                forged["officialValidation"] = True
+                                forged_path = Path(tmp) / "forged-guided.json"
+                                forged_path.write_text(json.dumps(forged), encoding="utf-8")
+                                page.locator("#guided-review-import").set_input_files(forged_path)
+                                expect(page.locator("#guided-review-status")).to_contain_text("Registro non riapribile")
+                                expect(page.locator("#guided-state-0")).to_have_value("unrecorded")
+                                page.locator("#guided-review-import").set_input_files(guided_path)
+                                expect(page.locator("#guided-review-status")).to_contain_text("Registro riaperto e ricalcolato")
+                                expect(page.locator("#guided-state-0")).to_have_value("difference_declared")
+                                expect(page.locator("#guided-note-0")).to_have_value("Synthetic discrepancy only")
+                                expect(page.locator("#guided-env-archiveSha256")).to_have_value(guided["environment"]["archiveSha256"])
+                                with page.expect_download() as resumed_event:
+                                    page.locator("#guided-review-save").click()
+                                resumed_path = Path(tmp) / "resumed-review.json"
+                                resumed_event.value.save_as(resumed_path)
+                                check(json.loads(resumed_path.read_text(encoding="utf-8")) == guided, "reopened record differs from original")
+                                page.locator("#guided-state-0").select_option("match_declared")
+                                with page.expect_download() as revised_event:
+                                    page.locator("#guided-review-save").click()
+                                revised_path = Path(tmp) / "revised-review.json"
+                                revised_event.value.save_as(revised_path)
+                                revised = json.loads(revised_path.read_text(encoding="utf-8"))
+                                check(revised["snapshotDigest"] == guided["snapshotDigest"] and revised["counts"]["match_declared"] == 1, "revised record mismatch")
                             # [Codex] Keep the real download gate; distinguish API failure from
                             # browser download failure and wait explicitly for the preceding import.
                             expect(page.locator("#manual-docfa-register-file")).to_be_enabled()
@@ -466,6 +493,9 @@ def run():
                                 page.locator("#income-unit").select_option(index=1)
                                 page.locator("#income-consistency").fill("999")
                                 expect(page.locator("#guided-review-status")).to_contain_text("Sessione modificata")
+                                expect(page.locator("#guided-review-save")).to_be_disabled()
+                                page.locator("#guided-review-import").set_input_files(guided_path)
+                                expect(page.locator("#guided-review-import")).to_be_enabled()
                                 expect(page.locator("#guided-review-save")).to_be_disabled()
                             page.locator("#import-session").set_input_files(archive)
                             expect(page.locator("#status")).to_contain_text("Archivio sintetico verificato e ripristinato")

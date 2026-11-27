@@ -679,6 +679,7 @@ function guidedReviewCurrent(){
 function refreshGuidedReview(){
   const eligible=!busy&&!invalid.size&&report?.state==='research_candidate';
   byId('guided-review-open').disabled=!eligible;
+  byId('guided-review-import').disabled=!eligible;
   const current=guidedReviewCurrent();
   byId('guided-review-fields').disabled=!eligible||!current;
   if(guidedReview&&!current){guidedReview.stale=true;byId('guided-review-status').textContent='Sessione modificata: modello non utilizzabile. Apri un nuovo modello.';}
@@ -718,6 +719,38 @@ byId('guided-review-open').addEventListener('click',async()=>{
     if(!result.ok||t?.caseDigest!==report.caseDigest||typeof t.snapshotDigest!=='string'||!Array.isArray(t.observations)||t.observations.length!==6||t.observations.some(o=>!Object.hasOwn(guidedCheckLabels,o.id)||o.state!=='unrecorded'))throw Error('blocked');
     renderGuidedReview(t,body);
   }catch{byId('guided-review-status').textContent='Modello non disponibile: controlla sessione e annessi.';}
+  finally{lock(false);}
+});
+// [Codex] Resume only a complete, reproducible diagnostic record. Do not trust derived fields.
+const reviewCanonical=x=>JSON.stringify(x,(_,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.keys(v).sort().map(k=>[k,v[k]])):v);
+byId('guided-review-import').addEventListener('change',async event=>{
+  const file=event.target.files?.[0];event.target.value='';
+  if(!file||busy||invalid.size||report?.state!=='research_candidate')return;
+  lock(true);
+  try{
+    if(file.size>128*1024)throw Error('too_large');
+    const candidate=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(await file.arrayBuffer()));
+    if(candidate?.kind!=='synthetic-manual-docfa-observation-record'||candidate.version!=='0.1.0')throw Error('invalid_record');
+    const body=archiveDeclarationBody();
+    const observations={version:'0.1.0',kind:'synthetic-manual-docfa-observations',caseDigest:candidate.caseDigest,snapshotDigest:candidate.snapshotDigest,environment:candidate.environment,observations:candidate.observations};
+    const payload=JSON.stringify({session:JSON.parse(body),observations});
+    if(new TextEncoder().encode(payload).length>256*1024)throw Error('too_large');
+    const result=await request('/api/manual-docfa-register-check',{method:'POST',headers:{'Content-Type':'application/json'},body:payload});
+    const record=result.record;
+    if(!result.ok||record?.caseDigest!==report.caseDigest||record.officialValidation!==false||record.officialExport!==false||record.signature!==false||record.submission!==false||
+       reviewCanonical(record)!==reviewCanonical(candidate)||body!==archiveDeclarationBody())throw Error('blocked');
+    // Only regenerated server values reach the form; the case and annexes are not mutated.
+    renderGuidedReview({...observations,environment:record.environment,observations:record.observations},body);
+    for(const [key,control] of Object.entries(guidedReview.envControls))control.value=record.environment[key];
+    for(const control of guidedReview.observationControls){
+      const observation=record.observations.find(o=>o.id===control.id);
+      control.state.value=observation.state;
+      control.state.dispatchEvent(new Event('change'));
+      control.evidence.value=observation.evidenceReference;
+      control.note.value=observation.note;
+    }
+    byId('guided-review-status').textContent='Registro riaperto e ricalcolato: puoi proseguire i riscontri dichiarati. Nessuna verifica ufficiale attestata.';
+  }catch{byId('guided-review-status').textContent='Registro non riapribile: formato, risultati o sessione non corrispondenti. Pratica e modello precedente invariati.';}
   finally{lock(false);}
 });
 byId('guided-review-copy-hash').addEventListener('click',()=>{
