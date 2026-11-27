@@ -506,11 +506,25 @@ def run():
                             archive = Path(tmp) / "diagnostic.zip"
                             event.value.save_as(archive)
                             # Real native retry must deliver identical bytes without another POST.
-                            with page.expect_download() as retry_event:
-                                page.locator("#save-prepared-archive").click()
-                            retry_path = Path(tmp) / "retry.zip"
-                            retry_event.value.save_as(retry_path)
-                            check(retry_path.read_bytes() == archive.read_bytes(), "ZIP retry differs")
+                            archive_link = page.locator("#save-prepared-archive")
+                            first_href = archive_link.get_attribute("href")
+                            retry_requests = []
+                            def capture_retry(req):
+                                if req.url == base + "/api/archive" and req.method == "POST":
+                                    retry_requests.append(req.url)
+                            page.on("request", capture_retry)
+                            try:
+                                with page.expect_download() as retry_event:
+                                    archive_link.click()
+                                retry_path = Path(tmp) / "retry.zip"
+                                retry_event.value.save_as(retry_path)
+                                check(retry_path.read_bytes() == archive.read_bytes(), "ZIP retry differs")
+                                check(archive_link.get_attribute("href") != first_href, "ZIP retry reused native URL")
+                                check(not retry_requests, "ZIP retry made another archive POST")
+                            except Exception as exc:
+                                raise RuntimeError(f"archive retry failed: scenario={scenario}, viewport={width}, status={page.locator('#status').text_content()}, freshURL={archive_link.get_attribute('href') != first_href}, POSTs={len(retry_requests)}, pageErrors={errors}, console={console_messages[-12:]}") from exc
+                            finally:
+                                page.remove_listener("request", capture_retry)
                             with zipfile.ZipFile(archive) as z:
                                 check(z.testzip() is None and len(z.namelist()) == 8, "invalid diagnostic ZIP")
                                 manifest = json.loads(z.read("manifest.json"))
