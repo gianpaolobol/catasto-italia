@@ -14,4 +14,4 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
-      - run: node --test tests/local-launcher.test.mjs tests/workbench.test.mjs tests/integrated-dossier.test.mjs tests/professional-workflow-matrix.test.mjs
+      - run: node --test tests/local-launcher.test.mjs tests/workbench.test.mjs tests/integrated-dossier.test.mjs tests/professional-workflow-matrix.test.mjs tests/historical-subaltern-register.test.mjs tests/historical-inventory-reconciliation.test.mjs
