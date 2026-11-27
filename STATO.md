@@ -83,3 +83,6 @@ Segue la versione **1.1.0** (`LINEE_GUIDA.md`).
 - 2026-11-27 [Codex] PR #74 integrata dopo quattro job positivi (incluso download bozza reale desktop/mobile); nuovo riepilogo locale dei 36 riscontri dichiarati del kit predisposto, CI obbligatoria. Validazione DOCFA professionale ancora aperta.
 
 - 2026-11-27 [Codex] PR #75 non integrata: core/Windows/linee guida positivi, timeout browser durante download dossier HTML dopo riapertura; preparazione e collegamento nativo predisposti, CI necessaria.
+
+
+- 2026-11-27 [Codex] PR #75 integrata dopo quattro job positivi, download dossier HTML effettivo desktop/mobile e riepilogo riscontri collaudato. Preflight kit canonico predisposto per verificare i 26 file prima del confronto DOCFA; nuova CI obbligatoria. Gate professionale aperto.
