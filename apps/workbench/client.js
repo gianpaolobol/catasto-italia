@@ -35,7 +35,7 @@ function discardPreparedArchive(){
   discardPreparedDossier();
   const link=byId('save-prepared-archive');
   link.hidden=true;link.removeAttribute('href');
-  if(preparedArchive)URL.revokeObjectURL(preparedArchive.url);
+  if(preparedArchive){URL.revokeObjectURL(preparedArchive.url);if(preparedArchive.previousUrl)URL.revokeObjectURL(preparedArchive.previousUrl);}
   preparedArchive=null;
 }
 function archiveDeclarationBody(){
@@ -857,11 +857,20 @@ byId('manual-docfa-register-file').addEventListener('change',event=>{
   const file=event.target.files?.[0];event.target.value='';if(file)reviewRegister(file);
 });
 // [Codex] A persistent native download link avoids a second programmatic click.
-// Keep the blob available for retries until a declaration changes or preparation restarts.
+// Keep one immutable blob; each retry gets a fresh native URL. Retain the immediately
+// preceding URL until the next retry or invalidation to avoid interrupting its download.
 byId('save-prepared-archive').addEventListener('click',event=>{
   try{
     if(busy||invalid.size||report?.state!=='research_candidate'||!preparedArchive||
        preparedArchive.body!==archiveDeclarationBody()||event.currentTarget.href!==preparedArchive.url)throw Error('stale');
+    if(preparedArchive.requested){
+      const next=URL.createObjectURL(preparedArchive.blob);
+      if(preparedArchive.previousUrl)URL.revokeObjectURL(preparedArchive.previousUrl);
+      preparedArchive.previousUrl=preparedArchive.url;
+      preparedArchive.url=next;
+      event.currentTarget.href=next;
+    }
+    preparedArchive.requested=true;
     status.textContent='Archivio richiesto: dossier, sessione, rapporto, interscambi e manifest. Riapribile dal selettore sessione/ZIP.';
   }catch{event.preventDefault();discardPreparedArchive();status.textContent='Archivio non disponibile: ripeti la preparazione.';}
 });
@@ -877,8 +886,9 @@ byId('download-archive').addEventListener('click',async()=>{
     if(!response.ok||!response.headers.get('content-type')?.startsWith('application/zip'))throw Error('blocked');
     const bytes=await response.arrayBuffer();
     if(bytes.byteLength===0||bytes.byteLength>8*1024*1024||body!==archiveDeclarationBody())throw Error('invalid_archive');
-    const url=URL.createObjectURL(new Blob([bytes],{type:'application/zip'}));
-    preparedArchive={body,url};
+    const blob=new Blob([bytes],{type:'application/zip'});
+    const url=URL.createObjectURL(blob);
+    preparedArchive={body,blob,url,previousUrl:null,requested:false};
     const link=byId('save-prepared-archive');link.href=url;link.hidden=false;
     status.textContent='Archivio pronto: premi Scarica ZIP preparato per salvarlo.';
   }catch{discardPreparedArchive();status.textContent='Archivio non disponibile: controlla il caso e gli annessi.';}
