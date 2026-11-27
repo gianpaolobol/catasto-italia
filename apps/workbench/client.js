@@ -342,6 +342,7 @@ function refreshGeometry(){
   byId('geometry-batch-file').disabled=!enabled;
   const dxfEnabled=enabled&&!!byId('geometry-unit').value&&!geometries.has(byId('geometry-unit').value);
   byId('dxf-unit').disabled=!dxfEnabled;byId('dxf-file').disabled=!dxfEnabled||!byId('dxf-unit').value;byId('dxf-example').disabled=busy;
+  if(guidedReview)refreshGuidedReview();
 }
 byId('geometry-unit').addEventListener('change',()=>{
   byId('dxf-status').textContent='Nessun DXF acquisito per questa selezione.';
@@ -492,6 +493,7 @@ function refreshIncome(){
   byId('income-unit').disabled=!enabled;
   for(const k of [...incomeFields,'example','calculate','lookup'])byId('income-'+k).disabled=!enabled||!byId('income-unit').value;
   byId('income-download').disabled=!enabled||!incomeReport;
+  if(guidedReview)refreshGuidedReview();
 }
 byId('income-unit').addEventListener('change',()=>{
   incomeReport=incomes.get(byId('income-unit').value)??null;
