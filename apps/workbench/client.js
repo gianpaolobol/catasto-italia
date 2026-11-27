@@ -28,7 +28,10 @@ function discardPreparedDraft(){
   preparedDraft=null;
 }
 let guidedReview=null;
+// [Codex] Only one current historical diagnostic, tied to exact session and selected files.
+let historicalPrepared=null;
 function discardPreparedArchive(){
+  discardHistorical();
   discardPreparedDossier();
   const link=byId('save-prepared-archive');
   link.hidden=true;link.removeAttribute('href');
@@ -52,11 +55,12 @@ function clear(){
   discardPreparedDraft();
   discardPreparedArchive();
   clearGuidedReview();
+  byId('historical-before').value='';byId('historical-after').value='';
   byId('visura-result').textContent='Nessun confronto corrente.';
   report=null;byId('manual-docfa-download').disabled=true;byId('manual-docfa-worksheet').disabled=true;byId('manual-docfa-register-template').disabled=true;byId('manual-docfa-register-file').disabled=true;byId('manual-docfa-status').textContent='Nessuna verifica ufficiale effettuata.';byId('handoff-status').textContent='Analizza un caso sintetico.';resetGeometry();resetIncome();download.disabled=true;byId('save-session').disabled=true;byId('download-archive').disabled=true;byId('download-dossier').disabled=true;byId('summary').textContent='Nessun rapporto corrente.';
   byId('relation').textContent='—';byId('details').textContent='—';byId('operations').replaceChildren();byId('inventory').replaceChildren();
 }
-function refresh(){if(preparedDraft&&(busy||invalid.size||preparedDraft.text!==field.value))discardPreparedDraft();refreshGeometry();refreshIncome();refreshGuidedReview();byId('save-session').disabled=busy||invalid.size>0||report?.state!=='research_candidate';byId('download-archive').disabled=byId('save-session').disabled;byId('manual-docfa-download').disabled=byId('save-session').disabled;byId('manual-docfa-worksheet').disabled=byId('save-session').disabled;byId('manual-docfa-register-template').disabled=byId('save-session').disabled;byId('manual-docfa-register-file').disabled=byId('save-session').disabled;const handoffEnabled=!busy&&!invalid.size&&report?.state==='research_candidate';byId('handoff-target').disabled=!handoffEnabled;byId('handoff-download').disabled=!handoffEnabled;byId('geometry-handoff-download').disabled=!handoffEnabled;byId('download-dossier').disabled=busy||!report||report.diagnosticReportExportable!==true;for(const id of ['visura-check','visura-example','visura-claim','visura-file','visura-text'])byId(id).disabled=busy||invalid.size>0;analyze.disabled=busy||invalid.size>0;byId('save-draft').disabled=busy||invalid.size>0;for(const e of guide.querySelectorAll('input,select'))e.disabled=busy;}
+function refresh(){if(preparedDraft&&(busy||invalid.size||preparedDraft.text!==field.value))discardPreparedDraft();refreshGeometry();refreshIncome();refreshGuidedReview();refreshHistorical();byId('save-session').disabled=busy||invalid.size>0||report?.state!=='research_candidate';byId('download-archive').disabled=byId('save-session').disabled;byId('manual-docfa-download').disabled=byId('save-session').disabled;byId('manual-docfa-worksheet').disabled=byId('save-session').disabled;byId('manual-docfa-register-template').disabled=byId('save-session').disabled;byId('manual-docfa-register-file').disabled=byId('save-session').disabled;const handoffEnabled=!busy&&!invalid.size&&report?.state==='research_candidate';byId('handoff-target').disabled=!handoffEnabled;byId('handoff-download').disabled=!handoffEnabled;byId('geometry-handoff-download').disabled=!handoffEnabled;byId('download-dossier').disabled=busy||!report||report.diagnosticReportExportable!==true;for(const id of ['visura-check','visura-example','visura-claim','visura-file','visura-text'])byId(id).disabled=busy||invalid.size>0;analyze.disabled=busy||invalid.size>0;byId('save-draft').disabled=busy||invalid.size>0;for(const e of guide.querySelectorAll('input,select'))e.disabled=busy;}
 function lock(value){if(value){discardPreparedDraft();discardPreparedArchive();}busy=value;byId('import-session').disabled=value;byId('import-draft').disabled=value;byId('reviewed-import').disabled=value;byId('reviewed-example').disabled=value;byId('reviewed-template').disabled=value;load.disabled=value;field.readOnly=value;byId('scenario').disabled=value;byId('open-guide').disabled=value;refresh();}
 function resetGuide(){draft=null;invalid.clear();guide.replaceChildren();const option=el('option','Carica un caso nell’editor guidato');option.value='';byId('visura-claim').replaceChildren(option);byId('visura-text').value='';clearVisura();refresh();}
 function showGuide(input){
@@ -925,4 +929,69 @@ byId('import-session').addEventListener('change',async event=>{
     status.textContent=archive?'Archivio sintetico verificato e ripristinato; tutti i byte coincidono con il ricalcolo. Nessuna autenticità o approvazione.':'Sessione sintetica ripristinata; caso e annessi ricalcolati. Nessuna approvazione.';
   }catch{status.textContent='Sessione non valida: nessun ripristino eseguito. Per ZIP, serve un archivio integro della versione corrente.';}
   finally{lock(false);}
+});
+
+
+// [Codex] Local same-origin historical comparison, no mutation or persistence of raw input.
+function discardHistorical(){
+  const link=byId('historical-download');
+  link.hidden=true;link.removeAttribute('href');
+  if(historicalPrepared)URL.revokeObjectURL(historicalPrepared.url);
+  historicalPrepared=null;
+  byId('historical-result').textContent='';
+  byId('historical-status').textContent='Nessun confronto corrente.';
+}
+function historicalEligible(){return !busy&&!invalid.size&&report?.state==='research_candidate';}
+function refreshHistorical(){
+  const eligible=historicalEligible(),a=byId('historical-before'),b=byId('historical-after');
+  a.disabled=!eligible;b.disabled=!eligible;
+  byId('historical-check').disabled=!eligible||!a.files?.length||!b.files?.length;
+}
+for(const id of ['historical-before','historical-after'])byId(id).addEventListener('change',()=>{
+  discardHistorical();refreshHistorical();
+});
+async function readHistoricalFile(file){
+  if(!file||!file.size||file.size>100*1024)throw Error('size');
+  const bytes=new Uint8Array(await file.arrayBuffer());
+  if(bytes.some(x=>x!==10&&x!==13&&(x<32||x>126)))throw Error('encoding');
+  return new TextDecoder('utf-8',{fatal:true}).decode(bytes);
+}
+byId('historical-check').addEventListener('click',async()=>{
+  if(!historicalEligible())return;
+  const a=byId('historical-before').files?.[0],b=byId('historical-after').files?.[0];
+  if(!a||!b)return;
+  lock(true);
+  try{
+    const body=archiveDeclarationBody();
+    const payload=JSON.stringify({session:JSON.parse(body),before:await readHistoricalFile(a),after:await readHistoricalFile(b)});
+    if(new TextEncoder().encode(payload).length>256*1024)throw Error('size');
+    const result=await request('/api/historical-inventory',{method:'POST',headers:{'Content-Type':'application/json'},body:payload});
+    if(!result.ok||result.caseDigest!==report?.caseDigest||body!==archiveDeclarationBody()||
+      a!==byId('historical-before').files?.[0]||b!==byId('historical-after').files?.[0]||
+      result.syntheticOnly!==true||result.officialCompatibility!==false||result.officialValidation!==false||result.caseMutation!==false)throw Error('blocked');
+    const lines=[];
+    for(const [phase,label] of [['before','ANTE'],['after','POST']]){
+      const p=result.phases[phase];
+      lines.push(label+': attesi '+p.expected+', letti '+p.actual+', mancanti '+p.missing.length+', inattesi '+p.unexpected.length);
+      for(const row of p.missing)lines.push('  Mancante: '+row.key+' ('+row.operation+')');
+      for(const key of p.unexpected)lines.push('  Inatteso: '+key);
+    }
+    for(const [rows,label] of [[result.retainedChanges,'Conservata modificata'],[result.variedRecords,'Variata (V)']])
+      for(const row of rows)lines.push(label+': '+row.key+' — '+row.changedFields.join(', '));
+    const url=URL.createObjectURL(new Blob([JSON.stringify(result,null,2)],{type:'application/json'}));
+    historicalPrepared={body,a,b,url};
+    const link=byId('historical-download');link.href=url;link.hidden=false;
+    byId('historical-result').textContent=lines.join('\n');
+    byId('historical-status').textContent=(result.requiresReview?'Difformità da riesaminare.':'Insiemi delle chiavi concordanti.')+' Nessuna verifica ufficiale.';
+  }catch{
+    discardHistorical();
+    byId('historical-status').textContent='Confronto non disponibile: controlla formato sintetico, dimensioni e sessione.';
+  }finally{lock(false);}
+});
+byId('historical-download').addEventListener('click',event=>{
+  try{
+    if(!historicalEligible()||!historicalPrepared||historicalPrepared.body!==archiveDeclarationBody()||
+      historicalPrepared.a!==byId('historical-before').files?.[0]||historicalPrepared.b!==byId('historical-after').files?.[0]||
+      historicalPrepared.url!==event.currentTarget.href)throw Error('stale');
+  }catch{event.preventDefault();discardHistorical();}
 });
