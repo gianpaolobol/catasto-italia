@@ -9,6 +9,7 @@ import hashlib
 import zipfile
 import os
 from pathlib import Path
+from contextlib import contextmanager
 import subprocess
 import tempfile
 from playwright.sync_api import sync_playwright, expect
@@ -22,6 +23,17 @@ def check(condition, message):
     if not condition:
         raise RuntimeError(message)
 
+# [Codex] Chromium LocalFrame::ShouldThrottleDownload limits bursts of 10 requests
+# in a 1-second window. This suite issues many downloads much faster than a user.
+# Keep all real downloads mandatory, but space explicit clicks by at least 200ms.
+# Do not retry failures or change browser security settings.
+# Source: https://chromium.googlesource.com/chromium/src/+/f8fd83238b79b18f7434c81f75896772c31174f7/third_party/blink/renderer/core/frame/local_frame.cc
+@contextmanager
+def paced_download(page):
+    page.wait_for_timeout(200)
+    with page.expect_download() as event:
+        yield event
+
 # [Codex] Keep actual native downloads mandatory; preparation is a separate UI action.
 def download_dossier(page, scenario, width, errors, console_messages):
     page.locator("#download-dossier").click()
@@ -30,7 +42,7 @@ def download_dossier(page, scenario, width, errors, console_messages):
     expect(link).to_be_visible()
     expect(link).to_have_attribute("download", "catasto-dossier-sintetico-non-ufficiale.html")
     try:
-        with page.expect_download() as event:
+        with paced_download(page) as event:
             link.click()
         return event
     except Exception as exc:
@@ -101,7 +113,7 @@ def run():
                             page.locator("#analyze").click()
                             expect(page.locator("#summary")).to_contain_text("Ipotesi di ricerca")
                             expect(page.locator("#operations tbody tr")).to_have_count(count)
-                            with page.expect_download() as event:
+                            with paced_download(page) as event:
                                 page.locator("#download").click()
                             path = Path(tmp) / "report.json"
                             event.value.save_as(path)
@@ -126,7 +138,7 @@ def run():
                                 page.locator("#historical-check").click()
                                 expect(page.locator("#historical-status")).to_contain_text("Difformità da riesaminare")
                                 expect(page.locator("#historical-result")).to_contain_text("mancanti 1, inattesi 1")
-                                with page.expect_download() as event:
+                                with paced_download(page) as event:
                                     page.locator("#historical-download").click()
                                 historical_file = Path(tmp)/"historical.json"
                                 event.value.save_as(historical_file)
@@ -146,7 +158,7 @@ def run():
                                 exchange.locator('summary').click()
                             for target in ('pianta-libera', 'mpe', 'ape-italia'):
                                 page.locator('#handoff-target').select_option(target)
-                                with page.expect_download() as event:
+                                with paced_download(page) as event:
                                     page.locator('#handoff-download').click()
                                 exchange_file = Path(tmp) / 'handoff.json'
                                 event.value.save_as(exchange_file)
@@ -164,7 +176,7 @@ def run():
                             expect(page.locator('#income-tariff')).to_have_value('123.4567')
                             page.locator('#income-calculate').click()
                             expect(page.locator('#income-result')).to_contain_text('555.5551500')
-                            with page.expect_download() as event:
+                            with paced_download(page) as event:
                                 page.locator('#income-download').click()
                             income_file = Path(tmp) / 'income.json'
                             event.value.save_as(income_file)
@@ -201,7 +213,7 @@ def run():
                             page.locator('#geometry-unit').select_option(index=1)
                             if not page.locator('#dxf-file').evaluate("(e) => e.closest('details').open"):
                                 page.get_by_text('Carica contorni da DXF ASCII sintetico', exact=True).click()
-                            with page.expect_download() as dxf_event:
+                            with paced_download(page) as dxf_event:
                                 page.locator('#dxf-example').click()
                             dxf = Path(tmp) / 'contorno-sintetico-mm.dxf'
                             dxf_event.value.save_as(dxf)
@@ -220,13 +232,13 @@ def run():
                             expect(page.locator('#geometry-result')).to_contain_text('8.000000 m²')
                             expect(page.locator('#geometry-preview polygon')).to_have_count(1)
                             expect(page.locator('#geometry-preview')).to_contain_text('4000 × 3000 mm')
-                            with page.expect_download() as cad_event:
+                            with paced_download(page) as cad_event:
                                 page.locator('#cad-contour-download').click()
                             cad_file = Path(tmp) / 'cad-local-mm.dxf'
                             cad_event.value.save_as(cad_file)
                             cad_text = cad_file.read_text(encoding='ascii')
                             check('LWPOLYLINE' in cad_text and 'SYNTH_CONTOUR_MM' in cad_text and report['caseDigest'] not in cad_text, 'CAD contour missing or metadata leaked')
-                            with page.expect_download() as event:
+                            with paced_download(page) as event:
                                 page.locator('#geometry-download').click()
                             annex = Path(tmp) / 'geometry.json'
                             event.value.save_as(annex)
@@ -313,7 +325,7 @@ def run():
                                 expect(page.locator('#floor-preview')).to_contain_text('6000 × 2000 mm')
                                 check('Conversione dichiarata, scala non verificata' in multi_html and 'Millimetri dichiarati manualmente' in multi_html and '<td>40</td><td>4000</td>' in multi_html, 'calibration provenance missing or overwritten')
                                 expect(page.locator('#scale-status')).to_contain_text('Conversione dichiarata ripristinata')
-                                with page.expect_download() as event:
+                                with paced_download(page) as event:
                                     page.locator('#save-session').click()
                                 session_file = Path(tmp) / 'session.json'
                                 event.value.save_as(session_file)
@@ -364,7 +376,7 @@ def run():
                                 check('Conservata — contesto' in dossier.read_text(encoding='utf-8'), 'retained context missing in dossier')
                                 page.get_by_text('Interscambio Building Core sintetico', exact=True).click()
                                 page.locator('#handoff-target').select_option('pianta-libera')
-                                with page.expect_download() as event:
+                                with paced_download(page) as event:
                                     page.locator('#geometry-handoff-download').click()
                                 geo_exchange = Path(tmp) / 'geometry-handoff.json'
                                 event.value.save_as(geo_exchange)
@@ -373,7 +385,7 @@ def run():
                                 check({g['unitId']: g['state'] for g in geo_handoff['geometry']} == {'d1': 'missing', 'd2': 'measured'}, 'geometry handoff scope or coverage')
                                 check(next(g for g in geo_handoff['geometry'] if g['unitId']=='d2')['placement']['xMm'] == 4000, 'geometry handoff placement')
                                 # Add missing d1 in one import; repeated import must not overwrite.
-                                with page.expect_download() as event:
+                                with paced_download(page) as event:
                                     page.locator('#geometry-batch-template').click()
                                 batch_file = Path(tmp) / 'geometry-batch.json'
                                 event.value.save_as(batch_file)
@@ -389,7 +401,7 @@ def run():
                                 page.locator('#geometry-batch-file').set_input_files(batch_file)
                                 expect(page.locator('#geometry-batch-status')).to_contain_text('Import bloccato')
                                 expect(page.locator('#geometry-count')).to_contain_text('3')
-                            with page.expect_download() as review_event:
+                            with paced_download(page) as review_event:
                                 page.locator("#manual-docfa-download").click()
                             worklist_file = Path(tmp) / "manual-review.json"
                             review_event.value.save_as(worklist_file)
@@ -398,7 +410,7 @@ def run():
                             check(all(c["state"] == "unverified" for c in worklist["checks"]), "worklist falsely verified")
                             check(len(worklist["rows"]) > 0, "worklist missing operations")
                             expect(page.locator("#manual-docfa-status")).to_contain_text("Verifiche ufficiali tutte aperte")
-                            with page.expect_download() as sheet_event:
+                            with paced_download(page) as sheet_event:
                                 page.locator("#manual-docfa-worksheet").click()
                             sheet_file = Path(tmp) / "manual-comparison.html"
                             sheet_event.value.save_as(sheet_file)
@@ -408,7 +420,7 @@ def run():
                             register_summary = page.get_by_text("Registra riscontri manuali su prova sintetica", exact=True)
                             if not page.locator("#manual-docfa-register-template").is_visible():
                                 register_summary.click()
-                            with page.expect_download() as register_event:
+                            with paced_download(page) as register_event:
                                 page.locator("#manual-docfa-register-template").click()
                             template_file = Path(tmp) / "manual-register-template.json"
                             register_event.value.save_as(template_file)
@@ -417,7 +429,7 @@ def run():
                             register["environment"] = {"date":"2026-11-26","docfaVersion":"SYNTH-TEST","province":"SYNTH","archiveSha256":"a"*64,"specificationReference":"SYNTH-SPEC","localRunReference":"SYNTH-RUN"}
                             register["observations"][0].update(state="difference_declared", evidenceReference="SYNTH-EVIDENCE", note="Synthetic test only")
                             template_file.write_text(json.dumps(register), encoding="utf-8")
-                            with page.expect_download() as record_event:
+                            with paced_download(page) as record_event:
                                 page.locator("#manual-docfa-register-file").set_input_files(str(template_file))
                             record_file = Path(tmp) / "manual-register-record.json"
                             record_event.value.save_as(record_file)
@@ -448,7 +460,7 @@ def run():
                                     page.locator("#guided-env-"+key).fill(value)
                                 page.locator("#guided-evidence-0").fill("SYNTH-EVIDENCE")
                                 page.locator("#guided-note-0").fill("Synthetic discrepancy only")
-                                with page.expect_download() as guided_event:
+                                with paced_download(page) as guided_event:
                                     page.locator("#guided-review-save").click()
                                 guided_path = Path(tmp) / "guided-review.json"
                                 guided_event.value.save_as(guided_path)
@@ -471,13 +483,13 @@ def run():
                                 expect(page.locator("#guided-state-0")).to_have_value("difference_declared")
                                 expect(page.locator("#guided-note-0")).to_have_value("Synthetic discrepancy only")
                                 expect(page.locator("#guided-env-archiveSha256")).to_have_value(guided["environment"]["archiveSha256"])
-                                with page.expect_download() as resumed_event:
+                                with paced_download(page) as resumed_event:
                                     page.locator("#guided-review-save").click()
                                 resumed_path = Path(tmp) / "resumed-review.json"
                                 resumed_event.value.save_as(resumed_path)
                                 check(json.loads(resumed_path.read_text(encoding="utf-8")) == guided, "reopened record differs from original")
                                 page.locator("#guided-state-0").select_option("match_declared")
-                                with page.expect_download() as revised_event:
+                                with paced_download(page) as revised_event:
                                     page.locator("#guided-review-save").click()
                                 revised_path = Path(tmp) / "revised-review.json"
                                 revised_event.value.save_as(revised_path)
@@ -497,7 +509,7 @@ def run():
                                 expect(page.locator("#status")).to_contain_text("Archivio pronto")
                                 expect(page.locator("#save-prepared-archive")).to_be_visible()
                                 expect(page.locator("#save-prepared-archive")).to_have_attribute("download", "catasto-pratica-sintetica-non-ufficiale.zip")
-                                with page.expect_download() as event:
+                                with paced_download(page) as event:
                                     page.locator("#save-prepared-archive").click()
                                 expect(page.locator("#status")).to_contain_text("Archivio richiesto")
                                 expect(page.locator("#save-prepared-archive")).to_be_visible()
@@ -514,7 +526,7 @@ def run():
                                     retry_requests.append(req.url)
                             page.on("request", capture_retry)
                             try:
-                                with page.expect_download() as retry_event:
+                                with paced_download(page) as retry_event:
                                     archive_link.click()
                                 retry_path = Path(tmp) / "retry.zip"
                                 retry_event.value.save_as(retry_path)
@@ -564,7 +576,7 @@ def run():
                             event.value.save_as(replayed_dossier)
                             check(replayed_dossier.read_bytes() == packed_html, "archive session replay differs from bundled dossier")
                             if scenario == "fusion":
-                                with page.expect_download() as retry:
+                                with paced_download(page) as retry:
                                     page.locator("#save-prepared-dossier").click()
                                 dossier_retry = Path(tmp) / "dossier-retry.html"
                                 retry.value.save_as(dossier_retry)
@@ -577,7 +589,7 @@ def run():
                             expect(draft_link).to_be_visible()
                             expect(draft_link).to_have_attribute("download", "catasto-bozza-sintetica.json")
                             try:
-                                with page.expect_download() as event:
+                                with paced_download(page) as event:
                                     draft_link.click()
                             except Exception as exc:
                                 raise RuntimeError(f"draft download failed: scenario={scenario}, viewport={width}, status={page.locator('#status').text_content()}, pageErrors={errors}, console={console_messages[-12:]}") from exc
@@ -585,7 +597,7 @@ def run():
                             event.value.save_as(draft)
                             check(json.loads(draft.read_text(encoding="utf-8")) == expected_draft, "draft download changed declarations")
                             if scenario == "fusion":
-                                with page.expect_download() as retry:
+                                with paced_download(page) as retry:
                                     draft_link.click()
                                 draft_retry = Path(tmp) / "draft-retry.json"
                                 retry.value.save_as(draft_retry)
