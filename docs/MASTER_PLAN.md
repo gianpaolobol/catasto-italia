@@ -42,3 +42,11 @@ Ruoli distinti: pianificatore, revisore del piano, sviluppatore, revisore tecnic
 Rischi rilevati e incorporati: confondere simulazione con accettazione DOCFA; dati reali in repo pubblico; disponibilità subalterni non accertata; regole territoriali e temporali; dipendenze tra geometria, titolarità e classamento; firma e invio non delegati. Restano da verificare fonti e formati ufficiali prima di implementare le rispettive regole.
 ## Caso di regressione iniziale
 Fixture interamente sintetica: abitazione con corte graffata, cantina comunicante prima non rappresentata, ripostiglio trasformato in bagno. Verificare alternativa nuovo accatastamento/variazione, diritti, scala, poligoni, classamento, elenco e conservazione altre unità. Nessun documento o identificativo reale.
+
+## [Codex] Verifica delle fonti DOCFA e dell’accesso SISTER — 2026-11-28
+
+Riferimento operativo della sessione Work e gate di collaudo [#77](https://github.com/gianpaolobol/catasto-italia/issues/77). Riscontri e stato nel [registro sviluppo](DEVELOPMENT_PROGRESS.md#codex--2026-11-28--fonti-docfa-e-accesso-sister).
+
+- **ID 03/13/22/30 — Fonti DOCFA e archivio Bologna.** Acquisire dal portale pubblico il software DOCFA 4.00.5, l’archivio provinciale, i tracciati e i modelli. Registrare fonte, versione, provincia, data di pubblicazione o decorrenza disponibile, data di acquisizione, SHA-256 e verifica di autenticità. Usare l’[intake locale](qa/DOCFA_LOCAL_SOURCE_INTAKE.md) e svolgere il collaudo offline prima di qualificare il risultato.
+- **ID 04/24/29 — Visura XML.** Verificare disponibilità e profilo abilitato nell’area riservata con SPID personale. Per l’importatore acquisire lo schema ufficiale o un esempio ufficiale sintetico, se disponibile, e confermare namespace, versione e varianti ammesse. Nel repository pubblico usare fixture sintetiche. Conservare localmente eventuali visure già disponibili e autorizzate.
+- **ID 23/24/29 — Accesso applicativo.** Prima di implementare un’integrazione con dati riservati, acquisire conferma scritta dell’Agenzia sul profilo ammesso, la convenzione, le specifiche, l’autenticazione applicativa e gli ambienti di prova. La cooperazione applicativa descritta dalla guida agli enti riguarda i soggetti ammessi al relativo convenzionamento. La cartografia pubblica WMS/WFS copre la consultazione cartografica.

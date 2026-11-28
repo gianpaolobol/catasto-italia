@@ -104,3 +104,5 @@ Segue la versione **1.1.0** (`LINEE_GUIDA.md`).
 - 2026-11-28 [Codex] PR #82 integrata, quattro check main positivi; preparazione locale delle quattro fonti DOCFA con copie e dichiarazioni coerenti proposta su ramo dedicato, nuova CI obbligatoria. Gate professionale #77 aperto.
 
 - 2026-11-28 [Codex] PR #83 integrata, quattro job CI positivi. Laboratorio unitario fonti/kit/bozze proposto su ramo dedicato; tutti i riscontri restano aperti, nuova CI obbligatoria. Gate #77 non chiuso.
+
+- 2026-11-28 [Codex] Verifica fonti DOCFA/SISTER collegata al gate #77. Cloud Browser fermo prima di SPID, archivio BO e pacchetti DOCFA da acquisire. XML documentato dall’Agenzia, disponibilità nel profilo e accesso applicativo professionale da verificare.
