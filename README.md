@@ -101,3 +101,7 @@ Dopo l'analisi di una pratica sintetica, apri **Preparazione verifica manuale DO
 
 ### Preparazione locale delle fonti per il collaudo DOCFA [Codex]
 Dopo aver acquisito e controllato manualmente i quattro artefatti dal portale ufficiale, usare `node scripts/prepare-docfa-sources.mjs --template` per il modello dichiarativo e `node scripts/prepare-docfa-sources.mjs <cartella-fonti> <nuova-cartella-riscontri>` per creare le copie con impronte e riferimenti per i registri. Seguire la [procedura completa](docs/qa/DOCFA_LOCAL_SOURCE_INTAKE.md). Solo cartelle locali protette, fuori Git; nessun download, installazione o verifica ufficiale automatica. CI nuova obbligatoria.
+
+
+### Laboratorio unitario di confronto DOCFA [Codex]
+Con le fonti già acquisite manualmente, `node scripts/prepare-docfa-operator-workspace.mjs <fonti> <nuova-cartella>` prepara kit canonico, copie delle fonti, sei bozze legate alle fonti e cartella riscontri, tutti i 36 controlli ancora aperti. Vedi [procedura](docs/qa/DOCFA_OPERATOR_WORKSPACE.md). Solo locale, sintetico e non ufficiale; nuova CI obbligatoria.
