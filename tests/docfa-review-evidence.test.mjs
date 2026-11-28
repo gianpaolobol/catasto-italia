@@ -11,6 +11,7 @@ import {manualReviewRegister} from '../packages/workbench/manual-review-register
 import {buildOfflineComparisonKit,writeOfflineComparisonKit} from '../scripts/generate-docfa-comparison-kit.mjs';
 import {captureEvidenceManifest,verifyEvidenceManifest} from '../scripts/verify-docfa-review-evidence.mjs';
 import {verifyProfessionalPreflight} from '../scripts/verify-docfa-professional-preflight.mjs';
+import {prepareLocalSources,sourceIntakeTemplate} from '../scripts/prepare-docfa-sources.mjs';
 
 test('six validated declarations, 36 files, shared archive and tamper detection',async t=>{
   const root=await mkdtemp(join(tmpdir(),'synthetic-docfa-integrity-'));
@@ -88,19 +89,35 @@ test('source-set documentary preflight binds real local bytes to six synthetic r
   t.after(()=>rm(root,{recursive:true,force:true}));
   const kitDir=join(root,'kit'),reviewDir=join(root,'reviews');
   await writeOfflineComparisonKit(kitDir);
-  await mkdir(reviewDir);
-  const roles=['installer','archive','specifications','models'];
-  const declarations={version:'0.1.0',kind:'local-docfa-source-declarations',docfaVersion:'0.0.0',province:'ZZ',sources:[]};
-  for(const role of roles){
-    const bytes=Buffer.from('SYNTHETIC ONLY: '+role),sha256=createHash('sha256').update(bytes).digest('hex');
-    declarations.sources.push({role,sha256,url:'https://www.agenziaentrate.gov.it/synthetic-only/'+role,
-      acquiredOn:'2026-11-27',verificationMethod:'Synthetic fixture; not a real download'});
-    await writeFile(join(reviewDir,role==='archive'?'archive-'+sha256+'.bin':'docfa-'+role+'.bin'),bytes);
+  const inputDir=join(root,'sources');
+  await mkdir(inputDir);
+  const config=sourceIntakeTemplate();
+  config.docfaVersion='0.0.0';
+  config.province='ZZ';
+  for(const s of config.sources){
+    s.url='https://www.agenziaentrate.gov.it/synthetic-only/'+s.role;
+    s.acquiredOn='2026-11-27';
+    s.verificationMethod='Synthetic fixture; not a real download';
+    await writeFile(join(inputDir,s.role+'.bin'),'SYNTHETIC ONLY: '+s.role);
   }
-  const spec=declarations.sources.find(s=>s.role==='specifications'),archive=declarations.sources.find(s=>s.role==='archive');
+  await writeFile(join(inputDir,'source-intake.json'),JSON.stringify(config));
+  const intake=await prepareLocalSources(inputDir,reviewDir);
+  assert.equal(intake.sourceBundlePrepared,true);
+  assert.equal(intake.officialValidation,false);
+  assert.equal(intake.sourceAuthenticityVerified,false);
   const declarationsPath=join(reviewDir,'docfa-source-declarations.json');
+  const declarations=JSON.parse(await readFile(declarationsPath,'utf8'));
   const writeDeclarations=x=>writeFile(declarationsPath,JSON.stringify(x));
-  await writeDeclarations(declarations);
+  const spec=declarations.sources.find(s=>s.role==='specifications'),archive=declarations.sources.find(s=>s.role==='archive');
+  assert.equal(intake.environment.archiveSha256,archive.sha256);
+  assert.equal(intake.environment.specificationReference,'sha256:'+spec.sha256);
+  for(const f of intake.sources){
+    const original=await readFile(join(inputDir,f.role+'.bin'));
+    assert.deepEqual(await readFile(join(reviewDir,f.name)),original);
+    assert.equal(f.sha256,createHash('sha256').update(original).digest('hex'));
+  }
+  await assert.rejects(prepareLocalSources(inputDir,reviewDir),e=>e.code==='EEXIST');
+  assert.deepEqual(JSON.parse(await readFile(declarationsPath,'utf8')),declarations);
   const kit=buildOfflineComparisonKit();
   const records=[];
   for(const scenario of scenarios){
@@ -154,4 +171,50 @@ test('source-set documentary preflight binds real local bytes to six synthetic r
   await writeManifest();
   await writeFile(join(kitDir,'LEGGIMI.txt'),'altered');
   await assert.rejects(verifyProfessionalPreflight(kitDir,reviewDir),/comparison_kit_not_canonical/);
+});
+
+
+test('local source intake refuses unsafe metadata, incomplete inputs and unsafe locations before writing',async t=>{
+  const root=await mkdtemp(join(tmpdir(),'synthetic-source-intake-'));
+  t.after(()=>rm(root,{recursive:true,force:true}));
+  const input=join(root,'input'),output=join(root,'output');
+  await mkdir(input);
+  const config=sourceIntakeTemplate();
+  config.docfaVersion='0.0.0';config.province='ZZ';
+  for(const s of config.sources){
+    s.url='https://www.agenziaentrate.gov.it/synthetic-only/'+s.role;
+    s.acquiredOn='2026-11-27';
+    s.verificationMethod='Synthetic only';
+    await writeFile(join(input,s.role+'.bin'),'SYNTHETIC '+s.role);
+  }
+  const configPath=join(input,'source-intake.json');
+  const save=x=>writeFile(configPath,JSON.stringify(x));
+  const invalid=structuredClone(config);
+  invalid.sources[0].url='https://agenziaentrate.gov.it.example.org/fake';
+  await save(invalid);
+  await assert.rejects(prepareLocalSources(input,output),/invalid_source_declarations/);
+  invalid.sources[0].url=config.sources[0].url;
+  invalid.sources[0].acquiredOn='2026-02-30';
+  await save(invalid);
+  await assert.rejects(prepareLocalSources(input,output),/invalid_source_declarations/);
+  await save(config);
+  await assert.rejects(prepareLocalSources(input,join(input,'nested')),/separate_directories/);
+  await assert.rejects(prepareLocalSources(input,join(root,'NUL')),/invalid_output_directory_name/);
+  await rm(join(input,'models.bin'));
+  await assert.rejects(prepareLocalSources(input,output));
+  await writeFile(join(input,'models.bin'),'');
+  await assert.rejects(prepareLocalSources(input,output),/invalid_evidence_file/);
+  await writeFile(join(input,'models.bin'),'SYNTHETIC installer');
+  await assert.rejects(prepareLocalSources(input,output),/duplicate_source_content/);
+  await rm(join(input,'models.bin'));
+  if(process.platform!=='win32'){
+    await symlink(join(input,'installer.bin'),join(input,'models.bin'));
+    await assert.rejects(prepareLocalSources(input,output),/invalid_evidence_file/);
+    await rm(join(input,'models.bin'));
+  }
+  await writeFile(join(input,'models.bin'),'SYNTHETIC models');
+  // Prior failed attempts must not have created the output directory.
+  const result=await prepareLocalSources(input,output);
+  assert.equal(result.sources.length,4);
+  assert.equal(result.softwareExecuted,false);
 });
