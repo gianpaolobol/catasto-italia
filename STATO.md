@@ -93,3 +93,5 @@ Segue la versione **1.1.0** (`LINEE_GUIDA.md`).
 
 
 - 2026-11-27 [Codex] PR #79 integrata dopo quattro job positivi (Windows 329/329); confronto storico ante/post collegato al workbench locale, con esito separato e nuova CI obbligatoria. Gate #77 aperto.
+
+- 2026-11-28 [Codex] PR #80 integrata, CI main 4/4 positiva; nuovo blocco locale di integrità dei 36 riscontri e dell'archivio dichiarato proposto, CI da verificare. Gate professionale #77 aperto.

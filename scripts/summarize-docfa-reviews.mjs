@@ -74,7 +74,7 @@ async function readRecord(path){
   }catch{return null;}finally{if(handle)await handle.close();}
 }
 
-export async function readOfflineReviews(directory){
+export async function readOfflineReviewRecords(directory){
   const root=resolve(directory);
   if(!(await lstat(root)).isDirectory())throw Error('review_directory_required');
   const records=new Map();
@@ -82,7 +82,11 @@ export async function readOfflineReviews(directory){
     const value=await readRecord(join(root,scenario+'.json'));
     if(value!==undefined)records.set(scenario,value);
   }
-  return summarizeOfflineReviews(records);
+  return records;
+}
+
+export async function readOfflineReviews(directory){
+  return summarizeOfflineReviews(await readOfflineReviewRecords(directory));
 }
 
 if(process.argv[1]&&pathToFileURL(resolve(process.argv[1])).href===import.meta.url){
