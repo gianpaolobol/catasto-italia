@@ -98,3 +98,6 @@ Con una sessione sintetica salvata, eseguire `node scripts/review-historical-sub
 
 ### Confronto storico dal workbench [Codex]
 Dopo l'analisi di una pratica sintetica, apri **Preparazione verifica manuale DOCFA → Confronta elenco subalterni storico ante/post**, seleziona i due registri ASCII sintetici e confronta. Le differenze sono visibili e il rapporto JSON si scarica separatamente; non modifica il dossier o la pratica. Il collegamento è invalidato alla modifica dei file o della sessione. Limiti: 100 KiB per file e 256 KiB complessivi (CLI per registri più grandi). Non è compatibilità DOCFA; non usare dati reali. PR #79 collaudata e integrata; nuova CI obbligatoria per UI.
+
+### Preparazione locale delle fonti per il collaudo DOCFA [Codex]
+Dopo aver acquisito e controllato manualmente i quattro artefatti dal portale ufficiale, usare `node scripts/prepare-docfa-sources.mjs --template` per il modello dichiarativo e `node scripts/prepare-docfa-sources.mjs <cartella-fonti> <nuova-cartella-riscontri>` per creare le copie con impronte e riferimenti per i registri. Seguire la [procedura completa](docs/qa/DOCFA_LOCAL_SOURCE_INTAKE.md). Solo cartelle locali protette, fuori Git; nessun download, installazione o verifica ufficiale automatica. CI nuova obbligatoria.
