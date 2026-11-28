@@ -218,3 +218,45 @@ test('local source intake refuses unsafe metadata, incomplete inputs and unsafe 
   assert.equal(result.sources.length,4);
   assert.equal(result.softwareExecuted,false);
 });
+
+
+test('operator workspace prepares canonical kit and six unrecorded source-bound drafts without claiming proof',async t=>{
+  const {prepareOperatorWorkspace}=await import('../scripts/prepare-docfa-operator-workspace.mjs');
+  const {verifyOfflineComparisonKit}=await import('../scripts/verify-docfa-comparison-kit.mjs');
+  const {readOfflineReviews}=await import('../scripts/summarize-docfa-reviews.mjs');
+  const root=await mkdtemp(join(tmpdir(),'synthetic-operator-workspace-'));
+  t.after(()=>rm(root,{recursive:true,force:true}));
+  const input=join(root,'sources'),out=join(root,'workspace');
+  await mkdir(input);
+  const config=sourceIntakeTemplate();
+  config.docfaVersion='0.0.0';config.province='ZZ';
+  for(const s of config.sources){
+    s.url='https://www.agenziaentrate.gov.it/synthetic-only/'+s.role;
+    s.acquiredOn='2026-11-27';s.verificationMethod='Synthetic only';
+    await writeFile(join(input,s.role+'.bin'),'SYNTHETIC '+s.role);
+  }
+  await writeFile(join(input,'source-intake.json'),JSON.stringify(config));
+  await assert.rejects(prepareOperatorWorkspace(input,join(input,'nested')),/separate_directories/);
+  const prepared=await prepareOperatorWorkspace(input,out);
+  assert.equal(prepared.officialValidation,false);
+  assert.equal(prepared.softwareExecuted,false);
+  assert.equal(prepared.emptyDrafts,6);
+  assert.equal(prepared.unrecordedChecks,36);
+  assert.equal((await verifyOfflineComparisonKit(join(out,'kit'))).canonical,true);
+  const summary=await readOfflineReviews(join(out,'reviews'));
+  assert.equal(summary.missing,6);
+  assert.equal(summary.unassessedChecks,36);
+  for(const scenario of scenarios){
+    const draft=JSON.parse(await readFile(join(out,'drafts',scenario+'.json'),'utf8'));
+    const session=JSON.parse(await readFile(join(out,'kit',scenario,'sessione.json'),'utf8'));
+    assert.equal(draft.environment.date,'');
+    assert.equal(draft.environment.localRunReference,'');
+    assert.equal(draft.environment.archiveSha256,prepared.environment.archiveSha256);
+    assert.equal(draft.environment.specificationReference,prepared.environment.specificationReference);
+    assert.ok(draft.observations.every(o=>o.state==='unrecorded'&&!o.evidenceReference&&!o.note));
+    assert.equal(manualReviewRegister(session,draft).ok,true);
+  }
+  await assert.rejects(prepareOperatorWorkspace(input,out),e=>e.code==='EEXIST');
+  assert.deepEqual(JSON.parse(await readFile(join(out,'workspace-prepared.json'),'utf8')),prepared);
+  await assert.rejects(verifyProfessionalPreflight(join(out,'kit'),join(out,'reviews')));
+});
