@@ -100,3 +100,5 @@ Segue la versione **1.1.0** (`LINEE_GUIDA.md`).
 - 2026-11-28 [Codex] PR #81 non integrata: core, Windows e linee guida positivi, Chromium desktop positivo, retry ZIP 360px fallito. Ipotesi verificabile: limite burst di Chromium; cadenza esplicita dei 23 download nel test senza rimuovere controlli, retry automatici o modificare le protezioni del browser. Nuova CI obbligatoria.
 
 - 2026-11-28 [Codex] PR #81 risulta integrata a 69eeb1d con quattro job positivi. Nuovo preflight unitario proposto per legare kit, riscontri, software, archivio, tracciati e modelli; CI obbligatoria. Gate #77 ancora aperto, fonti vigenti non acquisite.
+
+- 2026-11-28 [Codex] PR #82 integrata, quattro check main positivi; preparazione locale delle quattro fonti DOCFA con copie e dichiarazioni coerenti proposta su ramo dedicato, nuova CI obbligatoria. Gate professionale #77 aperto.
