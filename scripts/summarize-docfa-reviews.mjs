@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Gian Paolo Franceschini. All rights reserved.
 // [Codex] Reconcile six fixed synthetic comparison records locally; never attest DOCFA results.
 import {open,lstat} from 'node:fs/promises';
+import {constants} from 'node:fs';
 import {resolve,join} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {scenarios} from '../packages/workbench/fixtures.mjs';
@@ -8,6 +9,8 @@ import {manualReviewRegister} from '../packages/workbench/manual-review-register
 import {buildOfflineComparisonKit} from './generate-docfa-comparison-kit.mjs';
 
 const MAX_BYTES=128*1024;
+const readFlags=constants.O_RDONLY|(constants.O_NOFOLLOW??0)|(constants.O_NONBLOCK??0);
+const sameFile=(a,b)=>a.isFile()&&b.isFile()&&a.dev===b.dev&&a.ino===b.ino&&a.size===b.size&&a.mtimeMs===b.mtimeMs&&a.ctimeMs===b.ctimeMs;
 const states=['unrecorded','match_declared','difference_declared','not_applicable_declared'];
 const canonical=x=>JSON.stringify(x,(_,v)=>v&&typeof v==='object'&&!Array.isArray(v)
   ?Object.fromEntries(Object.keys(v).sort().map(k=>[k,v[k]])):v);
@@ -59,9 +62,9 @@ async function readRecord(path){
   if(!info.isFile()||info.size>MAX_BYTES)return null;
   let handle;
   try{
-    handle=await open(path,'r');
+    handle=await open(path,readFlags);
     const actual=await handle.stat();
-    if(!actual.isFile()||actual.dev!==info.dev||actual.ino!==info.ino||actual.size>MAX_BYTES)return null;
+    if(!sameFile(info,actual)||actual.size>MAX_BYTES)return null;
     const buffer=Buffer.alloc(MAX_BYTES+1);
     let used=0;
     while(used<buffer.length){
@@ -69,12 +72,12 @@ async function readRecord(path){
       if(!bytesRead)break;
       used+=bytesRead;
     }
-    if(used>MAX_BYTES)return null;
+    if(used!==actual.size||used>MAX_BYTES||!sameFile(actual,await handle.stat())||!sameFile(actual,await lstat(path)))return null;
     return JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(buffer.subarray(0,used)));
   }catch{return null;}finally{if(handle)await handle.close();}
 }
 
-export async function readOfflineReviews(directory){
+export async function readOfflineReviewRecords(directory){
   const root=resolve(directory);
   if(!(await lstat(root)).isDirectory())throw Error('review_directory_required');
   const records=new Map();
@@ -82,7 +85,11 @@ export async function readOfflineReviews(directory){
     const value=await readRecord(join(root,scenario+'.json'));
     if(value!==undefined)records.set(scenario,value);
   }
-  return summarizeOfflineReviews(records);
+  return records;
+}
+
+export async function readOfflineReviews(directory){
+  return summarizeOfflineReviews(await readOfflineReviewRecords(directory));
 }
 
 if(process.argv[1]&&pathToFileURL(resolve(process.argv[1])).href===import.meta.url){

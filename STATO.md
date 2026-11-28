@@ -93,3 +93,8 @@ Segue la versione **1.1.0** (`LINEE_GUIDA.md`).
 
 
 - 2026-11-27 [Codex] PR #79 integrata dopo quattro job positivi (Windows 329/329); confronto storico ante/post collegato al workbench locale, con esito separato e nuova CI obbligatoria. Gate #77 aperto.
+
+- 2026-11-28 [Codex] PR #80 integrata, CI main 4/4 positiva; nuovo blocco locale di integrità dei 36 riscontri e dell'archivio dichiarato proposto, CI da verificare. Gate professionale #77 aperto.
+
+
+- 2026-11-28 [Codex] PR #81 non integrata: core, Windows e linee guida positivi, Chromium desktop positivo, retry ZIP 360px fallito. Ipotesi verificabile: limite burst di Chromium; cadenza esplicita dei 23 download nel test senza rimuovere controlli, retry automatici o modificare le protezioni del browser. Nuova CI obbligatoria.
